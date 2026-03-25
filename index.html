@@ -1,0 +1,2692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MyEiruv – Community Eiruv Platform</title>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+<style>
+:root{
+  --navy:#1a2c4a;--navy2:#243858;--blue:#2563b0;--sky:#4a90d9;
+  --gold:#c8923a;--gold2:#f0d89a;
+  --white:#fff;--bg:#f1f3f8;--border:#dde2ec;
+  --text:#1e2535;--muted:#7a859e;--muted2:#b0bac9;
+  --green:#22a865;--red:#d94040;--amber:#e08020;
+  --sh:0 2px 14px rgba(20,40,90,.10);
+  --shl:0 8px 40px rgba(20,40,90,.18);
+  --r:10px;--hh:72px;--sw:380px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;color:var(--text);}
+button,input,select,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* ── HEADER ── */
+header{
+  height:var(--hh);
+  background:linear-gradient(105deg,#fff 0%,#e8eef6 20%,#a8bdd4 40%,#3d6090 60%,#1a2c4a 100%);
+  display:flex;align-items:center;padding:0 16px;
+  position:relative;z-index:400;flex-shrink:0;
+  box-shadow:0 2px 20px rgba(0,0,0,.20);
+}
+
+/* Logo area — use multiply so white bg disappears into gradient */
+.hdr-logo-wrap{
+  display:flex;align-items:center;flex-shrink:0;
+  position:relative;z-index:2;
+}
+.hdr-logo{
+  height:60px;width:auto;display:block;
+  mix-blend-mode:multiply;
+  filter:contrast(1.05) saturate(1.1);
+  cursor:pointer;
+  transition:opacity .2s;
+}
+.hdr-logo:hover{opacity:.85;}
+
+/* Refresh button — subtle circular icon right of logo */
+.logo-refresh{
+  width:22px;height:22px;border-radius:50%;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;margin-left:4px;flex-shrink:0;
+  transition:all .18s;color:rgba(255,255,255,.75);font-size:.72rem;
+}
+.logo-refresh:hover{background:rgba(255,255,255,.32);transform:rotate(90deg);}
+
+/* Center brand — "Community Eiruv Platform" small, "Connecting Our Communities" big */
+.hdr-brand{
+  position:absolute;left:50%;transform:translateX(-50%);
+  text-align:center;pointer-events:none;z-index:2;white-space:nowrap;
+}
+.hdr-brand-small{
+  font-family:'DM Sans',sans-serif;
+  font-size:.64rem;font-weight:600;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(255,255,255,.65);
+  line-height:1;margin-bottom:5px;
+}
+.hdr-brand-big{
+  font-family:'Fraunces',serif;
+  font-size:1.45rem;font-weight:700;
+  color:#fff;letter-spacing:-.01em;
+  text-shadow:0 1px 14px rgba(0,0,0,.35);
+  line-height:1;
+}
+
+.hdr-r{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;}
+.hbtn{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:7px;font-size:.77rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .18s;white-space:nowrap;}
+.hbtn-ghost{background:rgba(255,255,255,.13);color:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.22);}
+.hbtn-ghost:hover{background:rgba(255,255,255,.23);}
+.hbtn-gold{background:var(--gold);color:#fff;}
+.hbtn-gold:hover{filter:brightness(1.1);}
+.signin-pill{display:flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.28);border-radius:100px;cursor:pointer;color:#fff;font-size:.8rem;font-weight:500;transition:all .18s;font-family:inherit;}
+.signin-pill:hover{background:rgba(255,255,255,.26);}
+.user-pill{display:flex;align-items:center;gap:7px;padding:5px 11px 5px 5px;background:rgba(255,255,255,.13);border-radius:100px;cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:all .18s;font-family:inherit;position:relative;}
+.user-pill:hover{background:rgba(255,255,255,.22);}
+.u-av{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.u-nm{font-size:.8rem;font-weight:500;color:#fff;}
+.u-drop{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shl);min-width:210px;overflow:hidden;z-index:600;}
+.u-drop-hd{padding:12px 14px 9px;border-bottom:1px solid var(--border);}
+.u-drop-nm{font-weight:700;color:var(--navy);font-size:.86rem;}
+.u-drop-em{font-size:.71rem;color:var(--muted);margin-top:2px;}
+.u-drop-badge{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:100px;font-size:.63rem;font-weight:700;background:var(--gold2);color:#7a4010;}
+.u-drop-it{display:flex;align-items:center;gap:8px;width:100%;padding:8px 14px;text-align:left;font-size:.81rem;color:var(--text);border:none;background:none;cursor:pointer;font-family:inherit;transition:background .12s;}
+.u-drop-it:hover{background:var(--bg);}
+.u-drop-it.red{color:var(--red);}
+.u-drop-sep{height:1px;background:var(--border);}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:calc(100vh - var(--hh));overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sw);flex-shrink:0;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;z-index:200;}
+.s-tabs{display:flex;border-bottom:1px solid var(--border);}
+.s-tab{flex:1;padding:10px 3px;text-align:center;font-size:.68rem;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2.5px solid transparent;transition:all .18s;font-family:inherit;letter-spacing:.04em;text-transform:uppercase;}
+.s-tab.on{color:var(--navy);border-bottom-color:var(--navy);}
+.panel{display:none;flex:1;flex-direction:column;overflow-y:auto;}
+.panel.on{display:flex;}
+.pb{padding:15px 16px;}
+.pt{font-family:'Fraunces',serif;font-size:1.1rem;font-weight:600;color:var(--navy);margin-bottom:3px;}
+.ps{font-size:.77rem;color:var(--muted);line-height:1.5;margin-bottom:12px;}
+.fi{width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:.84rem;color:var(--text);outline:none;background:#fff;transition:border-color .18s;}
+.fi:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(74,144,217,.1);}
+.fi::placeholder{color:var(--muted2);}
+.lbl{display:block;font-size:.7rem;font-weight:600;color:var(--muted);margin-bottom:4px;letter-spacing:.04em;text-transform:uppercase;}
+.fg{margin-bottom:11px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;border-radius:8px;font-size:.84rem;font-weight:600;cursor:pointer;border:none;transition:all .18s;white-space:nowrap;}
+.btn-navy{background:var(--navy);color:#fff;}
+.btn-navy:hover{background:var(--navy2);}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text);}
+.btn-full{width:100%;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:.67rem;font-weight:600;}
+.b-up{background:#e3f5ec;color:#1a7040;}
+.b-dn{background:#fbeaea;color:#a02020;}
+.b-rv{background:#fef1e2;color:#955010;}
+.sec-lbl{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin:12px 0 7px;display:block;}
+.divider{display:flex;align-items:center;gap:9px;margin:12px 0;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.divider span{font-size:.7rem;color:var(--muted);}
+.addr-wrap{position:relative;margin-bottom:7px;}
+.addr-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted2);pointer-events:none;}
+.addr-fi{padding-left:32px !important;padding-right:58px !important;}
+.me-btn{position:absolute;right:7px;top:50%;transform:translateY(-50%);padding:3px 8px;background:rgba(37,99,176,.1);color:var(--blue);border:none;border-radius:5px;font-size:.68rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.me-btn:hover{background:rgba(37,99,176,.18);}
+.ac-box{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:0 0 10px 10px;box-shadow:var(--shl);z-index:500;overflow:hidden;display:none;}
+.ac-box.on{display:block;}
+.ac-item{display:flex;align-items:flex-start;gap:8px;padding:8px 11px;cursor:pointer;transition:background .1s;border-bottom:1px solid #f0f2f6;}
+.ac-item:last-child{border:none;}
+.ac-item:hover,.ac-item.foc{background:var(--bg);}
+.ac-ico{flex-shrink:0;margin-top:1px;font-size:.88rem;}
+.ac-main{font-size:.81rem;font-weight:500;color:var(--navy);}
+.ac-sub{font-size:.69rem;color:var(--muted);}
+.result-card{padding:12px;border-radius:var(--r);border:1.5px solid var(--border);margin-top:8px;display:none;}
+.result-card.on{display:block;}
+.result-card.ins{border-color:var(--green);background:#edf8f2;}
+.result-card.out{border-color:var(--red);background:#fdf2f2;}
+.res-hd{display:flex;align-items:center;gap:9px;}
+.res-icon{font-size:1.2rem;}
+.res-title{font-size:.88rem;font-weight:700;color:var(--navy);}
+.res-sub{font-size:.73rem;color:var(--muted);margin-top:2px;}
+.res-btn{margin-top:6px;width:100%;padding:6px;border-radius:7px;font-size:.73rem;font-weight:600;cursor:pointer;border:1px solid rgba(26,44,74,.18);background:rgba(26,44,74,.06);color:var(--navy);font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;transition:all .18s;}
+.res-btn:hover{background:rgba(26,44,74,.12);}
+.res-btn.blue-btn{background:rgba(37,99,176,.08);border-color:rgba(37,99,176,.2);color:#2563b0;}
+.res-btn.blue-btn:hover{background:rgba(37,99,176,.16);}
+.eruv-list{display:flex;flex-direction:column;gap:5px;}
+.eruv-row{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .18s;background:#fff;}
+.eruv-row:hover{box-shadow:var(--sh);border-color:var(--sky);}
+.er-nm{font-size:.82rem;font-weight:600;color:var(--navy);}
+.er-mt{font-size:.69rem;color:var(--muted);margin-top:2px;}
+.route-stop{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.stop-dot{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:#fff;}
+.sa{background:var(--green);}.sb{background:var(--red);}
+.route-result{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:11px;margin-top:9px;}
+.rstat{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:.78rem;}
+.rstat:last-child{border:none;}
+.rstat span:first-child{color:var(--muted);}
+.rstat span:last-child{font-weight:600;color:var(--navy);}
+.route-alert{margin-top:8px;padding:9px 11px;border-radius:7px;font-size:.76rem;line-height:1.5;}
+.ra-ok{background:#edf8f2;border-left:3px solid var(--green);color:#1a5030;}
+.ra-warn{background:#fff9ec;border-left:3px solid var(--amber);color:#7a4400;}
+.ra-err{background:#fdf2f2;border-left:3px solid var(--red);color:#8a1010;}
+.ra-info{background:#eff6ff;border-left:3px solid var(--blue);color:#1a3a7a;}
+.filter-row{display:flex;gap:5px;padding:9px 14px 5px;flex-wrap:wrap;}
+.chip{padding:4px 10px;border-radius:100px;border:1.5px solid var(--border);background:#fff;font-size:.71rem;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit;color:var(--text);}
+.chip.on{border-color:var(--navy);background:rgba(26,44,74,.07);color:var(--navy);}
+.upd{padding:11px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:all .18s;background:#fff;}
+.upd:hover{box-shadow:var(--sh);}
+.upd-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;}
+.upd-nm{font-size:.82rem;font-weight:600;color:var(--navy);}
+.upd-tm{font-size:.68rem;color:var(--muted);}
+.upd-msg{font-size:.77rem;color:var(--text);line-height:1.5;margin-top:3px;}
+.toggle{width:34px;height:19px;background:var(--border);border-radius:100px;position:relative;cursor:pointer;border:none;transition:background .18s;flex-shrink:0;}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.toggle.on{background:var(--green);}
+.toggle.on::after{transform:translateX(15px);}
+.add-alert-btn{width:100%;padding:8px;background:transparent;color:var(--navy);border:1.5px dashed rgba(26,44,74,.22);border-radius:8px;font-size:.79rem;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;margin-top:4px;}
+.add-alert-btn:hover{background:rgba(26,44,74,.04);}
+.alert-form{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px;margin-top:7px;display:none;}
+.alert-form.on{display:block;}
+.nchips{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
+.nc{padding:4px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.72rem;font-weight:500;cursor:pointer;background:#fff;transition:all .18s;font-family:inherit;}
+.nc.on{border-color:var(--navy);background:rgba(26,44,74,.07);color:var(--navy);}
+
+/* ── MAP ── */
+#map{flex:1;position:relative;}
+.map-legend{position:absolute;top:11px;right:11px;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:9px;padding:8px 12px;box-shadow:var(--sh);z-index:10;backdrop-filter:blur(8px);}
+.leg-row{display:flex;align-items:center;gap:6px;font-size:.71rem;color:var(--text);margin-bottom:3px;}
+.leg-row:last-child{margin:0;}
+.leg-line{width:14px;height:3px;border-radius:2px;}
+.map-fs-btn{position:absolute;top:11px;left:11px;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:7px;padding:6px 11px;font-size:.74rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;box-shadow:var(--sh);display:flex;align-items:center;gap:4px;backdrop-filter:blur(8px);}
+.fs-exit{position:fixed;top:12px;left:12px;z-index:1001;background:var(--navy);color:#fff;border:none;border-radius:7px;padding:7px 13px;font-size:.77rem;font-weight:600;cursor:pointer;font-family:inherit;display:none;align-items:center;gap:4px;box-shadow:var(--shl);}
+.fs-exit.on{display:flex;}
+.map-fullscreen #map{position:fixed;inset:0;z-index:999;height:100vh !important;}
+.map-fullscreen .sidebar,.map-fullscreen header{display:none;}
+
+/* ── MODALS ── */
+.backdrop{position:fixed;inset:0;background:rgba(10,18,40,.5);backdrop-filter:blur(5px);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+.backdrop.on{display:flex;}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:420px;box-shadow:var(--shl);position:relative;max-height:92vh;overflow-y:auto;}
+.modal-body{padding:26px;}
+.modal-close{position:absolute;top:12px;right:12px;width:26px;height:26px;background:var(--bg);border:none;border-radius:50%;cursor:pointer;font-size:.84rem;color:var(--muted);display:flex;align-items:center;justify-content:center;}
+.modal-close:hover{background:var(--border);}
+.modal-title{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:600;color:var(--navy);margin-bottom:3px;}
+.modal-sub{font-size:.78rem;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+.modal-footer{text-align:center;margin-top:11px;font-size:.76rem;color:var(--muted);}
+.modal-footer a{color:var(--blue);cursor:pointer;font-weight:600;}
+.goog-btn{width:100%;padding:10px;background:#fff;border:1.5px solid var(--border);border-radius:7px;font-size:.84rem;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:all .18s;color:var(--text);font-family:inherit;margin-bottom:7px;}
+.goog-btn:hover{background:var(--bg);}
+.goog-btn.apply{border-color:rgba(200,146,58,.4);color:#8a5810;background:rgba(240,216,154,.12);}
+.goog-btn.apply:hover{background:rgba(240,216,154,.25);}
+.e-msg{font-size:.73rem;color:var(--red);margin-bottom:9px;display:none;}
+
+/* ── ADMIN DRAWER ── */
+.admin-drawer{position:fixed;right:0;top:var(--hh);bottom:0;width:360px;background:#fff;border-left:1px solid var(--border);z-index:300;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:var(--shl);}
+.admin-drawer.on{transform:translateX(0);}
+.adm-hdr{padding:12px 13px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg);}
+.adm-ttl{font-family:'Fraunces',serif;font-size:.94rem;font-weight:600;color:var(--navy);}
+.adm-cls{background:none;border:none;font-size:.88rem;cursor:pointer;color:var(--muted);padding:3px;}
+.adm-nav{display:flex;gap:3px;padding:7px 11px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:var(--bg);}
+.anav{padding:4px 9px;border-radius:5px;border:1px solid var(--border);background:#fff;font-size:.7rem;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit;color:var(--text);}
+.anav.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.adm-body{flex:1;overflow-y:auto;padding:12px;}
+.adm-sec{font-size:.64rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);margin-bottom:8px;display:block;}
+.adm-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;}
+.sbox{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px;text-align:center;}
+.sbox-n{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:700;color:var(--navy);}
+.sbox-l{font-size:.65rem;color:var(--muted);margin-top:2px;}
+.acard{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px;margin-bottom:6px;}
+.acard-row{display:flex;justify-content:space-between;align-items:flex-start;}
+.acard-nm{font-size:.8rem;font-weight:600;color:var(--navy);}
+.acard-mt{font-size:.69rem;color:var(--muted);margin-top:2px;}
+.act-row{display:flex;gap:4px;margin-top:7px;}
+.act-btn{flex:1;padding:5px;border-radius:5px;font-size:.71rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .18s;}
+.ap{background:var(--navy);color:#fff;}.ao{background:#fff;color:var(--text);border:1px solid var(--border);}
+.ar{background:#fbeaea;color:var(--red);}.ag{background:#e3f5ec;color:#1a7040;}
+.user-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f2f6;}
+.user-row:last-child{border:none;}
+.u-info{display:flex;align-items:center;gap:7px;}
+.u-av-sm{width:26px;height:26px;border-radius:50%;background:rgba(26,44,74,.1);color:var(--navy);font-size:.71rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+/* ── CONTRACTOR DASH ── */
+.ct-dash{position:fixed;inset:0;top:var(--hh);background:#fff;z-index:290;transform:translateX(-100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:var(--shl);}
+.ct-dash.on{transform:translateX(0);}
+.ct-hdr{padding:15px 20px;border-bottom:1px solid var(--border);background:var(--bg);display:flex;justify-content:space-between;align-items:center;}
+.ct-title{font-family:'Fraunces',serif;font-size:1rem;font-weight:600;color:var(--navy);}
+.ct-body{flex:1;overflow-y:auto;padding:18px 20px;}
+.ct-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+.ct-stat{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:13px;text-align:center;}
+.ct-stat-n{font-family:'Fraunces',serif;font-size:1.7rem;font-weight:700;color:var(--navy);}
+.ct-stat-l{font-size:.7rem;color:var(--muted);margin-top:2px;}
+.ct-zone{background:#fff;border:1px solid var(--border);border-radius:9px;padding:13px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:flex-start;}
+.ct-zone-nm{font-size:.86rem;font-weight:600;color:var(--navy);}
+.ct-zone-mt{font-size:.71rem;color:var(--muted);margin-top:2px;}
+.ct-acts{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
+.ct-act{padding:5px 11px;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .18s;}
+
+/* ── DRAW OVERLAY ── */
+.draw-overlay{position:fixed;inset:0;z-index:900;background:#0a121e;display:none;flex-direction:column;}
+.draw-overlay.on{display:flex;}
+
+/* header */
+.draw-hdr{height:52px;background:#0d1826;display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.07);}
+.draw-title{font-family:'Fraunces',serif;font-size:.88rem;font-weight:600;color:#fff;display:flex;align-items:center;gap:10px;}
+.draw-title-mark{width:7px;height:7px;border-radius:50%;background:#c8923a;flex-shrink:0;box-shadow:0 0 0 3px rgba(200,146,58,.2);}
+.draw-mode-badge{padding:2px 8px;border-radius:4px;font-size:.6rem;font-weight:800;background:#c8923a;color:#fff;letter-spacing:.07em;text-transform:uppercase;}
+.draw-acts{display:flex;gap:7px;align-items:center;}
+#draw-map{flex:1;}
+
+/* ── Step Banner (below header) ── */
+.draw-banner{flex-shrink:0;background:#111d2e;border-bottom:1px solid rgba(255,255,255,.06);padding:0 16px;height:0;overflow:hidden;transition:height .22s ease;display:flex;align-items:center;gap:16px;}
+.draw-banner.on{height:52px;}
+.draw-banner-steps{display:flex;align-items:center;gap:0;}
+.dbs{display:flex;align-items:center;gap:7px;padding:4px 12px 4px 8px;border-radius:6px;transition:all .2s;}
+.dbs-num{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.64rem;font-weight:800;background:rgba(255,255,255,.09);color:rgba(255,255,255,.3);flex-shrink:0;transition:all .2s;}
+.dbs-label{font-size:.72rem;font-weight:600;color:rgba(255,255,255,.28);white-space:nowrap;transition:all .2s;}
+.dbs.active .dbs-num{background:#c8923a;color:#fff;box-shadow:0 0 0 3px rgba(200,146,58,.2);}
+.dbs.active .dbs-label{color:rgba(255,255,255,.9);}
+.dbs.done .dbs-num{background:rgba(34,168,101,.25);color:#22a865;}
+.dbs.done .dbs-label{color:rgba(255,255,255,.4);}
+.dbs-arrow{color:rgba(255,255,255,.15);font-size:.72rem;margin:0 2px;}
+.draw-banner-hint{flex:1;font-size:.73rem;color:rgba(255,255,255,.45);border-left:1px solid rgba(255,255,255,.07);padding-left:14px;margin-left:6px;line-height:1.35;}
+.draw-banner-hint strong{color:rgba(255,255,255,.75);display:block;font-size:.75rem;margin-bottom:1px;}
+
+/* ── Tool Palette (labeled) ── */
+.draw-palette{position:absolute;left:14px;top:14px;z-index:20;display:flex;flex-direction:column;gap:2px;background:rgba(8,15,26,.93);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:7px;box-shadow:0 8px 32px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(20px);width:152px;}
+.dp-div{height:1px;background:rgba(255,255,255,.07);margin:3px 0;}
+.dp-btn{width:100%;border-radius:8px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;gap:9px;padding:8px 9px;transition:background .14s,color .14s;color:rgba(255,255,255,.45);position:relative;}
+.dp-btn:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);}
+.dp-btn.act{background:rgba(200,146,58,.16);color:#c8923a;}
+.dp-btn.act-red{background:rgba(217,64,64,.14);color:#e07070;}
+.dp-btn.act-red:hover{background:rgba(217,64,64,.21);}
+.dp-btn.dp-undo-btn{color:rgba(255,255,255,.35);}
+.dp-btn.dp-undo-btn:hover{color:rgba(255,255,255,.7);background:rgba(255,255,255,.07);}
+.dp-btn.dp-undo-btn[style*="opacity: 1"]{color:rgba(255,255,255,.7);}
+.undo-pill{display:none;}/* legacy - no longer used */
+.dp-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.dp-btn-label{font-size:.71rem;font-weight:600;white-space:nowrap;font-family:inherit;display:flex;flex-direction:column;gap:1px;text-align:left;}
+.dp-btn-label span{font-size:.59rem;font-weight:400;opacity:.6;}
+.dp-btn-key{margin-left:auto;font-family:'DM Mono',monospace;font-size:.58rem;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);color:rgba(255,255,255,.3);}
+
+/* ── Search bar ── */
+.draw-search-wrap{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;width:300px;}
+.draw-search-wrap .fi{border-radius:100px;padding:9px 16px;font-size:.8rem;box-shadow:0 4px 20px rgba(0,0,0,.4);background:rgba(255,255,255,.97);border:1px solid rgba(200,146,58,.2);}
+.draw-search-wrap .ac-box{border-radius:0 0 14px 14px;}
+
+/* ── Zone Panel ── */
+.zone-panel{position:absolute;top:14px;right:14px;background:rgba(8,15,26,.92);border:1px solid rgba(255,255,255,.09);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.55);width:250px;z-index:20;max-height:calc(100vh - 52px - 52px - 36px);overflow-y:auto;backdrop-filter:blur(20px);display:flex;flex-direction:column;}
+.zone-panel::-webkit-scrollbar{width:3px;}.zone-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px;}
+
+/* Phase: drawing (step 1) */
+.zp-draw-guide{padding:16px;display:flex;flex-direction:column;gap:10px;}
+.zp-phase-label{font-size:.6rem;font-weight:800;color:rgba(255,255,255,.3);letter-spacing:.1em;text-transform:uppercase;}
+.zp-big-action{background:rgba(200,146,58,.12);border:1px dashed rgba(200,146,58,.3);border-radius:10px;padding:14px;text-align:center;}
+.zp-big-action-icon{font-size:1.3rem;margin-bottom:5px;}
+.zp-big-action-title{font-size:.82rem;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:3px;}
+.zp-big-action-sub{font-size:.69rem;color:rgba(255,255,255,.38);line-height:1.5;}
+.zp-steps-list{display:flex;flex-direction:column;gap:6px;}
+.zp-step{display:flex;align-items:flex-start;gap:8px;font-size:.7rem;color:rgba(255,255,255,.45);line-height:1.4;}
+.zp-step-n{width:17px;height:17px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:.59rem;font-weight:700;color:rgba(255,255,255,.3);flex-shrink:0;margin-top:1px;}
+.zp-step strong{color:rgba(255,255,255,.7);}
+
+/* Phase: details (step 2) */
+.zp-details{padding:16px;display:flex;flex-direction:column;gap:0;}
+.zone-panel h4{font-size:.6rem;font-weight:800;color:rgba(255,255,255,.3);margin-bottom:12px;text-transform:uppercase;letter-spacing:.1em;}
+.zone-panel h5{font-size:.59rem;font-weight:700;color:rgba(255,255,255,.28);margin:12px 0 7px;text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:6px;}
+.zone-panel h5::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.06);}
+.zone-panel .lbl{color:rgba(255,255,255,.38);font-size:.66rem;margin-bottom:3px;display:block;}
+.zone-panel .fg{margin-bottom:8px;}
+.zone-panel .fi{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);color:#fff;border-radius:8px;padding:7px 10px;font-size:.79rem;width:100%;box-sizing:border-box;font-family:inherit;transition:border-color .15s,background .15s;}
+.zone-panel .fi:focus{border-color:rgba(200,146,58,.5);background:rgba(255,255,255,.09);outline:none;box-shadow:0 0 0 3px rgba(200,146,58,.1);}
+.zone-panel .fi::placeholder{color:rgba(255,255,255,.18);}
+.zone-panel select.fi{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,.35)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer;}
+.zone-panel select.fi option{background:#1a2c4a;color:#fff;}
+
+/* Status pills for select */
+.status-row{display:flex;gap:5px;margin-top:3px;}
+.status-pill{flex:1;padding:6px 4px;border-radius:7px;border:1.5px solid rgba(255,255,255,.08);background:transparent;color:rgba(255,255,255,.35);font-size:.67rem;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:all .16s;}
+.status-pill:hover{border-color:rgba(255,255,255,.18);color:rgba(255,255,255,.65);}
+.status-pill.sel-up{border-color:rgba(34,168,101,.5);background:rgba(34,168,101,.12);color:#22a865;}
+.status-pill.sel-rv{border-color:rgba(224,128,32,.5);background:rgba(224,128,32,.1);color:#e08020;}
+.status-pill.sel-dn{border-color:rgba(217,64,64,.5);background:rgba(217,64,64,.1);color:#d94040;}
+
+.adj-item{display:flex;align-items:center;justify-content:space-between;padding:7px 9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:7px;margin-bottom:4px;}
+.adj-nm{font-size:.72rem;font-weight:500;color:rgba(255,255,255,.65);flex:1;}
+.excl-item{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:rgba(217,64,64,.07);border:1px solid rgba(217,64,64,.16);border-radius:7px;margin-bottom:4px;}
+.excl-nm{font-size:.71rem;font-weight:500;color:#f09090;}
+.excl-del{background:none;border:none;cursor:pointer;color:#d94040;font-size:.78rem;padding:1px 4px;opacity:.6;transition:opacity .14s;}
+.excl-del:hover{opacity:1;}
+.excl-add-btn{width:100%;display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:7px;background:rgba(217,64,64,.07);border:1px solid rgba(217,64,64,.14);color:#d07070;cursor:pointer;font-family:inherit;font-size:.72rem;font-weight:600;transition:all .15s;margin-top:4px;}
+.excl-add-btn:hover{background:rgba(217,64,64,.14);color:#e09090;}
+.excl-add-btn.act{background:rgba(217,64,64,.18);color:#e88080;border-color:rgba(217,64,64,.3);}
+
+/* Redraw button */
+.zp-redraw-btn{margin:0 16px 12px;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border-radius:7px;border:1px dashed rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.35);font-family:inherit;font-size:.7rem;font-weight:600;cursor:pointer;transition:all .15s;}
+.zp-redraw-btn:hover{border-color:rgba(200,146,58,.35);color:#c8923a;background:rgba(200,146,58,.07);}
+.zp-redraw-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;}
+
+/* ── Coordinate Readout ── */
+.draw-coords{position:absolute;bottom:36px;left:14px;z-index:20;background:rgba(8,15,26,.88);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 10px;font-family:'DM Mono',monospace;font-size:.64rem;color:rgba(255,255,255,.5);backdrop-filter:blur(10px);pointer-events:none;display:flex;align-items:center;gap:8px;line-height:1;}
+.draw-coords-dot{width:5px;height:5px;border-radius:50%;background:#c8923a;flex-shrink:0;}
+
+/* ── Vertex Counter ── */
+.draw-vtx{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(8,15,26,.88);border:1px solid rgba(255,255,255,.08);border-radius:100px;padding:4px 12px;font-size:.65rem;font-weight:600;color:rgba(255,255,255,.5);backdrop-filter:blur(10px);pointer-events:none;white-space:nowrap;display:none;}
+
+/* ── Status Bar ── */
+.draw-statusbar{position:absolute;bottom:0;left:0;right:0;z-index:20;height:30px;background:rgba(8,15,26,.9);border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;padding:0 14px;gap:14px;backdrop-filter:blur(10px);}
+.dsb-item{font-size:.64rem;color:rgba(255,255,255,.38);display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.dsb-key{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:15px;padding:0 4px;border-radius:3px;font-size:.58rem;font-weight:700;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.5);font-family:'DM Mono',monospace;}
+.dsb-sep{width:1px;height:12px;background:rgba(255,255,255,.09);flex-shrink:0;}
+
+/* ── Snap Ring ── */
+.snap-ring{position:absolute;z-index:25;pointer-events:none;width:18px;height:18px;border-radius:50%;border:2px solid #c8923a;transform:translate(-50%,-50%);display:none;box-shadow:0 0 0 4px rgba(200,146,58,.18);}
+
+/* ── Undo Pill ── */
+.undo-pill{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);z-index:30;display:none;align-items:center;gap:8px;background:rgba(8,15,26,.96);border:1px solid rgba(255,255,255,.14);border-radius:100px;padding:7px 16px 7px 12px;box-shadow:0 6px 24px rgba(0,0,0,.5);backdrop-filter:blur(16px);cursor:pointer;font-family:inherit;color:rgba(255,255,255,.8);font-size:.76rem;font-weight:600;transition:background .14s,border-color .14s;white-space:nowrap;}
+.undo-pill:hover{background:rgba(200,146,58,.18);border-color:rgba(200,146,58,.35);color:#c8923a;}
+.undo-pill svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.undo-pill .undo-key{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:16px;padding:0 4px;border-radius:4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-family:'DM Mono',monospace;font-size:.62rem;color:rgba(255,255,255,.4);margin-left:4px;}
+.undo-pill.on{display:flex;}
+/* ── Map canvas pointer-events blocking (when UI is hovered) ── */
+#draw-map.ui-over .mapboxgl-canvas-container{pointer-events:none !important;}
+#draw-map.ui-over .mapboxgl-canvas{pointer-events:none !important;cursor:default !important;}
+.picker-list{display:flex;flex-direction:column;gap:6px;max-height:330px;overflow-y:auto;}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--navy);color:#fff;padding:9px 20px;border-radius:100px;font-size:.8rem;font-weight:500;box-shadow:var(--shl);z-index:9999;transition:transform .26s ease;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+#toast.on{transform:translateX(-50%) translateY(0);}
+#toast.ok{background:var(--green);}#toast.err{background:var(--red);}#toast.warn{background:var(--amber);}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .2s ease;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-ico{width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;}
+
+.mapboxgl-popup-content{border-radius:9px !important;padding:11px 14px !important;box-shadow:var(--shl) !important;font-family:'DM Sans',sans-serif !important;border:1px solid var(--border) !important;}
+.pop-title{font-family:'Fraunces',serif;font-weight:600;font-size:.87rem;color:var(--navy);margin-bottom:3px;}
+.pop-status{font-size:.73rem;color:var(--text);}
+.pop-note{font-size:.7rem;color:var(--muted);font-style:italic;margin-top:3px;}
+.pop-adj{font-size:.7rem;color:var(--blue);margin-top:3px;}
+.mapboxgl-ctrl-group{border-radius:8px !important;box-shadow:var(--sh) !important;}
+
+@media(max-width:768px){
+  :root{--sw:100%;}
+  .app{flex-direction:column-reverse;}
+  .sidebar{height:52vh;border-right:none;border-top:1px solid var(--border);}
+  #map{height:48vh;}
+  .admin-drawer,.ct-dash{width:100%;}
+  .hdr-brand{display:none;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-logo-wrap">
+    <img class="hdr-logo" src="logo.png" alt="MyEiruv" onclick="refreshPage()" title="MyEiruv — click to refresh">
+    <button class="logo-refresh" onclick="refreshPage()" title="Refresh">&#8635;</button>
+  </div>
+  <div class="hdr-brand" id="hdrBrand">
+    <div class="hdr-brand-small">Community Eiruv Platform</div>
+    <div class="hdr-brand-big">Connecting Our Communities</div>
+  </div>
+  <div class="hdr-r">
+    <button class="hbtn hbtn-ghost" id="adminTrigger" style="display:none" onclick="openAdmin()">&#9881;&#65039; Admin</button>
+    <button class="hbtn hbtn-ghost" id="ctDashTrigger" style="display:none" onclick="openCtDash()">&#128203; My Zones</button>
+    <button class="hbtn hbtn-ghost" id="editZonesTrigger" style="display:none" onclick="openZonePicker()">&#9999;&#65039; Edit Zones</button>
+    <button class="hbtn hbtn-gold" id="drawTrigger" style="display:none" onclick="openDraw('draw')">+ Create Zone</button>
+    <button class="signin-pill" id="signinPill" onclick="openModal('vMain')">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/><path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="rgba(255,255,255,.9)" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Sign In
+    </button>
+    <div style="position:relative;display:none;margin-left:4px" id="userPillWrap">
+      <button class="user-pill" onclick="toggleDrop()">
+        <div class="u-av" id="uAv">?</div>
+        <span class="u-nm" id="uNm">User</span>
+        <svg width="8" height="5" viewBox="0 0 8 5" fill="none"><path d="M1 1l3 3 3-3" stroke="rgba(255,255,255,.6)" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="u-drop" id="userDrop" style="display:none">
+        <div class="u-drop-hd">
+          <div class="u-drop-nm" id="dNm">—</div>
+          <div class="u-drop-em" id="dEm">—</div>
+          <div class="u-drop-badge" id="dRole">User</div>
+        </div>
+        <button class="u-drop-it" onclick="goAlerts()">&#128276; My Alerts</button>
+        <div class="u-drop-sep"></div>
+        <button class="u-drop-it red" onclick="doSignOut()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="s-tabs">
+      <button class="s-tab on" onclick="sTab(this,'check')">Check</button>
+      <button class="s-tab" onclick="sTab(this,'route')">Route</button>
+      <button class="s-tab" onclick="sTab(this,'status')">Status</button>
+      <button class="s-tab" onclick="sTab(this,'alerts')">Alerts</button>
+    </div>
+    <div class="panel on" id="panel-check">
+      <div class="pb">
+        <h2 class="pt">Am I in the Eiruv?</h2>
+        <p class="ps">Enter any address, shul, or landmark.</p>
+        <div class="addr-wrap">
+          <svg class="addr-ico" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 6.5a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" stroke-width="1.1"/><path d="M10 5c0 4-4 6.5-4 6.5S2 9 2 5a4 4 0 018 0z" stroke="currentColor" stroke-width="1.1"/></svg>
+          <input id="addrInput" class="fi addr-fi" type="text" placeholder="Address, shul, landmark…" oninput="onType(this.value,'check')" onkeydown="onKey(event,'check')" autocomplete="off">
+          <button class="me-btn" onclick="useMyLoc()">&#9901; Me</button>
+          <div class="ac-box" id="ac-check"></div>
+        </div>
+        <div class="result-card" id="resultCard">
+          <div class="res-hd">
+            <span class="res-icon" id="resIco">&#9989;</span>
+            <div><div class="res-title" id="resTitle">Inside the Eiruv</div><div class="res-sub" id="resSub"></div></div>
+          </div>
+          <button class="res-btn" id="seeFullBtn" onclick="seeFullZone()" style="display:none">&#128205; See Full Zone</button>
+          <button class="res-btn blue-btn" id="planRouteBtn" onclick="startRoute()" style="display:none">&#128694; Plan Route from Here</button>
+        </div>
+        <span class="sec-lbl">All Eiruvin</span>
+        <div class="eruv-list" id="eruvList"></div>
+      </div>
+    </div>
+    <div class="panel" id="panel-route">
+      <div class="pb">
+        <h2 class="pt">Check Route</h2>
+        <p class="ps">See if your walking route stays within the eiruv.</p>
+        <div class="route-stop">
+          <div class="stop-dot sa">A</div>
+          <div style="flex:1;position:relative">
+            <input id="rStart" class="fi" type="text" placeholder="Start: address or place…" oninput="onType(this.value,'rStart')" onkeydown="onKey(event,'rStart')" autocomplete="off" style="padding-right:52px">
+            <button class="me-btn" onclick="useMyLocRoute()">&#9901; Me</button>
+            <div class="ac-box" id="ac-rStart"></div>
+          </div>
+        </div>
+        <div class="route-stop">
+          <div class="stop-dot sb">B</div>
+          <div style="flex:1;position:relative">
+            <input id="rEnd" class="fi" type="text" placeholder="End: address or place…" oninput="onType(this.value,'rEnd')" onkeydown="onKey(event,'rEnd')" autocomplete="off">
+            <div class="ac-box" id="ac-rEnd"></div>
+          </div>
+        </div>
+        <button class="btn btn-navy btn-full" onclick="planRoute()" id="routeBtn" style="margin-top:6px">Check Route</button>
+        <div id="routeResult"></div>
+      </div>
+    </div>
+    <div class="panel" id="panel-status">
+      <div class="filter-row">
+        <button class="chip on" onclick="fStatus(this,'all')">All</button>
+        <button class="chip" onclick="fStatus(this,'up')">Up &#10003;</button>
+        <button class="chip" onclick="fStatus(this,'review')">Review</button>
+        <button class="chip" onclick="fStatus(this,'down')">Down &#10007;</button>
+      </div>
+      <div class="pb" style="padding-top:4px" id="statusList"></div>
+    </div>
+    <div class="panel" id="panel-alerts">
+      <div class="pb">
+        <h2 class="pt">Alert Settings</h2>
+        <p class="ps">Get Shabbos notifications for any eiruv.</p>
+        <div id="myAlerts"></div>
+        <button class="add-alert-btn" onclick="toggleAlertForm()">+ Add Eiruv Alert</button>
+        <div class="alert-form" id="alertForm">
+          <div class="fg"><label class="lbl">City</label>
+            <select class="fi" id="alertCity" onchange="updateAlertEruv()">
+              <option value="">— Select a city —</option>
+              <option>Brooklyn, NY</option><option>Woodmere, NY</option><option>Teaneck, NJ</option>
+              <option>Monsey, NY</option><option>Skokie, IL</option><option>Silver Spring, MD</option>
+              <option>Los Angeles, CA</option>
+            </select>
+          </div>
+          <div class="fg"><label class="lbl">Eiruv</label><select class="fi" id="alertEruv"><option>Select city first</option></select></div>
+          <div class="fg"><label class="lbl">Notify Via</label>
+            <div class="nchips">
+              <button class="nc on" onclick="this.classList.toggle('on')">&#128231; Email</button>
+            </div>
+          </div>
+          <div class="fg"><label class="lbl">Send Time</label>
+            <select class="fi"><option>Every Friday at 9:00 AM</option><option>Every Friday at 10:00 AM</option><option>Thursday + Friday</option></select>
+          </div>
+          <button class="btn btn-navy btn-full" onclick="saveAlert()">Save Alert</button>
+          <button class="btn btn-outline btn-full" onclick="toggleAlertForm()" style="margin-top:6px">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="map">
+    <div class="map-legend">
+      <div class="leg-row"><div class="leg-line" style="background:#22a865"></div>Up &amp; Kosher</div>
+      <div class="leg-row"><div class="leg-line" style="background:#e08020"></div>Under Review</div>
+      <div class="leg-row"><div class="leg-line" style="background:#d94040"></div>Down</div>
+      <div class="leg-row"><div class="leg-line" style="background:repeating-linear-gradient(45deg,#d94040,#d94040 2px,transparent 2px,transparent 6px)"></div>Exclusion</div>
+    </div>
+    <button class="map-fs-btn" onclick="toggleMapFs()">&#8596; Full Screen</button>
+    <button class="fs-exit" id="fsExit" onclick="toggleMapFs()">&#10005; Exit Full Screen</button>
+  </div>
+</div>
+
+<!-- ADMIN DRAWER -->
+<div class="admin-drawer" id="adminDrawer">
+  <div class="adm-hdr"><div class="adm-ttl">Admin Dashboard</div><button class="adm-cls" onclick="closeAdmin()">&#10005;</button></div>
+  <div class="adm-nav">
+    <button class="anav on" onclick="aN(this,'overview')">Overview</button>
+    <button class="anav" onclick="aN(this,'eruvin')">Eiruvin</button>
+    <button class="anav" onclick="aN(this,'users')">Users</button>
+    <button class="anav" onclick="aN(this,'contractors')">Contractors</button>
+    <button class="anav" onclick="aN(this,'shuls')">Shuls</button>
+    <button class="anav" onclick="aN(this,'posts')">Posts</button>
+  </div>
+  <div class="adm-body" id="admBody"></div>
+</div>
+
+<!-- CONTRACTOR DASHBOARD -->
+<div class="ct-dash" id="ctDash">
+  <div class="ct-hdr"><div class="ct-title">&#128205; My Zones</div><button class="adm-cls" onclick="closeCtDash()">&#10005;</button></div>
+  <div class="ct-body" id="ctBody"></div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="backdrop" id="authBd" onclick="if(event.target===this)closeModal()">
+  <div class="modal fade-up">
+    <button class="modal-close" onclick="closeModal()">&#10005;</button>
+    <div class="modal-body">
+      <div id="vMain">
+        <div class="modal-title">Welcome to MyEiruv</div>
+        <div class="modal-sub">Sign in to set alerts, manage zones, and more.</div>
+        <button class="goog-btn" onclick="doGoogle('user')"><svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg> Continue with Google</button>
+        <button class="goog-btn apply" onclick="showV('vContractor')">&#128296; Apply as Contractor</button>
+        <div class="divider"><span>or email</span></div>
+        <div class="fg"><label class="lbl">Email</label><input class="fi" id="siEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doEmail()"></div>
+        <div class="fg"><label class="lbl">Password</label><input class="fi" id="siPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doEmail()"></div>
+        <div class="e-msg" id="siErr"></div>
+        <button class="btn btn-navy btn-full" onclick="doEmail()">Sign In</button>
+        <div class="modal-footer">No account? <a onclick="showV('vRegister')">Create one</a></div>
+      </div>
+      <div id="vRegister" style="display:none">
+        <div class="modal-title">Create Account</div>
+        <div class="modal-sub">Join MyEiruv — stay informed every Shabbos.</div>
+        <button class="goog-btn" onclick="doGoogle('user')"><svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg> Sign Up with Google</button>
+        <div class="divider"><span>or email</span></div>
+        <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="rName" type="text"></div>
+        <div class="fg"><label class="lbl">Email</label><input class="fi" id="rEmail" type="email"></div>
+        <div class="fg"><label class="lbl">Password</label><input class="fi" id="rPass" type="password" placeholder="Min 6 chars"></div>
+        <div class="e-msg" id="rErr"></div>
+        <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
+        <div class="modal-footer">Have account? <a onclick="showV('vMain')">Sign In</a></div>
+      </div>
+      <div id="vContractor" style="display:none">
+        <div class="modal-title">Contractor Application</div>
+        <div class="modal-sub">Admin will review your application before you can create zones.</div>
+        <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="cName"></div>
+        <div class="fg"><label class="lbl">Email</label><input class="fi" id="cEmail" type="email"></div>
+        <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone" type="tel"></div>
+        <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea" placeholder="e.g. Brooklyn, NY"></div>
+        <button class="btn btn-navy btn-full" onclick="doContractorApply()">Submit Application</button>
+        <div class="modal-footer"><a onclick="showV('vMain')">&#8592; Back</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ZONE PICKER -->
+<div class="backdrop" id="zonePickerBd" onclick="if(event.target===this)closeZonePicker()">
+  <div class="modal fade-up" style="max-width:370px">
+    <button class="modal-close" onclick="closeZonePicker()">&#10005;</button>
+    <div class="modal-body">
+      <div class="modal-title">Select Zone to Edit</div>
+      <div class="modal-sub">Choose which eiruv boundary to modify.</div>
+      <div class="picker-list" id="zonePickerList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAP IMPORT MODAL -->
+<div class="backdrop" id="mapImportBd" onclick="if(event.target===this)closeMapImport()">
+  <div class="modal fade-up" style="max-width:520px">
+    <button class="modal-close" onclick="closeMapImport()">&#10005;</button>
+    <div class="modal-body">
+      <div class="modal-title">&#129302; AI Zone Builder</div>
+      <div class="modal-sub">Upload a map file <em>or</em> just describe the zone in plain language — AI will build it on Mapbox for you to fine-tune.</div>
+      <div id="mi-step1">
+
+        <!-- Upload dropzone -->
+        <div id="mi-dropzone" style="border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;cursor:pointer;margin-bottom:12px;transition:border-color .18s,background .18s" onclick="document.getElementById('mapFileInput').click()" ondragover="event.preventDefault();this.style.borderColor='var(--sky)';this.style.background='rgba(74,144,217,.04)'" ondragleave="this.style.borderColor='var(--border)';this.style.background=''" ondrop="handleMapDrop(event)">
+          <div style="font-size:1.7rem;margin-bottom:5px">📂</div>
+          <div style="font-size:.84rem;font-weight:600;color:var(--navy);margin-bottom:2px">Drop map file or click to browse</div>
+          <div style="font-size:.72rem;color:var(--muted)">Any file — GeoJSON, KML, KMZ, GPX, CSV, screenshots, exports…</div>
+          <div id="mi-file-badge" style="display:none;margin-top:8px;padding:4px 12px;background:#edf8f2;border:1px solid #b8e8d0;border-radius:100px;align-items:center;gap:6px;font-size:.74rem;color:#1a7040;font-weight:600">
+            <span id="mi-file-name"></span>
+            <button onclick="removeUploadedFile(event)" style="background:none;border:none;cursor:pointer;color:#d94040;font-size:.82rem;padding:0 2px;line-height:1" title="Remove file">✕</button>
+          </div>
+        </div>
+        <input type="file" id="mapFileInput" style="display:none" onchange="handleMapFile(this.files[0])">
+
+        <!-- Divider -->
+        <div class="divider" style="margin:10px 0"><span>or describe it</span></div>
+
+        <!-- Description — the star of the show -->
+        <div class="fg">
+          <label class="lbl">Describe the zone <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(AI will figure out the rest)</span></label>
+          <textarea class="fi" id="mi-desc" rows="4" placeholder="e.g. The Brooklyn Eiruv roughly follows Ocean Avenue on the east, the Belt Parkway on the south, McDonald Ave on the west, and Eastern Parkway on the north. It's in Brooklyn, NY and is currently up and kosher." style="resize:vertical;min-height:90px;line-height:1.55" oninput="onDescType(this.value)"></textarea>
+          <!-- Live AI identification chip -->
+          <div id="mi-identify" style="display:none;margin-top:7px;padding:7px 11px;background:#f0f5ff;border:1px solid #c7d9f8;border-radius:8px;font-size:.75rem;color:#1a3a7a;line-height:1.5;display:flex;align-items:flex-start;gap:7px">
+            <span style="flex-shrink:0;font-size:.85rem">🤖</span>
+            <span id="mi-identify-text">Identifying…</span>
+          </div>
+          <div style="font-size:.68rem;color:var(--muted2);margin-top:5px">💡 Mention street names, landmarks, and which city. AI identifies as you type and builds the polygon.</div>
+        </div>
+
+        <!-- Raw paste (collapsed) -->
+        <details style="margin-top:6px">
+          <summary style="font-size:.73rem;color:var(--muted);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:4px">&#9660; Paste raw GeoJSON / coordinates</summary>
+          <div class="fg" style="margin-top:8px">
+            <textarea class="fi" id="mi-paste" rows="4" placeholder='{"type":"FeatureCollection",...}  or  lat,lng pairs' style="resize:vertical;min-height:70px;font-size:.77rem;font-family:monospace"></textarea>
+          </div>
+        </details>
+
+        <div id="mi-status" style="font-size:.77rem;color:var(--muted);margin:8px 0"></div>
+        <button class="btn btn-navy btn-full" onclick="processMapImport()" style="margin-top:4px">&#129302; Build Zone with AI</button>
+      </div>
+
+      <!-- Step 2: Preview -->
+      <div id="mi-step2" style="display:none">
+        <div id="mi-preview-map" style="height:220px;border-radius:9px;overflow:hidden;margin-bottom:12px;border:1px solid var(--border)"></div>
+        <div id="mi-info" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px;font-size:.79rem;line-height:1.7"></div>
+        <div class="fg"><label class="lbl">Zone Name</label><input class="fi" id="mi-name" style="padding:8px 10px"></div>
+        <div class="fg"><label class="lbl">City</label><input class="fi" id="mi-city" style="padding:8px 10px"></div>
+        <div class="fg"><label class="lbl">Initial Status</label>
+          <select class="fi" id="mi-status-sel" style="padding:8px 10px">
+            <option value="up">Up &amp; Kosher</option>
+            <option value="review">Under Review</option>
+            <option value="down">Down</option>
+          </select>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:9px 12px;font-size:.76rem;color:#1e40af;margin-bottom:12px;line-height:1.5">
+          ✏️ <strong>Next:</strong> The zone will open in the editor so you can drag any vertex to fine-tune the boundary.
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="resetMapImport()" style="flex:1">&#8592; Back</button>
+          <button class="btn btn-navy" onclick="importZoneToEditor()" style="flex:2">Open in Zone Editor &#8594;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DRAW OVERLAY -->
+<div class="draw-overlay" id="drawOverlay">
+  <!-- Header -->
+  <div class="draw-hdr">
+    <div class="draw-title">
+      <div class="draw-title-mark"></div>
+      Zone Editor
+      <span class="draw-mode-badge" id="drawModeBadge">Draw</span>
+    </div>
+    <div class="draw-acts">
+      <button class="hbtn hbtn-ghost" onclick="closeDraw();openMapImport()" style="font-size:.76rem;padding:5px 12px;opacity:.8;">&#129302; Import</button>
+      <button class="hbtn hbtn-ghost" onclick="closeDraw()" style="font-size:.76rem;padding:5px 12px;opacity:.65;">Cancel</button>
+      <button class="hbtn hbtn-gold" onclick="saveZone()" id="saveZoneBtn" style="font-size:.76rem;padding:5px 16px;opacity:.4;pointer-events:none;">Save Zone</button>
+    </div>
+  </div>
+
+  <!-- Step banner -->
+  <div class="draw-banner on" id="drawBanner">
+    <div class="draw-banner-steps">
+      <div class="dbs active" id="dbs1">
+        <div class="dbs-num">1</div>
+        <div class="dbs-label">Draw boundary</div>
+      </div>
+      <div class="dbs-arrow">›</div>
+      <div class="dbs" id="dbs2">
+        <div class="dbs-num">2</div>
+        <div class="dbs-label">Fine-tune</div>
+      </div>
+      <div class="dbs-arrow">›</div>
+      <div class="dbs" id="dbs3">
+        <div class="dbs-num">3</div>
+        <div class="dbs-label">Add details</div>
+      </div>
+    </div>
+    <div class="draw-banner-hint" id="drawBannerHint">
+      <strong>Click on the map to place boundary points</strong>
+      Double-click the last point — or click the first point — to close the boundary
+    </div>
+  </div>
+
+  <div style="position:relative;flex:1;display:flex;flex-direction:column;">
+    <div id="draw-map" style="flex:1"></div>
+
+    <!-- Search bar -->
+    <div class="draw-search-wrap" id="drawSearchWrap">
+      <div style="position:relative">
+        <input class="fi" id="drawSearch" type="text" placeholder="Search address or area…" oninput="onType(this.value,'drawSearch')" onkeydown="onKey(event,'drawSearch')" autocomplete="off">
+        <div class="ac-box" id="ac-drawSearch"></div>
+      </div>
+    </div>
+
+    <!-- Tool palette — left side of map -->
+    <div class="draw-palette" id="drawPalette">
+
+      <button class="dp-btn" id="dBtn-edit" onclick="setDMode('direct_select')" style="opacity:.3;pointer-events:none" title="Draw a boundary first">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/><line x1="5" y1="19" x2="19" y2="19"/></svg>
+        <div class="dp-btn-label">Move points<span>Drag point · click line to add</span></div>
+      </button>
+      <div class="dp-div"></div>
+      <button class="dp-btn" id="dBtn-excl" onclick="toggleExclMode()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+        <div class="dp-btn-label">Exclusion zone<span>Draw area to exclude</span></div>
+      </button>
+      <div class="dp-div"></div>
+      <button class="dp-btn dp-undo-btn" id="undoPill" onclick="undoDraw()">
+        <svg viewBox="0 0 24 24"><path d="M3 9h13a4 4 0 0 1 0 8h-2"/><polyline points="3 5 3 9 7 9"/></svg>
+        <div class="dp-btn-label">Undo<span>Remove last action</span></div>
+        <span class="dp-btn-key">Z</span>
+      </button>
+    </div>
+
+
+
+    <!-- Zone panel -->
+    <div class="zone-panel" id="zonePanel">
+      <!-- Step 1: drawing guidance -->
+      <div class="zp-draw-guide" id="zpDrawGuide">
+        <div class="zp-phase-label">Drawing boundary</div>
+        <div class="zp-steps-list" style="margin-top:10px;">
+          <div class="zp-step"><div class="zp-step-n">1</div><div><strong>Click the map</strong> to place boundary points — a line connects each one as you go</div></div>
+          <div class="zp-step"><div class="zp-step-n">2</div><div><strong>Click the gold first point</strong> to close the boundary — you can then drag any point to adjust</div></div>
+          <div class="zp-step"><div class="zp-step-n">3</div><div>Use <strong>Undo ↩</strong> on the left to remove the last placed point</div></div>
+        </div>
+      </div>
+
+      <!-- Step 2+3: refine + details (hidden until boundary drawn) -->
+      <div class="zp-details" id="zpDetails" style="display:none;">
+        <div style="padding:14px 16px 0;">
+          <div class="zp-phase-label" style="margin-bottom:10px;">Adjust boundary — <span id="zpVtxCount">0</span> points</div>
+          <div style="font-size:.71rem;color:rgba(255,255,255,.5);line-height:1.8;margin-bottom:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:10px 12px;">
+            <div style="margin-bottom:4px;">🔵 <strong style="color:rgba(255,255,255,.8);">Drag any point</strong> to reposition it</div>
+            <div>🟠 <strong style="color:rgba(255,255,255,.8);">Click the line</strong> between two points to insert a new point there</div>
+          </div>
+          <button class="zp-redraw-btn" onclick="redrawBoundary()">
+            <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+            Start over — redraw from scratch
+          </button>
+        </div>
+
+        <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0 0;"></div>
+        <div style="padding:14px 16px 0;">
+          <div class="zp-phase-label" style="margin-bottom:12px;">Step 3 — Add zone details</div>
+          <div class="fg"><label class="lbl">Zone Name <span style="color:#d94040;">*</span></label><input class="fi" id="zoneName" placeholder="e.g. Brooklyn Eiruv" oninput="checkSaveReady()"></div>
+          <div class="fg"><label class="lbl">City <span style="color:#d94040;">*</span></label><input class="fi" id="zoneCity" placeholder="e.g. Brooklyn, NY" oninput="checkSaveReady()"></div>
+          <div class="fg">
+            <label class="lbl">Current Status</label>
+            <div class="status-row">
+              <button class="status-pill" id="spill-up" onclick="setStatus('up')">✓ Up</button>
+              <button class="status-pill" id="spill-rv" onclick="setStatus('review')">Review</button>
+              <button class="status-pill" id="spill-dn" onclick="setStatus('down')">✕ Down</button>
+            </div>
+            <input type="hidden" id="zoneStatus" value="up">
+          </div>
+          <div class="fg"><label class="lbl">Status Note</label><input class="fi" id="zoneNote" placeholder="e.g. Fixed after rain damage"></div>
+          <div class="fg"><label class="lbl">Donation Link</label><input class="fi" id="zoneDonate" placeholder="https://…"></div>
+        </div>
+
+        <div style="height:1px;background:rgba(255,255,255,.07);margin:10px 0 0;"></div>
+        <div style="padding:10px 16px 16px;">
+          <h5>Exclusion Zones</h5>
+          <div style="font-size:.68rem;color:rgba(255,255,255,.35);margin-bottom:8px;line-height:1.45;">An area <em>inside</em> the eiruv boundary where carrying is still not permitted (e.g. a public park or highway).</div>
+          <div id="exclList"></div>
+          <button class="excl-add-btn" id="startExclBtn" onclick="toggleExclMode()">
+            <svg style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>
+            Draw Exclusion Zone
+          </button>
+          <h5 id="adjHeader" style="display:none">Adjacent Zones</h5>
+          <div id="adjList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Coordinate readout -->
+    <div class="draw-coords" id="drawCoords">
+      <div class="draw-coords-dot"></div>
+      <span id="drawCoordsText">Move cursor over map</span>
+    </div>
+
+    <!-- Vertex counter -->
+    <div class="draw-vtx" id="drawVtx"></div>
+
+    <!-- Status bar -->
+    <div class="draw-statusbar" id="drawStatusBar">
+      <div class="dsb-item"><span class="dsb-key">Click</span>add point</div>
+      <div class="dsb-sep"></div>
+      <div class="dsb-item"><span class="dsb-key">Dbl-click</span>finish</div>
+      <div class="dsb-sep"></div>
+      <div class="dsb-item"><span class="dsb-key">Z</span>undo last</div>
+      <div class="dsb-sep"></div>
+      <div class="dsb-item"><span class="dsb-key">Esc</span>cancel</div>
+    </div>
+
+    <!-- Snap ring -->
+    <div class="snap-ring" id="snapRing"></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.DxC4l12BdksgQuSZnArQXg';
+const ADMIN_EMAIL='maprabinowitz@gmail.com';
+const ANTHROPIC_KEY='YOUR_ANTHROPIC_API_KEY_HERE'; // ← paste your key from console.anthropic.com
+mapboxgl.accessToken=TOKEN;
+const PROX='-74.006,40.712';
+const SCOL={up:'#22a865',review:'#e08020',down:'#d94040'};
+let S={user:null,eruvin:[],resultEruv:null,mapFs:false,alerts:[],acData:{},acFocused:{},routeStart:null,routeEnd:null,exclMode:false,editTargetId:null,curExcl:[],curAdj:[],routeLayerId:null,exitLayerIds:[],lastCoords:null};
+const BASE_ERUVIN=[
+  {id:'brooklyn',name:'Brooklyn Eiruv',city:'Brooklyn, NY',status:'up',lastChecked:'Today 8:30am',checkedBy:'R. Katz',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-73.964,40.655],coords:[[-73.99,40.70],[-73.945,40.71],[-73.93,40.68],[-73.935,40.655],[-73.95,40.62],[-73.985,40.61],[-74.01,40.63],[-74.01,40.665],[-73.99,40.70]]},
+  {id:'fivetowns',name:'Five Towns Eiruv',city:'Woodmere, NY',status:'up',lastChecked:'Today 9:15am',checkedBy:'M. Cohen',note:'',donateUrl:'',exclusions:[],adjacency:[{id:'brooklyn',canEnter:false}],center:[-73.657,40.625],coords:[[-73.68,40.640],[-73.640,40.650],[-73.620,40.610],[-73.655,40.590],[-73.70,40.600],[-73.70,40.630],[-73.68,40.640]]},
+  {id:'teaneck',name:'Teaneck Eiruv',city:'Teaneck, NJ',status:'review',lastChecked:'Today 7:45am',checkedBy:'D. Levy',note:'Cedar Lane under review',donateUrl:'',exclusions:[],adjacency:[],center:[-74.013,40.897],coords:[[-74.03,40.91],[-74.00,40.92],[-73.99,40.90],[-74.00,40.88],[-74.03,40.88],[-74.04,40.90],[-74.03,40.91]]},
+  {id:'monsey',name:'Monsey Eiruv - East',city:'Monsey, NY',status:'down',lastChecked:'Today 6:50am',checkedBy:'',note:'Lechi struck on Route 59',donateUrl:'',exclusions:[],adjacency:[],center:[-74.083,41.113],coords:[[-74.10,41.13],[-74.07,41.14],[-74.06,41.12],[-74.07,41.10],[-74.10,41.10],[-74.11,41.12],[-74.10,41.13]]},
+  {id:'skokie',name:'Skokie/Evanston Eiruv',city:'Skokie, IL',status:'up',lastChecked:'Today 8:00am',checkedBy:'Y. Weiss',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-87.740,42.025],coords:[[-87.76,42.04],[-87.73,42.05],[-87.72,42.02],[-87.73,42.00],[-87.76,42.00],[-87.77,42.02],[-87.76,42.04]]},
+  {id:'silver',name:'Silver Spring Eiruv',city:'Silver Spring, MD',status:'up',lastChecked:'Today 7:30am',checkedBy:'R. Shapiro',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-77.026,39.003],coords:[[-77.04,39.02],[-77.01,39.03],[-77.00,39.01],[-77.01,38.99],[-77.04,38.99],[-77.05,39.01],[-77.04,39.02]]},
+  {id:'pico',name:'Pico-Robertson Eiruv',city:'Los Angeles, CA',status:'up',lastChecked:'Today 9:00am',checkedBy:'B. Feldman',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-118.378,34.055],coords:[[-118.39,34.07],[-118.36,34.07],[-118.36,34.04],[-118.39,34.04],[-118.39,34.07]]},
+];
+S.eruvin=BASE_ERUVIN.map(e=>Object.assign({},e,{exclusions:[],adjacency:(e.adjacency||[]).slice()}));
+
+function loadCustomZones(){
+  // Primary source is Firestore (loaded async in the module script).
+  // This runs localStorage as an offline fallback only.
+  try{JSON.parse(localStorage.getItem('myeiruv_zones')||'[]').forEach(function(e){
+    if(!S.eruvin.find(function(x){return x.id===e.id;})){
+      e.exclusions=e.exclusions||[];e.adjacency=e.adjacency||[];S.eruvin.push(e);
+    }
+  });}catch(e){}
+}
+
+// MAP
+const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
+map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
+map.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-right');
+let addrMarker=null,routeMarkers=[];
+map.on('load',()=>{
+  try{map.setPaintProperty('background','background-color','#f3efe6');}catch(e){}
+  try{map.setPaintProperty('water','fill-color','#c4d8e8');}catch(e){}
+  window._mapLoaded=true;
+  if(window._zonesReady){
+    _renderAllMapData();
+  }else{
+    // Render what we have (BASE_ERUVIN fallback) while Firestore loads
+    S.eruvin.forEach(addEruvToMap);
+    renderEruvList();renderStatus();
+  }
+});
+function addEruvToMap(e){
+  const sid='eruv-'+e.id,col=SCOL[e.status]||'#888';
+  if(map.getSource(sid)){
+    map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}});
+    try{map.setPaintProperty(sid+'-fill','fill-color',col);}catch(_){}
+    try{map.setPaintProperty(sid+'-line','line-color',col);}catch(_){}
+  }else{
+    map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
+    map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.07}});
+    map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':2.5,'line-opacity':.9}});
+    map.on('click',sid+'-fill',()=>showEruvPopup(e));
+    map.on('mouseenter',sid+'-fill',()=>{map.getCanvas().style.cursor='pointer';});
+    map.on('mouseleave',sid+'-fill',()=>{map.getCanvas().style.cursor='';});
+  }
+  (e.exclusions||[]).forEach(ex=>addExclToMap(e.id,ex));
+}
+function showEruvPopup(e){
+  const dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
+  const lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status];
+  const adj=(e.adjacency||[]).filter(a=>a.canEnter).map(a=>{const z=S.eruvin.find(x=>x.id===a.id);return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
+  const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="color:#2563b0;font-size:.7rem">♥ Donate</a>':'';
+  new mapboxgl.Popup({closeButton:false,offset:5}).setLngLat(e.center).setHTML('<div class="pop-title">'+e.name+'</div><div class="pop-status">'+dot+' '+lbl+'</div>'+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj+don).addTo(map);
+}
+function addExclToMap(eruvId,ex){
+  const sid='excl-'+eruvId+'-'+ex.id;
+  if(map.getSource(sid)){map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]}});return;}
+  map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]}}});
+  map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':'#d94040','fill-opacity':0.13}});
+  map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':'#d94040','line-width':1.5,'line-dasharray':[3,2]}});
+}
+
+// AUTOCOMPLETE
+const GEO_TYPES='address,place,locality,poi';
+let acTimers={};
+function onType(val,id){
+  clearTimeout(acTimers[id]);
+  const box=document.getElementById('ac-'+id);
+  if(!box)return;
+  if(!val||val.length<2){box.classList.remove('on');return;}
+  acTimers[id]=setTimeout(()=>fetchAC(val,id),200);
+}
+function fetchAC(q,id){
+  // Use the best available proximity: for rEnd use routeStart, for check use lastCoords, else default
+  var prox=PROX;
+  if(id==='rEnd'&&S.routeStart){
+    prox=S.routeStart.lng+','+S.routeStart.lat;
+  }else if(id==='check'&&S.lastCoords){
+    prox=S.lastCoords[0]+','+S.lastCoords[1];
+  }else if(id==='rStart'&&S.lastCoords){
+    prox=S.lastCoords[0]+','+S.lastCoords[1];
+  }
+  const enc=encodeURIComponent(q);
+  const url='https://api.mapbox.com/geocoding/v5/mapbox.places/'+enc
+    +'.json?types='+GEO_TYPES
+    +'&access_token='+TOKEN
+    +'&country=us'
+    +'&limit=8'
+    +'&proximity='+prox;
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    var features=d.features||[];
+    var q2=q.toLowerCase();
+    var shulMatches=(S.shuls||[]).filter(function(s){
+      return s.name.toLowerCase().indexOf(q2)>=0||s.city.toLowerCase().indexOf(q2)>=0;
+    }).slice(0,3).map(function(s){
+      return {_shul:s,place_name:s.name+', '+s.city,text:s.name,
+        geometry:{coordinates:[s.lng,s.lat]},place_type:['poi']};
+    });
+    var seen=new Set();
+    var merged=shulMatches.concat(features).filter(function(f){
+      var k=(f.place_name||'').slice(0,60).toLowerCase();
+      if(seen.has(k))return false;seen.add(k);return true;
+    }).slice(0,8);
+    if(!merged.length){hideAC(id);return;}
+    S.acData[id]=merged;S.acFocused[id]=-1;renderAC(merged,id);
+  }).catch(function(err){console.error('fetchAC:',err);});
+}
+function isShulFeature(f){
+  if(f._shul)return true;
+  var nm=(f.text||'').toLowerCase();
+  var cat=(f.properties&&f.properties.category||'').toLowerCase();
+  return cat.indexOf('synagogue')>=0||cat.indexOf('worship')>=0||cat.indexOf('jewish')>=0||
+    nm.indexOf('shul')>=0||nm.indexOf('synagogue')>=0||nm.indexOf('mikvah')>=0||
+    nm.indexOf('yeshiva')>=0||nm.indexOf('chabad')>=0||nm.indexOf('beth ')>=0||
+    nm.indexOf('bnai')>=0||nm.indexOf("b'nai")>=0||nm.indexOf('congregation')>=0||
+    nm.indexOf('kollel')>=0||nm.indexOf('orthodox')>=0||nm.indexOf('kehila')>=0||
+    nm.indexOf('temple ')>=0||nm.indexOf('jewish')>=0;
+}
+function getACIcon(f){
+  if(isShulFeature(f))return'🕍';
+  var t=(f.place_type&&f.place_type[0])||'';
+  if(t==='poi')return'📍';
+  if(t==='place'||t==='locality')return'🏙️';
+  return'📌';
+}
+function renderAC(features,id){
+  var box=document.getElementById('ac-'+id);if(!box)return;
+  box.innerHTML=features.map(function(f,i){
+    var parts=(f.place_name||'').split(',');
+    var main=parts[0],sub=parts.slice(1).join(',').trim();
+    var ico=getACIcon(f);
+    return '<div class="ac-item" onclick="selectAC(\''+id+'\','+i+')" onmouseenter="hovAC(\''+id+'\','+i+')">'
+      +'<span class="ac-ico">'+ico+'</span>'
+      +'<div><div class="ac-main">'+main+'</div>'+(sub?'<div class="ac-sub">'+sub+'</div>':'')+'</div></div>';
+  }).join('');
+  box.classList.add('on');
+}
+function hovAC(id,i){S.acFocused[id]=i;var items=document.querySelectorAll('#ac-'+id+' .ac-item');items.forEach(function(el,j){el.classList.toggle('foc',j===i);});}
+function onKey(e,id){
+  var box=document.getElementById('ac-'+id);if(!box||!box.classList.contains('on'))return;
+  var n=(S.acData[id]||[]).length,cur=S.acFocused[id]||-1;
+  if(e.key==='ArrowDown'){e.preventDefault();S.acFocused[id]=Math.min(cur+1,n-1);hovAC(id,S.acFocused[id]);}
+  else if(e.key==='ArrowUp'){e.preventDefault();S.acFocused[id]=Math.max(cur-1,0);hovAC(id,S.acFocused[id]);}
+  else if(e.key==='Enter'){e.preventDefault();if(cur>=0)selectAC(id,cur);}
+  else if(e.key==='Escape')hideAC(id);
+}
+function hideAC(id){var b=document.getElementById('ac-'+id);if(b)b.classList.remove('on');}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.addr-wrap')&&!e.target.closest('.route-stop')&&!e.target.closest('.draw-search-wrap'))
+    Object.keys(S.acData).forEach(hideAC);
+});
+function selectAC(id,i){
+  var f=S.acData[id]&&S.acData[id][i];if(!f)return;
+  hideAC(id);
+  var lng=f.geometry.coordinates[0],lat=f.geometry.coordinates[1];
+  if(id==='check'){document.getElementById('addrInput').value=f.place_name;checkPoint(lng,lat,f.place_name);}
+  else if(id==='rStart'){document.getElementById('rStart').value=f.place_name;S.routeStart={lng:lng,lat:lat,label:f.place_name};}
+  else if(id==='rEnd'){document.getElementById('rEnd').value=f.place_name;S.routeEnd={lng:lng,lat:lat,label:f.place_name};}
+  else if(id==='drawSearch'&&drawMap){drawMap.flyTo({center:[lng,lat],zoom:14,duration:800});document.getElementById('drawSearch').value='';hideAC('drawSearch');}
+}
+
+// PIP / CHECK
+function pip(lng,lat,coords){
+  var inside=false;
+  for(var i=0,j=coords.length-1;i<coords.length;j=i++){
+    var xi=coords[i][0],yi=coords[i][1],xj=coords[j][0],yj=coords[j][1];
+    if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+function inExcl(lng,lat,e){return(e.exclusions||[]).some(function(ex){return pip(lng,lat,ex.coords);});}
+function findEruv(lng,lat){for(var i=0;i<S.eruvin.length;i++){var e=S.eruvin[i];if(pip(lng,lat,e.coords)&&!inExcl(lng,lat,e))return e;}return null;}
+function checkPoint(lng,lat,label){
+  S.lastCoords=[lng,lat];
+  if(addrMarker){addrMarker.remove();addrMarker=null;}
+  var inside=findEruv(lng,lat);S.resultEruv=inside;
+  var el=document.createElement('div');
+  el.style.cssText='width:12px;height:12px;border-radius:50%;background:'+(inside?'#22a865':'#d94040')+';border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+  addrMarker=new mapboxgl.Marker({element:el}).setLngLat([lng,lat]).addTo(map);
+  map.flyTo({center:[lng,lat],zoom:15,duration:900});
+  var card=document.getElementById('resultCard');
+  card.className='result-card on '+(inside?'ins':'out');
+  document.getElementById('resIco').textContent=inside?'✅':'❌';
+  document.getElementById('resTitle').textContent=inside?'Inside the Eiruv':'Outside the Eiruv';
+  document.getElementById('resSub').textContent=inside?'Within '+inside.name:'Not within any known eiruv boundary';
+  document.getElementById('seeFullBtn').style.display=inside?'flex':'none';
+  document.getElementById('planRouteBtn').style.display=inside?'flex':'none';
+}
+function seeFullZone(){if(!S.resultEruv)return;var b=S.resultEruv.coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(S.resultEruv.coords[0],S.resultEruv.coords[0]));map.fitBounds(b,{padding:60,duration:800});}
+function startRoute(){
+  var addr=document.getElementById('addrInput').value.trim();
+  var coords=S.lastCoords;
+  // Switch to Route tab
+  document.querySelectorAll('.s-tab')[1].click();
+  if(addr&&coords){
+    document.getElementById('rStart').value=addr;
+    S.routeStart={lng:coords[0],lat:coords[1],label:addr};
+    // Clear any previous end point so user types a destination
+    document.getElementById('rEnd').value='';
+    S.routeEnd=null;
+    setTimeout(function(){document.getElementById('rEnd').focus();},120);
+    toast('Now enter your destination');
+  }
+}
+function useMyLoc(){
+  if(!navigator.geolocation){toast('Location not supported by your browser','err');return;}
+  toast('Getting your location…');
+  navigator.geolocation.getCurrentPosition(
+    function(p){
+      var lng=p.coords.longitude,lat=p.coords.latitude;
+      fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+lng+','+lat+'.json?access_token='+TOKEN+'&limit=1')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var label=(d.features&&d.features[0]&&d.features[0].place_name)||lat.toFixed(4)+', '+lng.toFixed(4);
+          document.getElementById('addrInput').value=label;
+          checkPoint(lng,lat,label);
+        }).catch(function(){checkPoint(lng,lat,lat.toFixed(4)+', '+lng.toFixed(4));});
+    },
+    function(err){
+      var msg='Could not get location';
+      if(err.code===1)msg='Location denied — please allow location in your browser settings';
+      else if(err.code===2)msg='Location unavailable — check your GPS or network';
+      else if(err.code===3)msg='Location timed out — try again';
+      toast(msg,'err');
+      // Show a helpful hint below the input
+      var hint=document.getElementById('locHint');
+      if(!hint){
+        hint=document.createElement('div');
+        hint.id='locHint';
+        hint.style.cssText='font-size:.72rem;color:var(--amber);margin-top:5px;line-height:1.4;';
+        var wrap=document.querySelector('.addr-wrap');
+        if(wrap)wrap.parentNode.insertBefore(hint,wrap.nextSibling);
+      }
+      if(err.code===1){
+        hint.innerHTML='⚠️ Location blocked. In your browser address bar, click the lock icon → <strong>Site settings</strong> → allow Location, then try again.';
+      }else{
+        hint.textContent=msg+'. Try typing your address instead.';
+      }
+      setTimeout(function(){if(hint)hint.textContent='';},8000);
+    },
+    {enableHighAccuracy:true, timeout:10000, maximumAge:60000}
+  );
+}
+function useMyLocRoute(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.getCurrentPosition(
+    function(p){
+      var lng=p.coords.longitude,lat=p.coords.latitude;
+      fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+lng+','+lat+'.json?access_token='+TOKEN+'&limit=1')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var label=(d.features&&d.features[0]&&d.features[0].place_name)||lat.toFixed(4)+', '+lng.toFixed(4);
+          document.getElementById('rStart').value=label;
+          S.routeStart={lng:lng,lat:lat,label:label};
+          toast('Location set as start','ok');
+        }).catch(function(){
+          S.routeStart={lng:lng,lat:lat,label:lat.toFixed(4)+', '+lng.toFixed(4)};
+        });
+    },
+    function(err){
+      var msg=err.code===1?'Location denied — allow it in browser settings':'Could not get location';
+      toast(msg,'err');
+    },
+    {enableHighAccuracy:true, timeout:10000, maximumAge:60000}
+  );
+}
+function clearRouteLayer(){
+  routeMarkers.forEach(function(m){m.remove();});routeMarkers=[];
+  if(S.routeLayerId){
+    var rid=S.routeLayerId;
+    [rid+'-in-case',rid+'-in-line',rid+'-out-case',rid+'-out-line',
+     rid+'-line',rid+'-case',rid].forEach(function(l){try{map.removeLayer(l);}catch(_){}});
+    [rid+'-in',rid+'-out',rid].forEach(function(s){try{map.removeSource(s);}catch(_){}});
+    S.routeLayerId=null;
+  }
+  (S.exitLayerIds||[]).forEach(function(id){try{map.removeLayer(id);}catch(_){}try{map.removeSource(id);}catch(_){};});S.exitLayerIds=[];
+}
+function geocodeOne(val,cb){
+  if(!val||!val.trim()){cb(null);return;}
+  // For the end point geocode, bias results toward the start point
+  var prox=S.routeStart?(S.routeStart.lng+','+S.routeStart.lat):PROX;
+  fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(val.trim())
+    +'.json?access_token='+TOKEN+'&country=us&types='+GEO_TYPES+'&limit=1&proximity='+prox)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.features||!d.features.length){cb(null);return;}
+      cb({lng:d.features[0].geometry.coordinates[0],lat:d.features[0].geometry.coordinates[1],label:d.features[0].place_name});
+    }).catch(function(){cb(null);});
+}
+function reverseGeocode(lng,lat,cb){
+  fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+lng+','+lat+'.json?access_token='+TOKEN+'&types=address&limit=1').then(function(r){return r.json();}).then(function(d){
+    if(!d.features||!d.features.length){cb(lat.toFixed(4)+', '+lng.toFixed(4));return;}
+    var parts=d.features[0].place_name.split(',');cb(parts[0]+(parts[1]?', '+parts[1].trim():''));
+  }).catch(function(){cb(lat.toFixed(4)+', '+lng.toFixed(4));});
+}
+function planRoute(){
+  var sc=S.routeStart,ec=S.routeEnd;
+  var btn=document.getElementById('routeBtn');
+  btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> Checking…';
+  clearRouteLayer();
+  function go(sc,ec){
+    if(!sc){toast('Start not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    if(!ec){toast('End not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    // walking profile + curb snapping + prefer walking paths + exclude motorway/ferry
+    var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
+      +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
+      +'?overview=full&geometries=geojson&steps=true'
+      +'&approaches=curb%3Bcurb'
+      +'&exclude=ferry'
+      +'&access_token='+TOKEN;
+    fetch(url).then(function(r){return r.json();}).then(function(d){
+      if(d.code&&d.code!=='Ok'){console.error('Directions API error:',d.code,d.message);toast('Route error: '+d.message,'err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      var route=d.routes[0],coords=route.geometry.coordinates;
+      var baseId='rt-'+Date.now();
+      S.routeLayerId=baseId;
+
+      // Check every coord for zone membership (full resolution)
+      var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
+
+      // Require at least 3% of the route to be inside before calling it partial
+      var insideCount=zones.filter(function(z){return z!==null;}).length;
+      var insidePct=insideCount/Math.max(1,zones.length);
+      if(insidePct<0.03){zones=zones.map(function(){return null;});}
+
+      // Build colored segments from full coords
+      var inSegs=[],outSegs=[],curIn=[],curOut=[];
+      for(var i=0;i<coords.length;i++){
+        var inZ=zones[i]!==null;
+        if(inZ){
+          if(curOut.length>=2)outSegs.push(curOut.slice());
+          curOut=[];curIn.push(coords[i]);
+        }else{
+          if(curIn.length>=2)inSegs.push(curIn.slice());
+          curIn=[];curOut.push(coords[i]);
+        }
+      }
+      if(curIn.length>=2)inSegs.push(curIn);
+      if(curOut.length>=2)outSegs.push(curOut);
+      // If all outside, ensure the full coords draw as one red line
+      if(!inSegs.length&&!outSegs.length&&coords.length>=2)outSegs.push(coords);
+
+      function addSeg(id,segs,color,width){
+        if(!segs.length)return;
+        var fc={type:'FeatureCollection',features:segs.filter(function(s){return s.length>=2;}).map(function(s){return{type:'Feature',geometry:{type:'LineString',coordinates:s}};})};
+        if(!fc.features.length)return;
+        try{
+          if(map.getSource(id)){map.getSource(id).setData(fc);}
+          else{
+            map.addSource(id,{type:'geojson',data:fc});
+            map.addLayer({id:id+'-case',type:'line',source:id,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#fff','line-width':width+3,'line-opacity':.9}});
+            map.addLayer({id:id+'-line',type:'line',source:id,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':color,'line-width':width,'line-opacity':1}});
+          }
+        }catch(e){console.error('addSeg:',e);}
+      }
+      addSeg(baseId+'-in',inSegs,'#22a865',4);
+      addSeg(baseId+'-out',outSegs,'#d94040',4);
+
+      var allOut=zones.every(function(z){return z===null;});
+      var exits=[],crosses=[],prev=zones[0];
+      for(var i=1;i<coords.length;i++){
+        var cur=zones[i];
+        if(prev!==null&&cur===null)exits.push({lng:coords[i][0],lat:coords[i][1],label:'exit point'});
+        if(prev!==null&&cur!==null&&prev.id!==cur.id&&!crosses.find(function(x){return x.from===prev.id&&x.to===cur.id;}))
+          crosses.push({from:prev.id,to:cur.id,lng:coords[i][0],lat:coords[i][1]});
+        prev=cur;
+      }
+
+      var singleZone=(!allOut&&!exits.length&&!crosses.length)?zones.find(function(z){return z!==null;})||null:null;
+      var fullyInside=!allOut&&!exits.length&&!crosses.length;
+
+      // Step-by-step directions only when fully inside eruv
+      var stepsHtml='';
+      if(fullyInside&&d.routes[0].legs&&d.routes[0].legs[0]&&d.routes[0].legs[0].steps){
+        var rawSteps=d.routes[0].legs[0].steps;
+        var stepRows=rawSteps.filter(function(s){return s.maneuver&&s.maneuver.instruction;}).map(function(s){
+          var slng=s.maneuver.location[0],slat=s.maneuver.location[1];
+          var inEruv=findEruv(slng,slat)!==null;
+          var t=s.maneuver.type,m=s.maneuver.modifier||'';
+          var icon='↑';
+          if(t==='depart')icon='🧕';
+          else if(t==='arrive')icon='📍';
+          else if(m.indexOf('left')>=0)icon='↰';
+          else if(m.indexOf('right')>=0)icon='↱';
+          else if(m.indexOf('u-turn')>=0)icon='↩';
+          var dist=s.distance>=1000?(s.distance/1000).toFixed(1)+' km':Math.round(s.distance)+' m';
+          var rowStyle=inEruv?'':'border-left:2px solid #d94040;padding-left:6px;background:rgba(217,64,64,.03);';
+          var badge=inEruv?'':'<span style="font-size:.62rem;color:#d94040;font-weight:600;margin-left:4px">outside eiruv</span>';
+          return '<div style="display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);'+rowStyle+'">'
+            +'<span style="font-size:.95rem;flex-shrink:0;width:20px;text-align:center">'+icon+'</span>'
+            +'<div style="flex:1"><div style="font-size:.79rem;color:var(--text);line-height:1.4">'+s.maneuver.instruction+badge+'</div>'
+            +'<div style="font-size:.68rem;color:var(--muted);margin-top:1px">'+dist+'</div></div></div>';
+        });
+        if(stepRows.length){
+          stepsHtml='<div style="margin-top:10px">'
+            +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Walking directions</div>'
+            +'<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+stepRows.join('')+'</div>'
+            +'</div>';
+        }
+      }
+
+      // Only mark the FIRST exit point on the map
+      function finish(){
+        if(exits.length){
+          var exit=exits[0];
+          var el=document.createElement('div');
+          el.style.cssText='width:16px;height:16px;border-radius:50%;background:#e08020;border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.45)';
+          routeMarkers.push(new mapboxgl.Marker({element:el}).setLngLat([exit.lng,exit.lat]).addTo(map));
+          var lid='exl-'+Date.now();
+          map.addSource(lid,{type:'geojson',data:{type:'Feature',geometry:{type:'Point',coordinates:[exit.lng,exit.lat]}}});
+          map.addLayer({id:lid,type:'circle',source:lid,paint:{'circle-radius':26,'circle-color':'#e08020','circle-opacity':.15,'circle-stroke-color':'#e08020','circle-stroke-width':2}});
+          S.exitLayerIds.push(lid);
+        }
+
+        // Start marker — walking man with kippah (custom SVG)
+        var startEl=document.createElement('div');
+        startEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))';
+        startEl.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">'
+          // kippah
+          +'<ellipse cx="14" cy="7" rx="7" ry="3.5" fill="#1a2c4a"/>'
+          +'<ellipse cx="14" cy="7" rx="7" ry="3.5" fill="none" stroke="#c8923a" stroke-width="1"/>'
+          // head
+          +'<circle cx="14" cy="11" r="4.5" fill="#f5c8a0"/>'
+          // body (walking pose)
+          +'<line x1="14" y1="15.5" x2="14" y2="24" stroke="#1a2c4a" stroke-width="2.5" stroke-linecap="round"/>'
+          // arms
+          +'<line x1="14" y1="18" x2="9" y2="22" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
+          +'<line x1="14" y1="18" x2="19" y2="21" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
+          // legs (walking)
+          +'<line x1="14" y1="24" x2="9" y2="32" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
+          +'<line x1="14" y1="24" x2="19" y2="30" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
+          +'</svg>';
+        routeMarkers.push(new mapboxgl.Marker({element:startEl,anchor:'bottom'}).setLngLat([sc.lng,sc.lat]).addTo(map));
+
+        // End marker — destination pin
+        var endEl=document.createElement('div');
+        endEl.style.cssText='width:13px;height:13px;border-radius:50%;background:#d94040;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)';
+        routeMarkers.push(new mapboxgl.Marker({element:endEl}).setLngLat([ec.lng,ec.lat]).addTo(map));
+
+        var dist=(route.distance/1000).toFixed(1)+' km',mins=Math.round(route.duration/60);
+        var time=mins>60?Math.floor(mins/60)+'h '+mins%60+'m':mins+' min';
+        var covText='',alerts='',zoneBar='';
+
+        if(allOut){
+          covText='❌ None';
+          alerts='<div class="route-alert ra-err">❌ This route is entirely outside any known eiruv.</div>';
+        }else if(fullyInside){
+          covText='✅ Full';
+          if(singleZone){
+            var zc={up:'#22a865',review:'#e08020',down:'#d94040'}[singleZone.status]||'#888';
+            var zl={up:'Up & Kosher ✓',review:'Under Review',down:'Down ✕'}[singleZone.status];
+            zoneBar='<div style="background:#edf8f2;border:1.5px solid #b8e8d0;border-radius:9px;padding:10px 13px;margin-top:10px;display:flex;align-items:center;gap:10px">'
+              +'<div style="width:10px;height:10px;border-radius:50%;background:'+zc+';flex-shrink:0"></div>'
+              +'<div><div style="font-size:.82rem;font-weight:700;color:var(--navy)">'+singleZone.name+'</div>'
+              +'<div style="font-size:.7rem;color:var(--muted)">'+singleZone.city+' · '+zl+' · Checked '+singleZone.lastChecked+(singleZone.checkedBy?' by '+singleZone.checkedBy:'')+'</div>'
+              +(singleZone.note?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">'+singleZone.note+'</div>':'')
+              +'</div></div>';
+          }
+          alerts='<div class="route-alert ra-ok">✅ This entire route is within the eiruv.</div>'+zoneBar;
+        }else{
+          covText=exits.length?'⚠️ Partial':'↔ Multi-zone';
+          if(exits.length){
+            alerts+='<div class="route-alert ra-warn">⚠️ You exit the eiruv at <strong>'+exits[0].label+'</strong>.'+(exits.length>1?' ('+exits.length+' exit points total.)':'')+'</div>';
+          }
+          crosses.forEach(function(c){
+            var fz=S.eruvin.find(function(x){return x.id===c.from;}),tz=S.eruvin.find(function(x){return x.id===c.to;});
+            var adj=fz&&(fz.adjacency||[]).find(function(a){return a.id===c.to;});
+            if(adj&&adj.canEnter)alerts+='<div class="route-alert ra-info">↔ Entering <strong>'+(tz?tz.name:'adjacent zone')+'</strong> — carrying permitted.</div>';
+          });
+        }
+        document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alerts+stepsHtml;
+        var bounds=coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(coords[0],coords[0]));
+        map.fitBounds(bounds,{padding:60,duration:900});
+        btn.innerHTML='Check Route';btn.disabled=false;
+      }
+      var pending=exits.length,done=0;
+      if(!pending){finish();return;}
+      exits.forEach(function(exit,i){reverseGeocode(exit.lng,exit.lat,function(label){exits[i].label=label;done++;if(done>=pending)finish();});});
+    }).catch(function(err){console.error(err);toast('Route error','err');btn.innerHTML='Check Route';btn.disabled=false;});
+  }
+  if(sc&&ec){go(sc,ec);return;}
+  var needSc=!sc,needEc=!ec,resolved={};
+  function tryGo(){if((!needSc||resolved.sc!==undefined)&&(!needEc||resolved.ec!==undefined))go(resolved.sc||sc,resolved.ec||ec);}
+  if(needSc)geocodeOne(document.getElementById('rStart').value,function(r){resolved.sc=r;tryGo();});
+  if(needEc)geocodeOne(document.getElementById('rEnd').value,function(r){resolved.ec=r;tryGo();});
+}
+
+// MAP FS
+function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
+
+// SIDEBAR
+function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);}
+function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
+function renderStatus(f){
+  f=f||'all';
+  var list=f==='all'?S.eruvin:S.eruvin.filter(function(e){return e.status===f;});
+  var SL={up:'Up ✓',review:'Under Review',down:'Down'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
+  document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+' · '+e.lastChecked+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
+}
+function renderEruvList(){
+  var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Review',down:'Down'};
+  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="flyTo(['+e.center+'],\''+e.name+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="color:#2563b0;font-size:.7rem">♥ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
+}
+function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}
+
+// ALERTS
+var cityEruvin={'Brooklyn, NY':['Brooklyn Eiruv','Flatbush Eiruv','Borough Park Eiruv'],'Woodmere, NY':['Five Towns Eiruv','Lawrence Eiruv'],'Teaneck, NJ':['Teaneck Eiruv'],'Monsey, NY':['Monsey Eiruv - East','Monsey Eiruv - West'],'Skokie, IL':['Skokie Eiruv'],'Silver Spring, MD':['Silver Spring Eiruv'],'Los Angeles, CA':['Pico-Robertson Eiruv']};
+function updateAlertEruv(){var c=document.getElementById('alertCity').value,s=document.getElementById('alertEruv'),opts=cityEruvin[c]||[];s.innerHTML=opts.length?opts.map(function(n){return '<option>'+n+'</option>';}).join(''):'<option>Select city first</option>';}
+var alertOpen=false;
+function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);}
+function saveAlert(){
+  var city=document.getElementById('alertCity').value,eruv=document.getElementById('alertEruv').value;
+  if(!city||eruv.indexOf('Select')>=0){toast('Select city and eiruv','err');return;}
+  var al={id:'alert-'+Date.now(),userEmail:S.user.email.toLowerCase(),city:city,eruv:eruv,active:true,createdAt:new Date().toISOString()};
+  S.alerts.push(al);
+  if(window._db)window._db.saveAlert(al);
+  renderAlerts();alertOpen=false;document.getElementById('alertForm').classList.remove('on');toast('Alert saved — '+eruv,'ok');
+}
+function renderAlerts(){
+  var el=document.getElementById('myAlerts');
+  if(!S.user){el.innerHTML='<p style="font-size:.78rem;color:var(--muted);margin-bottom:9px">Sign in to manage alerts.</p>';return;}
+  if(!S.alerts.length){el.innerHTML='<p style="font-size:.78rem;color:var(--muted);margin-bottom:9px">No alerts yet.</p>';return;}
+  el.innerHTML=S.alerts.map(function(a,i){return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;background:#fff"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:.82rem;font-weight:600;color:var(--navy)">'+a.eruv+'</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">'+a.city+' · SMS + Email · Fri 9am</div></div><button class="toggle '+(a.active?'on':'')+'" onclick="toggleAlert('+i+')"></button></div></div>';}).join('');
+}
+function toggleAlert(i){
+  S.alerts[i].active=!S.alerts[i].active;
+  if(window._db&&S.alerts[i].id)window._db.patchAlert(S.alerts[i].id,{active:S.alerts[i].active});
+  renderAlerts();
+}
+function goAlerts(){closeDrop();document.querySelectorAll('.s-tab')[3].click();}
+
+// Users are stored in Firestore. _fsUsers is the in-memory cache populated at boot.
+window._fsUsers = window._fsUsers || [];
+window._fsContractors = window._fsContractors || [];
+function getUsers(){return window._fsUsers||[];}
+function _cacheAndSaveUser(user){
+  var idx=window._fsUsers.findIndex(function(u){return u.email.toLowerCase()===user.email.toLowerCase();});
+  if(idx>=0)window._fsUsers[idx]=user;else window._fsUsers.push(user);
+  if(window._db)window._db.saveUser(user);
+}
+function openModal(v){document.getElementById('authBd').classList.add('on');showV(v);}
+function closeModal(){document.getElementById('authBd').classList.remove('on');}
+function showV(id){['vMain','vRegister','vContractor'].forEach(function(v){document.getElementById(v).style.display=v===id?'block':'none';});}
+function doGoogle(role){
+  if(window._googleSignIn){window._googleSignIn(role);}
+  else{toast('Auth not ready yet, try again','err');}
+}
+function doEmail(){
+  var email=document.getElementById('siEmail').value.trim().toLowerCase(),pass=document.getElementById('siPass').value,err=document.getElementById('siErr');err.style.display='none';
+  if(!email||!pass){err.textContent='Please fill all fields.';err.style.display='block';return;}
+  var isAdmin=email===ADMIN_EMAIL.toLowerCase();
+  var user=getUsers().find(function(u){return u.email.toLowerCase()===email;});
+  if(!user){user={name:email.split('@')[0],email:email,password:pass,role:isAdmin?'admin':'user',avatar:email[0].toUpperCase(),contractorStatus:'none'};}
+  else{if(user.password&&user.password!==pass){err.textContent='Incorrect password.';err.style.display='block';return;}if(isAdmin)user.role='admin';user.password=pass;}
+  _cacheAndSaveUser(user);
+  closeModal();signInAs(user);
+}
+function doRegister(){
+  var name=document.getElementById('rName').value.trim(),email=document.getElementById('rEmail').value.trim().toLowerCase(),pass=document.getElementById('rPass').value,err=document.getElementById('rErr');err.style.display='none';
+  if(!name||!email||!pass){err.textContent='All fields required.';err.style.display='block';return;}
+  if(pass.length<6){err.textContent='Min 6 characters.';err.style.display='block';return;}
+  if(getUsers().find(function(u){return u.email.toLowerCase()===email;})){err.textContent='Already registered.';err.style.display='block';return;}
+  var isAdmin=email===ADMIN_EMAIL.toLowerCase();
+  var user={name:name,email:email,password:pass,role:isAdmin?'admin':'user',avatar:name[0].toUpperCase(),contractorStatus:'none'};
+  _cacheAndSaveUser(user);closeModal();signInAs(user);
+}
+function doContractorApply(){
+  var name=document.getElementById('cName').value.trim(),email=document.getElementById('cEmail').value.trim().toLowerCase();
+  if(!name||!email){toast('Name and email required','err');return;}
+  var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,role:'contractor-pending',avatar:name[0].toUpperCase(),contractorStatus:'none'};
+  user.contractorStatus='pending';user.role='contractor-pending';
+  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;
+  _cacheAndSaveUser(user);
+  // Also write to contractors collection
+  var ct={email:email,name:name,phone:user.phone,area:user.area,status:'pending',appliedAt:new Date().toISOString()};
+  var cidx=window._fsContractors.findIndex(function(c){return c.email.toLowerCase()===email;});
+  if(cidx>=0)window._fsContractors[cidx]=ct;else window._fsContractors.push(ct);
+  if(window._db)window._db.saveContractor(ct);
+  closeModal();toast('Application submitted! Pending admin approval.','ok');
+}
+function signInAs(user){
+  S.user=user;S.alerts=[];
+  // Load alerts from Firestore
+  if(window._db&&user.email){
+    window._db.loadAlerts(user.email).then(function(a){S.alerts=a||[];renderAlerts();});
+  }
+  document.getElementById('signinPill').style.display='none';
+  document.getElementById('userPillWrap').style.display='block';
+  document.getElementById('uAv').textContent=(user.avatar||user.name[0]||'?').toUpperCase();
+  document.getElementById('uNm').textContent=user.name.split(' ')[0];
+  document.getElementById('dNm').textContent=user.name;
+  document.getElementById('dEm').textContent=user.email;
+  document.getElementById('dRole').textContent=user.role==='admin'?'Admin':user.role==='contractor'?'Contractor':user.contractorStatus==='pending'?'Pending':'Member';
+  var isAdmin=user.role==='admin',isCont=user.role==='contractor'||isAdmin;
+  document.getElementById('adminTrigger').style.display=isAdmin?'flex':'none';
+  // importMapTrigger removed — Import is only inside the zone editor
+  document.getElementById('ctDashTrigger').style.display=isCont?'flex':'none';
+  document.getElementById('editZonesTrigger').style.display=isCont?'flex':'none';
+  document.getElementById('drawTrigger').style.display=isCont?'flex':'none';
+  var brand=document.getElementById('hdrBrand');
+  if(brand)brand.style.visibility=isCont?'hidden':'visible';
+  localStorage.setItem('myeiruv_session',JSON.stringify(user));
+  renderAlerts();toast('Welcome, '+user.name.split(' ')[0]+'!','ok');
+}
+function doSignOut(){
+  S.user=null;S.alerts=[];
+  if(window._googleSignOut)window._googleSignOut();
+  document.getElementById('signinPill').style.display='flex';
+  document.getElementById('userPillWrap').style.display='none';
+  ['adminTrigger','ctDashTrigger','editZonesTrigger','drawTrigger'].forEach(function(id){document.getElementById(id).style.display='none';});
+  localStorage.removeItem('myeiruv_session');closeDrop();renderAlerts();
+  var brand=document.getElementById('hdrBrand');if(brand)brand.style.visibility='visible';
+  toast('Signed out');
+}
+var dropOpen=false;
+function toggleDrop(){dropOpen=!dropOpen;document.getElementById('userDrop').style.display=dropOpen?'block':'none';}
+function closeDrop(){dropOpen=false;var d=document.getElementById('userDrop');if(d)d.style.display='none';}
+document.addEventListener('click',function(e){if(!e.target.closest('#userPillWrap'))closeDrop();});
+
+// ADMIN
+function openAdmin(){document.getElementById('adminDrawer').classList.add('on');renderAdmin('overview');}
+function closeAdmin(){document.getElementById('adminDrawer').classList.remove('on');}
+function aN(btn,sec){document.querySelectorAll('.anav').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');renderAdmin(sec);}
+function admStatus(id,status){
+  var e=S.eruvin.find(function(x){return x.id===id;});if(!e)return;
+  var note=status!=='up'?(prompt('Note (optional):','')||''):'';
+  e.status=status;e.note=note;e.lastChecked=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  try{map.setPaintProperty('eruv-'+id+'-line','line-color',SCOL[status]);}catch(_){}
+  try{map.setPaintProperty('eruv-'+id+'-fill','fill-color',SCOL[status]);}catch(_){}
+  if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked});
+  renderEruvList();renderStatus();toast(e.name+' → '+status,'ok');renderAdmin('overview');
+}
+function admDel(id){
+  if(!confirm('Delete this eiruv?'))return;
+  S.eruvin=S.eruvin.filter(function(e){return e.id!==id;});
+  ['fill','line'].forEach(function(t){try{map.removeLayer('eruv-'+id+'-'+t);}catch(_){};});
+  try{map.removeSource('eruv-'+id);}catch(_){}
+  if(window._db)window._db.deleteZone(id);
+  try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');z=z.filter(function(x){return x.id!==id;});localStorage.setItem('myeiruv_zones',JSON.stringify(z));}catch(_){}
+  renderEruvList();renderStatus();renderAdmin('eruvin');toast('Deleted');
+}
+function approveC(email){
+  var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
+  if(u){u.role='contractor';u.contractorStatus='approved';_cacheAndSaveUser(u);}
+  if(window._db)window._db.patchContractor(email,{status:'approved'});
+  toast((u&&u.name||email)+' approved ✓','ok');renderAdmin('contractors');
+  if(S.user&&S.user.email.toLowerCase()===email.toLowerCase()){S.user.role='contractor';signInAs(S.user);}
+}
+function rejectC(email){
+  var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
+  if(u){u.contractorStatus='rejected';_cacheAndSaveUser(u);}
+  if(window._db)window._db.patchContractor(email,{status:'rejected'});
+  toast('Rejected');renderAdmin('contractors');
+}
+function adminAddCt(){
+  var email=document.getElementById('addCtEmail').value.trim().toLowerCase();
+  var name=document.getElementById('addCtName').value.trim()||email.split('@')[0];
+  var area=document.getElementById('addCtArea').value.trim();
+  if(!email){toast('Email required','err');return;}
+  var u=getUsers().find(function(x){return x.email.toLowerCase()===email;})||{name:name,email:email,avatar:name[0].toUpperCase()};
+  u.role='contractor';u.contractorStatus='approved';if(area)u.area=area;
+  _cacheAndSaveUser(u);
+  var ct={email:email,name:name,area:area,status:'approved',addedAt:new Date().toISOString()};
+  var cidx=window._fsContractors.findIndex(function(c){return c.email.toLowerCase()===email;});
+  if(cidx>=0)window._fsContractors[cidx]=ct;else window._fsContractors.push(ct);
+  if(window._db)window._db.saveContractor(ct);
+  toast(name+' added as contractor!','ok');renderAdmin('contractors');
+  ['addCtEmail','addCtName','addCtArea'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+}
+function postAnn(){
+  var t=document.getElementById('annT')&&document.getElementById('annT').value.trim();
+  var b=document.getElementById('annB')&&document.getElementById('annB').value.trim();
+  if(!t||!b){toast('Fill all fields','err');return;}
+  toast('Posted: "'+t+'"','ok');
+  if(document.getElementById('annT'))document.getElementById('annT').value='';
+  if(document.getElementById('annB'))document.getElementById('annB').value='';
+}
+function filterUsers(v){var el=document.getElementById('userListEl');if(el)el.innerHTML=mkUserList(window._fsUsers||[],v.toLowerCase());}
+function mkUserList(users,q){
+  var f=q?users.filter(function(u){return u.name.toLowerCase().indexOf(q)>=0||u.email.toLowerCase().indexOf(q)>=0;}):users;
+  return f.map(function(u){return '<div class="user-row"><div class="u-info"><div class="u-av-sm">'+(u.avatar||u.name[0]||'?').toUpperCase()+'</div><div><div style="font-size:.8rem;font-weight:600;color:var(--navy)">'+u.name+'</div><div style="font-size:.68rem;color:var(--muted)">'+u.email+'</div></div></div><span class="badge" style="background:var(--gold2);color:#7a4010">'+(u.role==='admin'?'Admin':u.role==='contractor'?'Contractor':u.contractorStatus==='pending'?'Pending':'User')+'</span></div>';}).join('')||'<div style="font-size:.79rem;color:var(--muted)">None.</div>';
+}
+function renderAdmin(sec){
+  var body=document.getElementById('admBody');
+  var users=window._fsUsers||[];
+  var conts=window._fsContractors||[];
+  if(sec==='overview'){
+    var up=S.eruvin.filter(function(e){return e.status==='up';}).length,dn=S.eruvin.filter(function(e){return e.status==='down';}).length,rv=S.eruvin.filter(function(e){return e.status==='review';}).length;
+    var pend=conts.filter(function(u){return u.status==='pending';});
+    var html='<span class="adm-sec">Overview</span><div class="adm-stats"><div class="sbox"><div class="sbox-n">'+S.eruvin.length+'</div><div class="sbox-l">Zones</div></div><div class="sbox"><div class="sbox-n" style="color:var(--green)">'+up+'</div><div class="sbox-l">Up</div></div><div class="sbox"><div class="sbox-n" style="color:var(--amber)">'+rv+'</div><div class="sbox-l">Review</div></div><div class="sbox"><div class="sbox-n" style="color:var(--red)">'+dn+'</div><div class="sbox-l">Down</div></div></div>';
+    html+='<div class="adm-stats" style="margin-top:6px"><div class="sbox"><div class="sbox-n">'+(S.shuls||[]).length+'</div><div class="sbox-l">Shuls</div></div><div class="sbox"><div class="sbox-n">'+users.length+'</div><div class="sbox-l">Users</div></div><div class="sbox"><div class="sbox-n">'+conts.length+'</div><div class="sbox-l">Contractors</div></div></div>';
+    if(pend.length){html+='<span class="adm-sec">Pending Applications</span>';pend.forEach(function(u){html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge b-rv">Pending</span></div><div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div></div>';});}
+    html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
+    S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
+    body.innerHTML=html;
+  }else if(sec==='eruvin'){
+    var html='<span class="adm-sec">All Eiruvin</span>';
+    S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ap" onclick="flyTo(['+e.center+'],\''+e.name+'\');closeAdmin()">View</button><button class="act-btn ao" onclick="closeAdmin();openDraw(\'edit\',\''+e.id+'\')">Edit</button><button class="act-btn ar" onclick="admDel(\''+e.id+'\')">Delete</button></div></div>';});
+    body.innerHTML=html;
+  }else if(sec==='users'){
+    body.innerHTML='<span class="adm-sec">Users ('+users.length+')</span><input class="fi" placeholder="Search…" oninput="filterUsers(this.value)" style="margin-bottom:9px;padding:7px 11px;font-size:.79rem"><div id="userListEl">'+mkUserList(users,'')+'</div>';
+  }else if(sec==='contractors'){
+    body.innerHTML='<span class="adm-sec">Add Contractor</span><div class="acard" style="margin-bottom:12px"><div class="fg"><label class="lbl">Email</label><input class="fi" id="addCtEmail" placeholder="email@example.com" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Name</label><input class="fi" id="addCtName" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Area</label><input class="fi" id="addCtArea" style="padding:7px 10px;font-size:.8rem"></div><button class="act-btn ap" onclick="adminAddCt()" style="width:100%;padding:7px">Add as Contractor</button></div><span class="adm-sec">Active & Pending</span>'+(conts.length?conts.map(function(u){return '<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge '+(u.status==='approved'?'b-up':'b-rv')+'">'+(u.status==='approved'?'Active':'Pending')+'</span></div>'+(u.status==='pending'?'<div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div>':'')+'</div>';}).join(''):'<div style="font-size:.8rem;color:var(--muted)">No contractors yet.</div>');
+  }else if(sec==='shuls'){
+    var shuls=S.shuls||[];
+    var html='<span class="adm-sec">Shuls ('+shuls.length+')</span>';
+    html+='<div class="acard" style="margin-bottom:12px"><div class="fg"><label class="lbl">Name</label><input class="fi" id="addShulName" placeholder="Shul name" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">City</label><input class="fi" id="addShulCity" placeholder="Brooklyn, NY" style="padding:7px 10px;font-size:.8rem"></div><div style="display:flex;gap:6px"><div class="fg" style="flex:1"><label class="lbl">Latitude</label><input class="fi" id="addShulLat" placeholder="40.6501" style="padding:7px 10px;font-size:.8rem"></div><div class="fg" style="flex:1"><label class="lbl">Longitude</label><input class="fi" id="addShulLng" placeholder="-73.9496" style="padding:7px 10px;font-size:.8rem"></div></div><button class="act-btn ap" onclick="adminAddShul()" style="width:100%;padding:7px">Add Shul</button></div>';
+    shuls.forEach(function(s){html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+s.name+'</div><div class="acard-mt">'+s.city+' · '+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+'</div></div></div><div class="act-row"><button class="act-btn ap" onclick="flyTo(['+s.lng+','+s.lat+'],\''+s.name+'\');closeAdmin()">View</button><button class="act-btn ar" onclick="adminDelShul(\''+s.id+'\')">Delete</button></div></div>';});
+    body.innerHTML=html;
+  }else if(sec==='posts'){
+    body.innerHTML='<span class="adm-sec">Post Announcement</span><div class="fg"><label class="lbl">Title</label><input class="fi" id="annT" placeholder="e.g. Brooklyn Eiruv Update"></div><div class="fg"><label class="lbl">Message</label><textarea class="fi" id="annB" rows="3" style="resize:vertical;min-height:60px"></textarea></div><button class="btn btn-navy btn-full" onclick="postAnn()">Post to All Users</button>';
+  }
+}
+function adminAddShul(){
+  var name=document.getElementById('addShulName').value.trim(),city=document.getElementById('addShulCity').value.trim();
+  var lat=parseFloat(document.getElementById('addShulLat').value),lng=parseFloat(document.getElementById('addShulLng').value);
+  if(!name||!city||isNaN(lat)||isNaN(lng)){toast('All shul fields required','err');return;}
+  var shul={id:'shul-'+Date.now(),name:name,city:city,lat:lat,lng:lng};
+  S.shuls=S.shuls||[];S.shuls.push(shul);
+  if(window._db)window._db.saveShul(shul);
+  addShulToMap(shul);toast('Shul added: '+name,'ok');renderAdmin('shuls');
+}
+function adminDelShul(id){
+  S.shuls=(S.shuls||[]).filter(function(s){return s.id!==id;});
+  if(window._db)window._db.deleteShul(id);
+  try{map.removeLayer('shul-'+id);map.removeSource('shul-'+id);}catch(_){}
+  toast('Shul removed');renderAdmin('shuls');
+}
+
+// CONTRACTOR DASH
+function openCtDash(){document.getElementById('ctDash').classList.add('on');renderCtDash();}
+function closeCtDash(){document.getElementById('ctDash').classList.remove('on');}
+function renderCtDash(){
+  var myZones=S.user&&S.user.role==='admin'?S.eruvin:S.eruvin.filter(function(e){return e.owner===S.user.email;});
+  var up=myZones.filter(function(e){return e.status==='up';}).length,dn=myZones.filter(function(e){return e.status==='down';}).length;
+  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:28px;color:var(--muted);font-size:.83rem">No zones yet.<br><br><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">Create First Zone</button></div>');
+}
+
+// ZONE PICKER
+function openZonePicker(){
+  var zones=S.user&&S.user.role==='admin'?S.eruvin:S.eruvin.filter(function(e){return e.owner===S.user.email;});
+  if(!zones.length){toast('No zones to edit','err');return;}
+  document.getElementById('zonePickerList').innerHTML=zones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="eruv-row" onclick="closeZonePicker();openDraw(\'edit\',\''+e.id+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div>';}).join('');
+  document.getElementById('zonePickerBd').classList.add('on');
+}
+function closeZonePicker(){document.getElementById('zonePickerBd').classList.remove('on');}
+
+// MAP IMPORT (AI)
+var importedCoords=null,importPreviewMap=null;
+function openMapImport(){document.getElementById('mapImportBd').classList.add('on');resetMapImport();}
+function closeMapImport(){document.getElementById('mapImportBd').classList.remove('on');}
+function resetMapImport(){
+  document.getElementById('mi-step1').style.display='block';
+  document.getElementById('mi-step2').style.display='none';
+  document.getElementById('mi-status').textContent='';
+  document.getElementById('mi-paste').value='';
+  document.getElementById('mi-desc').value='';
+  document.getElementById('mapFileInput').value='';
+  var badge=document.getElementById('mi-file-badge');
+  if(badge)badge.style.display='none';
+  var nameEl=document.getElementById('mi-file-name');
+  if(nameEl)nameEl.textContent='';
+  importedCoords=null;_aiMeta={};_lastIdentifyTxt='';
+  var chip=document.getElementById('mi-identify');if(chip)chip.style.display='none';
+}
+function handleMapDrop(e){e.preventDefault();document.getElementById('mi-dropzone').style.borderColor='var(--border)';var file=e.dataTransfer.files[0];if(file)handleMapFile(file);}
+function handleMapFile(file){
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    document.getElementById('mi-paste').value=ev.target.result.slice(0,10000);
+    var badge=document.getElementById('mi-file-badge');
+    var nameEl=document.getElementById('mi-file-name');
+    if(badge&&nameEl){
+      nameEl.textContent='✓ '+file.name+' ('+Math.round(file.size/1024)+'KB)';
+      badge.style.display='inline-flex';
+    }
+    document.getElementById('mi-status').textContent='';
+  };
+  reader.readAsText(file);
+}
+function removeUploadedFile(evt){
+  evt.stopPropagation();
+  document.getElementById('mi-paste').value='';
+  document.getElementById('mapFileInput').value='';
+  var badge=document.getElementById('mi-file-badge');
+  if(badge)badge.style.display='none';
+  document.getElementById('mi-status').textContent='';
+  toast('File removed');
+}
+function extractFromGeoJSON(gj){
+  var ring=null;
+  if(gj.type==='FeatureCollection'&&gj.features&&gj.features[0]){var g=gj.features[0].geometry;if(g.type==='Polygon')ring=g.coordinates[0];else if(g.type==='MultiPolygon')ring=g.coordinates[0][0];else if(g.type==='LineString')ring=g.coordinates;}
+  else if(gj.type==='Feature'){var g=gj.geometry;if(g.type==='Polygon')ring=g.coordinates[0];else if(g.type==='LineString')ring=g.coordinates;}
+  else if(gj.type==='Polygon')ring=gj.coordinates[0];
+  else if(gj.type==='LineString')ring=gj.coordinates;
+  return ring&&ring.length>=3?ring:null;
+}
+function parseCsvCoords(text){
+  var lines=text.trim().split('\n'),coords=[];
+  lines.forEach(function(line){
+    line=line.trim();if(!line)return;
+    var parts=line.split(/[\s,\t]+/);
+    if(parts.length>=2){var a=parseFloat(parts[0]),b=parseFloat(parts[1]);if(!isNaN(a)&&!isNaN(b)){if(Math.abs(a)<=90&&Math.abs(b)<=180)coords.push([b,a]);else coords.push([a,b]);}}
+  });
+  return coords.length>=3?coords:null;
+}
+// Live identification as user types in description
+var _identifyTimer=null,_lastIdentifyTxt='';
+function onDescType(val){
+  clearTimeout(_identifyTimer);
+  var chip=document.getElementById('mi-identify');
+  var chipTxt=document.getElementById('mi-identify-text');
+  if(val.trim().length<20){if(chip)chip.style.display='none';return;}
+  if(chip){chip.style.display='flex';chipTxt.textContent='Identifying…';}
+  _identifyTimer=setTimeout(function(){
+    if(val===_lastIdentifyTxt)return;
+    _lastIdentifyTxt=val;
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',max_tokens:120,
+        system:'You are identifying an eiruv zone from a description. Reply in ONE short sentence only: state the zone name and city/neighborhood you identified, and note if the description seems complete enough to build a polygon. Be concise. Example: "Looks like the Teaneck Eiruv (Teaneck, NJ) — good detail, ready to build." If unclear, say what info is still missing.',
+        messages:[{role:'user',content:val.slice(0,600)}]
+      })
+    })
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var txt=(d.content&&d.content[0]&&d.content[0].text)||'';
+      if(chipTxt&&txt)chipTxt.textContent=txt.trim();
+    })
+    .catch(function(){if(chipTxt)chipTxt.textContent='Could not identify — continue typing…';});
+  },700);
+}
+
+function processMapImport(){
+  var raw=document.getElementById('mi-paste').value.trim(),desc=document.getElementById('mi-desc').value.trim();
+  if(!raw&&!desc){toast('Describe the zone or upload a file','err');return;}
+  var btn=document.querySelector('#mi-step1 .btn-navy');btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> AI is building your zone…';
+  document.getElementById('mi-status').textContent='';
+
+  // Try to parse structured formats first (no AI needed)
+  var coords=null;
+  try{coords=extractFromGeoJSON(JSON.parse(raw));}catch(_){}
+  if(!coords&&raw)coords=parseCsvCoords(raw);
+  if(coords&&coords.length>=3&&!desc){
+    // Clean structured file — skip AI, just preview
+    btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;
+    importedCoords=coords;_aiMeta={};showImportPreview(coords,desc);return;
+  }
+
+  // AI path — either need to parse messy content, OR user described it in text
+  var systemPrompt='You are a GIS assistant for a Jewish eiruv boundary mapping app.\n\nGiven a description or geographic data, return a polygon boundary for the eiruv.\n\nSTRICT OUTPUT RULES:\n- Return ONLY a single JSON object. No prose, no markdown, no code fences.\n- Format: {"name":"...","city":"City, ST","status":"up","note":"","coords":[[lng,lat],...]}\n- status must be exactly "up", "review", or "down"\n- coords: array of [longitude, latitude] pairs (longitude FIRST)\n- Use 16–28 points for a realistic neighborhood-scale polygon\n- Place points at actual street intersections when streets are named\n- Do NOT repeat the first point at the end\n- Longitude is the east-west value (negative for USA west of prime meridian)\n- Latitude is the north-south value\n\nExample for a small area: {"name":"Teaneck Eiruv","city":"Teaneck, NJ","status":"up","note":"","coords":[[-74.03,40.91],[-74.00,40.92],[-73.99,40.90],[-74.00,40.88],[-74.03,40.88]]}';
+
+  var userContent='';
+  if(desc)userContent+='DESCRIPTION:\n'+desc+'\n\n';
+  if(raw)userContent+='MAP DATA:\n'+raw.slice(0,6000);
+
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
+    .then(function(r){
+      if(r.status===401||r.status===403){btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Open this file inside Claude.ai for AI features to work.';toast('AI needs Claude.ai — open file as artifact','err');return Promise.reject('auth');}
+      return r.json();
+    })
+    .then(function(data){
+      var txt=(data.content&&data.content[0]&&data.content[0].text)||'';
+      btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;
+
+      // Parse the structured JSON response
+      var parsed=null;
+      // 1. Direct parse (ideal case)
+      try{parsed=JSON.parse(txt.trim());}catch(_){}
+      // 2. Strip markdown fences
+      if(!parsed){try{parsed=JSON.parse(txt.replace(/```(?:json)?|```/g,'').trim());}catch(_){}}
+      // 3. Extract JSON object via regex
+      if(!parsed){var m=txt.match(/\{[\s\S]*"coords"[\s\S]*\}/);if(m){try{parsed=JSON.parse(m[0]);}catch(_){}}}
+      // 4. Last resort: extract just the coords array
+      if(!parsed||!parsed.coords){
+        var m2=txt.match(/\[\s*\[-?[\d.]+\s*,\s*-?[\d.]+\s*\][\s\S]*?\]/);
+        if(m2){try{parsed={coords:JSON.parse(m2[0])};}catch(_){}}
+      }
+
+      if(!parsed||!parsed.coords||parsed.coords.length<3){
+        toast('AI couldn\'t generate coordinates — try adding more street names or landmarks.','err');
+        document.getElementById('mi-status').textContent='⚠ Be more specific: name streets, neighborhoods, or cardinal boundaries.';
+        return;
+      }
+
+      importedCoords=parsed.coords;
+      _aiMeta={name:parsed.name||'',city:parsed.city||'',status:parsed.status||'up',note:parsed.note||''};
+      showImportPreview(parsed.coords,desc,parsed);
+    }).catch(function(e){
+      if(e==='auth')return;
+      console.error(e);
+      toast('Could not reach AI — check your internet connection','err');
+      btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;
+    });
+}
+var _aiMeta={};
+function showImportPreview(coords,desc,aiData){
+  document.getElementById('mi-step1').style.display='none';document.getElementById('mi-step2').style.display='block';
+  var meta=aiData||_aiMeta||{};
+  setTimeout(function(){
+    if(!importPreviewMap)importPreviewMap=new mapboxgl.Map({container:'mi-preview-map',style:'mapbox://styles/mapbox/light-v11',attributionControl:false});
+    importPreviewMap.resize();
+    function setData(){
+      var geom={type:'Feature',geometry:{type:'Polygon',coordinates:[coords]}};
+      if(importPreviewMap.getSource('prev')){importPreviewMap.getSource('prev').setData(geom);}
+      else{importPreviewMap.addSource('prev',{type:'geojson',data:geom});importPreviewMap.addLayer({id:'prev-fill',type:'fill',source:'prev',paint:{'fill-color':'#1a2c4a','fill-opacity':0.13}});importPreviewMap.addLayer({id:'prev-line',type:'line',source:'prev',paint:{'line-color':'#1a2c4a','line-width':2.5}});}
+      var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
+      importPreviewMap.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:30});
+    }
+    if(importPreviewMap.loaded())setData();else importPreviewMap.once('load',setData);
+  },100);
+
+  // Build info panel
+  var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
+  var ctr=[(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2,(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2];
+  var statusIcon={up:'🟢',review:'🟡',down:'🔴'}[meta.status]||'🟢';
+  var infoHtml='<strong>✅ Zone built — '+coords.length+' boundary points</strong>';
+  if(meta.name||meta.city)infoHtml+='<br>📍 '+(meta.name||'—')+' · '+(meta.city||'—');
+  if(meta.status)infoHtml+='<br>'+statusIcon+' AI suggests status: <strong>'+{up:'Up & Kosher',review:'Under Review',down:'Down'}[meta.status]+'</strong>';
+  if(meta.note)infoHtml+='<br><em style="color:var(--muted)">'+meta.note+'</em>';
+  infoHtml+='<br><span style="color:var(--muted2)">Center: '+ctr[1].toFixed(4)+', '+ctr[0].toFixed(4)+'</span>';
+  document.getElementById('mi-info').innerHTML=infoHtml;
+
+  // Auto-fill fields from AI
+  if(meta.name)document.getElementById('mi-name').value=meta.name;
+  else if(desc)document.getElementById('mi-name').value=desc.split(' ').slice(0,4).join(' ');
+  if(meta.city)document.getElementById('mi-city').value=meta.city;
+  if(meta.status){var sel=document.getElementById('mi-status-sel');if(sel)sel.value=meta.status;}
+}
+function importZoneToEditor(){
+  var name=document.getElementById('mi-name').value.trim(),city=document.getElementById('mi-city').value.trim(),status=document.getElementById('mi-status-sel').value;
+  if(!name||!city){toast('Enter zone name and city','err');return;}
+  if(!importedCoords||importedCoords.length<3){toast('No coordinates','err');return;}
+
+  // Ensure ring is closed (GeoJSON Polygon requires first == last)
+  var ring=importedCoords.slice();
+  var f=ring[0],l=ring[ring.length-1];
+  if(f[0]!==l[0]||f[1]!==l[1])ring.push([f[0],f[1]]);
+
+  closeMapImport();closeCtDash();openDraw('draw');
+
+  setTimeout(function(){
+    document.getElementById('zoneName').value=name;
+    document.getElementById('zoneCity').value=city;
+    setStatus(status,true);
+
+    function tryLoad(){
+      if(!Draw||!drawMap||!drawMap.loaded()){setTimeout(tryLoad,200);return;}
+      try{
+        // Clear anything from openDraw initialisation
+        Draw.deleteAll();
+        var fid='ai-'+Date.now();
+        Draw.add({type:'Feature',id:fid,geometry:{type:'Polygon',coordinates:[ring]},properties:{isExcl:'0'}});
+
+        // Fit map to the zone
+        var lngs=ring.map(function(c){return c[0];}),lats=ring.map(function(c){return c[1];});
+        drawMap.fitBounds(
+          [[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],
+          {padding:60,duration:700,maxZoom:16}
+        );
+
+        // Advance to step 2 (edit mode) — unlocks Move Points button
+        _setDrawStep(2);
+
+        // Enter direct_select so vertices are immediately draggable
+        setTimeout(function(){
+          var feats=Draw.getAll().features;
+          var main=feats.find(function(f){return f.properties.isExcl!=='1';})||feats[0];
+          if(main){
+            try{Draw.changeMode('direct_select',{featureId:main.id});}catch(_){}
+            document.getElementById('dBtn-edit').classList.add('act');
+            updateStatusBar('edit');
+          }
+          updateVtxCount();
+          checkSaveReady();
+          renderAdjList();
+        },500);
+
+        toast('Zone loaded — drag any point to adjust, then save','ok');
+      }catch(e){console.error('importZoneToEditor error:',e);toast('Error loading zone','err');}
+    }
+    setTimeout(tryLoad,600);
+  },100);
+}
+// DRAW
+var drawMap=null,Draw=null,_drawHistory=[];
+var _undoStack=[]; // {type:'cd_pts'|'draw_state', data} for full undo
+
+// Push a Draw snapshot to undo stack
+function _pushUndo(){
+  if(_cd.active){
+    _undoStack.push({type:'cd_pts',data:_cd.pts.slice()});
+  } else if(Draw){
+    try{
+      var snap=JSON.stringify(Draw.getAll());
+      _undoStack.push({type:'draw_state',data:snap});
+    }catch(_){}
+  }
+  if(_undoStack.length>50)_undoStack.shift();
+  _updateUndoBtn();
+}
+
+function _updateUndoBtn(){
+  var pill=document.getElementById('undoPill');
+  var has=_undoStack.length>0||(_cd.active&&_cd.pts.length>0);
+  if(pill){pill.style.opacity=has?'1':'0.3';pill.style.pointerEvents=has?'auto':'none';}
+}
+
+// ── Custom Click-to-Draw Engine ──
+// _cd holds state for the in-progress polygon being drawn by clicks only.
+// MapboxDraw is only used for the EDITING phase (moving individual vertices).
+var _cd={pts:[],active:false,excl:false,dblPending:false};
+var _pendingMidpointAdd=false, _selChangeTimer=null;
+
+// ── MapboxDraw styles – used only during vertex-edit phase ──
+var DRAW_STYLES=[
+  {id:'gl-draw-pf-i',type:'fill',filter:['all',['==','active','false'],['==','$type','Polygon'],['!=','mode','static']],
+   paint:{'fill-color':['case',['==',['get','user_isExcl'],'1'],'#d94040','#1a3060'],'fill-opacity':0.06}},
+  {id:'gl-draw-pf-a',type:'fill',filter:['all',['==','active','true'],['==','$type','Polygon']],
+   paint:{'fill-color':['case',['==',['get','user_isExcl'],'1'],'#d94040','#1a3060'],'fill-opacity':0.12}},
+  {id:'gl-draw-pl-i',type:'line',filter:['all',['==','active','false'],['==','$type','Polygon'],['!=','mode','static']],
+   layout:{'line-cap':'round','line-join':'round'},
+   paint:{'line-color':['case',['==',['get','user_isExcl'],'1'],'#d94040','#2a52b0'],'line-width':2.5,'line-opacity':0.85}},
+  {id:'gl-draw-pl-a',type:'line',filter:['all',['==','active','true'],['==','$type','Polygon']],
+   layout:{'line-cap':'round','line-join':'round'},
+   paint:{'line-color':['case',['==',['get','user_isExcl'],'1'],'#d94040','#1a2c4a'],'line-width':3}},
+  // Vertex inactive – large invisible hit target + visible dot
+  {id:'gl-draw-vi-hit',type:'circle',filter:['all',['==','active','false'],['==','meta','vertex'],['==','$type','Point'],['!=','mode','static']],
+   paint:{'circle-radius':16,'circle-color':'rgba(0,0,0,0)'}},
+  {id:'gl-draw-vi',type:'circle',filter:['all',['==','active','false'],['==','meta','vertex'],['==','$type','Point'],['!=','mode','static']],
+   paint:{'circle-radius':5,'circle-color':'#2a52b0','circle-stroke-color':'#fff','circle-stroke-width':2}},
+  // Vertex active – gold glow halo + large dot
+  {id:'gl-draw-va-hit',type:'circle',filter:['all',['==','active','true'],['==','$type','Point'],['!=','meta','midpoint'],['!=','mode','static']],
+   paint:{'circle-radius':20,'circle-color':'rgba(200,146,58,0.10)','circle-stroke-width':0}},
+  {id:'gl-draw-va',type:'circle',filter:['all',['==','active','true'],['==','$type','Point'],['!=','meta','midpoint'],['!=','mode','static']],
+   paint:{'circle-radius':9,'circle-color':'#c8923a','circle-stroke-color':'#fff','circle-stroke-width':2.5}},
+  // Midpoints – larger hit area, brighter visible dot with + indicator
+  {id:'gl-draw-mp-hit',type:'circle',filter:['all',['==','$type','Point'],['==','meta','midpoint']],
+   paint:{'circle-radius':16,'circle-color':'rgba(0,0,0,0)'}},
+  {id:'gl-draw-mp',type:'circle',filter:['all',['==','$type','Point'],['==','meta','midpoint']],
+   paint:{'circle-radius':6,'circle-color':'#c8923a','circle-stroke-color':'#fff','circle-stroke-width':2.5,'circle-opacity':0.9}},
+  {id:'gl-draw-pt-a',type:'circle',filter:['all',['==','active','true'],['==','meta','feature'],['==','$type','Point']],
+   paint:{'circle-radius':7,'circle-color':'#c8923a','circle-stroke-color':'#fff','circle-stroke-width':2.5}},
+];
+
+function openDraw(mode,editId){
+  S.editTargetId=editId||null;S.exclMode=false;S.curExcl=[];S.curAdj=[];_drawHistory=[];
+  document.getElementById('drawOverlay').classList.add('on');
+  document.getElementById('drawModeBadge').textContent=mode==='edit'?'Edit':'Draw';
+  ['zoneName','zoneCity','zoneNote','zoneDonate'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('zoneStatus').value='up';
+  setStatus('up',true);
+  renderExclList();
+  _setDrawStep(1);
+  setTimeout(function(){initDrawMap(mode,editId);},80);
+}
+function closeDraw(){
+  _stopCustomDraw(true);
+  document.getElementById('drawOverlay').classList.remove('on');
+  S.exclMode=false;
+  document.getElementById('dBtn-excl').classList.remove('act-red');
+  _undoStack=[];_drawHistory=[];
+  _updateUndoBtn();
+  var mapEl=document.getElementById('draw-map');if(mapEl)mapEl.classList.remove('ui-over');
+}
+
+// ── Step management ──
+function _setDrawStep(step){
+  var dbs=[null,document.getElementById('dbs1'),document.getElementById('dbs2'),document.getElementById('dbs3')];
+  var guide=document.getElementById('zpDrawGuide');
+  var details=document.getElementById('zpDetails');
+  var saveBtn=document.getElementById('saveZoneBtn');
+  for(var i=1;i<=3;i++){if(!dbs[i])continue;dbs[i].className='dbs'+(i<step?' done':i===step?' active':'');}
+  var hint=document.getElementById('drawBannerHint');
+  if(step===1){
+    if(guide)guide.style.display='flex';
+    if(details)details.style.display='none';
+    if(hint){hint.innerHTML='<strong>Click on the map to place boundary points</strong>Double-click the last point — or click the first (gold) point — to close the boundary';}
+    document.getElementById('drawModeBadge').textContent='Draw';
+    if(saveBtn){saveBtn.style.opacity='.4';saveBtn.style.pointerEvents='none';}
+    // Move Points disabled until zone is closed
+    var editBtn=document.getElementById('dBtn-edit');
+    if(editBtn){editBtn.style.opacity='.3';editBtn.style.pointerEvents='none';editBtn.title='Draw a boundary first';}
+  }else if(step===2){
+    if(guide)guide.style.display='none';
+    if(details)details.style.display='flex';
+    if(hint){hint.innerHTML='<strong>Boundary complete — now fine-tune if needed</strong>Use Move Points to drag any vertex, or go straight to Step 3 in the panel →';}
+    document.getElementById('drawModeBadge').textContent='Edit';
+    if(saveBtn){saveBtn.style.opacity='.4';saveBtn.style.pointerEvents='none';}
+    // Unlock Move Points now that boundary exists
+    var editBtn=document.getElementById('dBtn-edit');
+    if(editBtn){editBtn.style.opacity='';editBtn.style.pointerEvents='';editBtn.title='';}
+    updateVtxCount();
+    // Auto-focus zone name
+    setTimeout(function(){var el=document.getElementById('zoneName');if(el)el.focus();},300);
+  }else if(step===3){
+    if(hint){hint.innerHTML='<strong>Almost done — fill in the zone details and save</strong>Name and city are required. Status shows members whether they can carry today.';}
+    if(saveBtn){saveBtn.style.opacity='1';saveBtn.style.pointerEvents='auto';}
+  }
+}
+
+function checkSaveReady(){
+  var name=document.getElementById('zoneName').value.trim();
+  var city=document.getElementById('zoneCity').value.trim();
+  var saveBtn=document.getElementById('saveZoneBtn');
+  var hasBoundary=Draw&&Draw.getAll().features.some(function(f){return f.properties.isExcl!=='1';});
+  if(name&&city&&hasBoundary){
+    if(saveBtn){saveBtn.style.opacity='1';saveBtn.style.pointerEvents='auto';}
+    _setDrawStep(3);
+  }else{
+    if(saveBtn&&hasBoundary){saveBtn.style.opacity='.4';saveBtn.style.pointerEvents='none';}
+  }
+}
+
+function setStatus(val,silent){
+  document.getElementById('zoneStatus').value=val;
+  ['up','rv','dn'].forEach(function(k){
+    var el=document.getElementById('spill-'+k);
+    if(el)el.className='status-pill'+(k===val||
+      (k==='rv'&&val==='review')||
+      (k==='up'&&val==='up')||
+      (k==='dn'&&val==='down')?' sel-'+k:'');
+  });
+  if(!silent)checkSaveReady();
+}
+
+function redrawBoundary(){
+  if(!Draw)return;
+  // Remove main boundary only, keep exclusions
+  var main=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
+  if(main)Draw.delete([main.id]);
+  _setDrawStep(1);
+  _startCustomDraw(false);
+  toast('Redrawing boundary — click to place points','warn');
+}
+
+function initDrawMap(mode,editId){
+  if(!drawMap){
+    drawMap=new mapboxgl.Map({container:'draw-map',style:'mapbox://styles/mapbox/light-v11',center:[-73.964,40.655],zoom:11,attributionControl:false});
+    Draw=new MapboxDraw({displayControlsDefault:false,userProperties:true,styles:DRAW_STYLES});
+    drawMap.addControl(Draw);
+    drawMap.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
+    drawMap.addControl(new mapboxgl.ScaleControl({maxWidth:100,unit:'imperial'}),'bottom-right');
+
+    var mapEl=document.getElementById('draw-map');
+    ['drawPalette','zonePanel','drawSearchWrap','drawStatusBar'].forEach(function(id){
+      var el=document.getElementById(id);if(!el)return;
+      el.addEventListener('mouseenter',function(){mapEl.classList.add('ui-over');},true);
+      el.addEventListener('mouseleave',function(){mapEl.classList.remove('ui-over');},true);
+    });
+
+
+    var _dg=false,_ds=null;
+    var cvs=drawMap.getCanvas();
+    cvs.addEventListener('mousedown',function(e){_dg=false;_ds={x:e.clientX,y:e.clientY};},true);
+    cvs.addEventListener('mousemove',function(e){if(_ds){var dx=e.clientX-_ds.x,dy=e.clientY-_ds.y;if(Math.sqrt(dx*dx+dy*dy)>5)_dg=true;}},true);
+    cvs.addEventListener('mouseup',function(){_ds=null;},true);
+    cvs.addEventListener('click',function(e){if(_dg){e.stopPropagation();_dg=false;}},true);
+
+    drawMap.on('click',function(e){
+      if(!_cd.active)return;
+      if(_cd.dblPending){_cd.dblPending=false;return;}
+      _onCdClick(e);
+    });
+    drawMap.on('dblclick',function(e){
+      if(!_cd.active)return;
+      _cd.dblPending=true;
+      if(_cd.pts.length>0)_cd.pts.pop();
+      _finishCustomDraw();
+      e.originalEvent.preventDefault();
+    });
+
+    // draw.update fires when a vertex is moved OR a midpoint is clicked to add a vertex.
+    // Only push undo here — NOT also on mousedown — to avoid double entries.
+    drawMap.on('draw.update',function(){
+      _pendingMidpointAdd=false;
+      _pushUndo();
+      updateVtxCount();
+      checkSaveReady();
+    });
+
+    // ── Block whole-polygon drag ──
+    // If mousedown lands on the polygon fill but NOT on a vertex or midpoint,
+    // we block mousemove so MapboxDraw can't register it as a move-feature drag.
+    // We do NOT call Draw.changeMode() in mouseup — that belongs to onDrawSelChange.
+    var _blockingDrag=false;
+    drawMap.on('mousedown',function(e){
+      if(_cd.active)return;
+      var mode=Draw.getMode&&Draw.getMode();
+      if(mode!=='direct_select'&&mode!=='simple_select')return;
+      var onVtx=drawMap.queryRenderedFeatures(e.point,{
+        layers:['gl-draw-va','gl-draw-vi','gl-draw-va-hit','gl-draw-vi-hit',
+                'gl-draw-mp','gl-draw-mp-hit','gl-draw-pt-a']});
+      var onFill=drawMap.queryRenderedFeatures(e.point,{
+        layers:['gl-draw-pf-a','gl-draw-pf-i']});
+      if(onFill.length>0&&onVtx.length===0){
+        _blockingDrag=true;
+        var stopMove=function(mv){mv.originalEvent.stopPropagation();};
+        drawMap.on('mousemove',stopMove);
+        drawMap.once('mouseup',function(){
+          drawMap.off('mousemove',stopMove);
+          _blockingDrag=false;
+          // onDrawSelChange handles re-entering direct_select — don't interfere here
+        });
+      }
+      // No _pushUndo on mousedown; draw.update does it after the op completes
+    });
+
+    drawMap.on('draw.selectionchange',onDrawSelChange);
+    drawMap.on('draw.render',updateVtxCount);
+    drawMap.on('mousemove',function(e){
+      var lng=e.lngLat.lng,lat=e.lngLat.lat;
+      document.getElementById('drawCoordsText').textContent=(Math.abs(lat).toFixed(5))+'° '+(lat>=0?'N':'S')+'   '+(Math.abs(lng).toFixed(5))+'° '+(lng>=0?'E':'W');
+      checkSnap(e);
+    });
+    drawMap.on('style.load',function(){
+      try{drawMap.setPaintProperty('background','background-color','#f3efe6');}catch(_){}
+      try{drawMap.setPaintProperty('water','fill-color','#c4d8e8');}catch(_){}
+    });
+    document.addEventListener('keydown',onDrawKey);
+  }else{drawMap.resize();Draw.deleteAll();_drawHistory=[];_undoStack=[];_stopCustomDraw(true);
+    if(!editId){var mc=map.getCenter(),mz=map.getZoom();drawMap.jumpTo({center:mc,zoom:Math.max(mz,12)});}
+  }
+
+  drawMap.once('idle',function(){
+    _initCdLayers();
+    if(!editId){var mc=map.getCenter(),mz=map.getZoom();drawMap.jumpTo({center:mc,zoom:Math.max(mz,12)});}
+    S.eruvin.forEach(function(e){var sid='ref-'+e.id;try{
+      if(!drawMap.getSource(sid)){drawMap.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
+        drawMap.addLayer({id:sid,type:'line',source:sid,paint:{'line-color':'#1a2c4a','line-width':1,'line-opacity':.12,'line-dasharray':[4,3]}});}
+      else drawMap.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}});}catch(_){}});
+    if(editId){loadForEdit(editId);}
+    else{setTimeout(function(){_startCustomDraw(false);},100);}
+  });
+}
+
+function _initCdLayers(){
+  if(drawMap.getSource('cd-line'))return;
+  var empty={type:'FeatureCollection',features:[]};
+  drawMap.addSource('cd-line',{type:'geojson',data:empty});
+  drawMap.addSource('cd-pts', {type:'geojson',data:empty});
+  drawMap.addLayer({id:'cd-fill',type:'fill',source:'cd-line',paint:{'fill-color':'#1a3060','fill-opacity':0.07}});
+  drawMap.addLayer({id:'cd-line-layer',type:'line',source:'cd-line',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2a52b0','line-width':2.5}});
+  drawMap.addSource('cd-close',{type:'geojson',data:empty});
+  drawMap.addLayer({id:'cd-close-layer',type:'line',source:'cd-close',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#2a52b0','line-width':1.5,'line-opacity':0.4,'line-dasharray':[4,4]}});
+  drawMap.addLayer({id:'cd-pts-halo',type:'circle',source:'cd-pts',filter:['!=',['get','first'],true],paint:{'circle-radius':7,'circle-color':'#fff','circle-stroke-color':'#2a52b0','circle-stroke-width':0}});
+  drawMap.addLayer({id:'cd-pts-layer',type:'circle',source:'cd-pts',filter:['!=',['get','first'],true],paint:{'circle-radius':5.5,'circle-color':'#2a52b0','circle-stroke-color':'#fff','circle-stroke-width':2}});
+  drawMap.addLayer({id:'cd-pt-first',type:'circle',source:'cd-pts',filter:['==',['get','first'],true],paint:{'circle-radius':8,'circle-color':'#c8923a','circle-stroke-color':'#fff','circle-stroke-width':2.5,'circle-opacity':['case',['>=',['get','count'],3],1,0.55]}});
+}
+
+function _updateCdLayers(){
+  if(!drawMap||!drawMap.getSource('cd-line'))return;
+  var pts=_cd.pts,empty={type:'FeatureCollection',features:[]};
+  var col=_cd.excl?'#d94040':'#2a52b0';
+  try{drawMap.setPaintProperty('cd-line-layer','line-color',col);drawMap.setPaintProperty('cd-fill','fill-color',_cd.excl?'#d94040':'#1a3060');drawMap.setPaintProperty('cd-pts-layer','circle-color',col);drawMap.setPaintProperty('cd-pts-halo','circle-stroke-color',col);}catch(_){}
+  if(pts.length===0){drawMap.getSource('cd-line').setData(empty);drawMap.getSource('cd-close').setData(empty);drawMap.getSource('cd-pts').setData(empty);return;}
+  var geom=pts.length>=3?{type:'Polygon',coordinates:[pts.concat([pts[0]])]}:{type:'LineString',coordinates:pts.slice()};
+  drawMap.getSource('cd-line').setData({type:'Feature',geometry:geom,properties:{}});
+  drawMap.getSource('cd-close').setData(pts.length===2?{type:'Feature',geometry:{type:'LineString',coordinates:[pts[pts.length-1],pts[0]]},properties:{}}:empty);
+  drawMap.getSource('cd-pts').setData({type:'FeatureCollection',features:pts.map(function(p,i){return {type:'Feature',geometry:{type:'Point',coordinates:p},properties:{idx:i,first:i===0,count:pts.length}};})});
+}
+
+function _startCustomDraw(isExcl){
+  _undoStack=[];
+  _cd.pts=[];_cd.active=true;_cd.excl=!!isExcl;_cd.dblPending=false;
+  _updateCdLayers();updateVtxCount();updateStatusBar('draw');
+  document.getElementById('dBtn-edit').classList.remove('act');
+  document.getElementById('drawModeBadge').textContent=isExcl?'Exclusion':'Draw';
+  _updateUndoBtn();
+}
+
+function _stopCustomDraw(cancel){
+  _cd.active=false;
+  if(cancel)_cd.pts=[];
+  _updateCdLayers();
+
+  _updateUndoBtn();
+}
+
+function _onCdClick(e){
+  var lng=e.lngLat.lng,lat=e.lngLat.lat;
+  if(_cd.pts.length>=3){
+    var fp=drawMap.project(_cd.pts[0]);
+    var d=Math.sqrt(Math.pow(e.point.x-fp.x,2)+Math.pow(e.point.y-fp.y,2));
+    if(d<16){_finishCustomDraw();return;}
+  }
+  _cd.pts.push([lng,lat]);
+  _updateCdLayers();updateVtxCount();_updateUndoBtn();
+}
+
+function _finishCustomDraw(){
+  if(_cd.pts.length<3){toast('Need at least 3 points','err');return;}
+  var coords=_cd.pts.slice();coords.push(coords[0]);
+  var isExcl=_cd.excl;
+  _stopCustomDraw(false);
+  var fid='cdz-'+Date.now();
+  try{Draw.add({type:'Feature',id:fid,geometry:{type:'Polygon',coordinates:[coords]},properties:{isExcl:isExcl?'1':'0'}});}catch(_){}
+  if(isExcl){
+    var nm=prompt('Name this exclusion zone:','Exclusion Area')||'Exclusion Zone';
+    var exId='ex-'+Date.now();
+    var feat=Draw.get(fid);
+    if(feat){Draw.setFeatureProperty(fid,'exclName',nm);Draw.setFeatureProperty(fid,'exclId',exId);S.curExcl.push({id:exId,name:nm,coords:feat.geometry.coordinates[0]});renderExclList();}
+    S.exclMode=false;
+    document.getElementById('dBtn-excl').classList.remove('act-red');
+    document.getElementById('startExclBtn').classList.remove('act');
+    var main=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
+    if(main){setTimeout(function(){try{Draw.changeMode('direct_select',{featureId:main.id});}catch(_){};document.getElementById('dBtn-edit').classList.add('act');updateStatusBar('edit');},200);}
+    toast('Exclusion added: '+nm,'ok');
+  }else{
+    _setDrawStep(2);
+    // Auto-detect city from polygon center
+    var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
+    var cLng=(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2;
+    var cLat=(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2;
+    var cityEl=document.getElementById('zoneCity');
+    if(cityEl&&!cityEl.value.trim()){
+      cityEl.placeholder='Detecting city…';
+      fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+cLng+','+cLat+'.json?access_token='+TOKEN+'&types=place,locality,neighborhood&limit=1')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          if(d.features&&d.features.length){
+            var f=d.features[0];
+            // Build "City, ST" from context
+            var city=f.text||'';
+            var region=(f.context||[]).find(function(c){return c.id.indexOf('region')===0;});
+            var st=region?region.short_code||region.text:'';
+            if(st)st=st.replace(/^US-/,'');
+            cityEl.value=city+(st?', '+st:'');
+            cityEl.placeholder='e.g. Brooklyn, NY';
+            checkSaveReady();
+          } else cityEl.placeholder='e.g. Brooklyn, NY';
+        }).catch(function(){cityEl.placeholder='e.g. Brooklyn, NY';});
+    }
+    setTimeout(function(){
+      try{Draw.changeMode('simple_select',{featureIds:[fid]});setTimeout(function(){try{Draw.changeMode('direct_select',{featureId:fid});}catch(_){}},100);}catch(_){}
+      document.getElementById('dBtn-edit').classList.add('act');
+      updateStatusBar('edit');
+    },60);
+  }
+  updateVtxCount();checkSaveReady();
+}
+
+function checkSnap(e){
+  var ring=document.getElementById('snapRing');
+  var threshold=12,closest=null,minDist=Infinity;
+  _cd.pts.forEach(function(c){var px=drawMap.project(c),dx=px.x-e.point.x,dy=px.y-e.point.y,d=Math.sqrt(dx*dx+dy*dy);if(d<threshold&&d<minDist){minDist=d;closest=px;}});
+  if(Draw){Draw.getAll().features.forEach(function(f){var coords=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:(f.geometry.type==='LineString'?f.geometry.coordinates:[f.geometry.coordinates]);(coords||[]).forEach(function(c){var px=drawMap.project(c),dx=px.x-e.point.x,dy=px.y-e.point.y,d=Math.sqrt(dx*dx+dy*dy);if(d<threshold&&d<minDist){minDist=d;closest=px;}});});}
+  if(closest){ring.style.display='block';ring.style.left=closest.x+'px';ring.style.top=closest.y+'px';}else ring.style.display='none';
+}
+
+function onDrawKey(e){
+  var overlay=document.getElementById('drawOverlay');if(!overlay.classList.contains('on'))return;
+  var tag=(e.target||{}).tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  if((e.key==='z'||e.key==='Z')&&!e.ctrlKey&&!e.metaKey){e.preventDefault();undoDraw();}
+  else if(e.key==='e'||e.key==='E'){e.preventDefault();setDMode('direct_select');}
+  else if(e.key==='Escape'){if(_cd.active){_stopCustomDraw(true);updateStatusBar('select');}else{var m=Draw&&Draw.getMode&&Draw.getMode();if(m==='draw_polygon'){try{Draw.changeMode('simple_select');}catch(_){}updateStatusBar('select');}}}
+}
+
+function loadForEdit(editId){
+  var e=S.eruvin.find(function(x){return x.id===editId;});if(!e)return;
+  S.curExcl=(e.exclusions||[]).map(function(ex){return Object.assign({},ex);});
+  S.curAdj=(e.adjacency||[]).map(function(a){return Object.assign({},a);});
+  document.getElementById('zoneName').value=e.name;document.getElementById('zoneCity').value=e.city;
+  document.getElementById('zoneStatus').value=e.status;document.getElementById('zoneNote').value=e.note||'';
+  document.getElementById('zoneDonate').value=e.donateUrl||'';
+  setStatus(e.status,true);
+  Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]},properties:{isExcl:'0'}});
+  S.curExcl.forEach(function(ex){Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]},properties:{isExcl:'1',exclId:ex.id,exclName:ex.name}});});
+  // Fit the map to show the entire zone boundary
+  var allCoords=e.coords.slice();
+  S.curExcl.forEach(function(ex){allCoords=allCoords.concat(ex.coords);});
+  var bounds=allCoords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(allCoords[0],allCoords[0]));
+  drawMap.fitBounds(bounds,{padding:80,duration:900,maxZoom:17});
+  setTimeout(function(){
+    var feats=Draw.getAll().features,main=feats.find(function(f){return f.properties.isExcl!=='1';});
+    if(main){
+      try{Draw.changeMode('direct_select',{featureId:main.id});}catch(_){}
+      document.getElementById('dBtn-edit').classList.add('act');
+    }
+    _undoStack=[];_updateUndoBtn();
+  },700);
+  renderExclList();renderAdjList();updateVtxCount();
+  _setDrawStep(2);updateStatusBar('edit');checkSaveReady();
+}
+
+function onDrawSelChange(e){
+  // When MapboxDraw transitions to simple_select it might be because:
+  //   a) user clicked the polygon fill → we want to force back to direct_select
+  //   b) a midpoint click is in progress → draw.update will fire within ~50ms; don't interrupt
+  var mode=Draw.getMode&&Draw.getMode();
+  if(mode==='simple_select'){
+    // Wait a short tick — if draw.update fires in that window (_pendingMidpointAdd cleared),
+    // the mode transition was an internal midpoint-add step and we leave it alone.
+    _pendingMidpointAdd=true;
+    clearTimeout(_selChangeTimer);
+    _selChangeTimer=setTimeout(function(){
+      if(!_pendingMidpointAdd)return; // draw.update already fired and cleared the flag
+      _pendingMidpointAdd=false;
+      var feats=Draw.getAll().features;
+      var target=(e.features&&e.features[0]&&e.features[0].id)
+        ||(feats.find(function(f){return f.properties.isExcl!=='1';})||feats[0]||{}).id;
+      if(target){
+        try{Draw.changeMode('direct_select',{featureId:target});}catch(_){}
+        document.getElementById('dBtn-edit').classList.add('act');
+        updateStatusBar('edit');
+      }
+    },60);
+  }
+  updateVtxCount();
+}
+
+function updateVtxCount(){
+  var total=_cd.active?_cd.pts.length:0;
+  if(Draw){Draw.getAll().features.forEach(function(f){if(f.geometry.type==='Polygon')total+=Math.max(0,(f.geometry.coordinates[0]||[]).length-1);});}
+  var el=document.getElementById('drawVtx');
+  if(el){if(total>0){el.style.display='block';el.textContent=total+' '+(total===1?'vertex':'vertices');}else el.style.display='none';}
+  var zv=document.getElementById('zpVtxCount');if(zv)zv.textContent=total;
+}
+
+function updateStatusBar(mode){
+  var bar=document.getElementById('drawStatusBar');if(!bar)return;
+  if(mode==='draw'){
+    bar.innerHTML='<div class="dsb-item">🖊 <strong>Click map</strong> to place points</div><div class="dsb-sep"></div><div class="dsb-item">Click <strong>first point</strong> to close &amp; finish</div><div class="dsb-sep"></div><div class="dsb-item"><span class="dsb-key">Z</span> undo last point</div>';
+  }else if(mode==='edit'){
+    bar.innerHTML='<div class="dsb-item">✦ <strong>Drag</strong> any point to move it</div><div class="dsb-sep"></div><div class="dsb-item">✦ <strong>Click the line</strong> between points to insert a new one</div><div class="dsb-sep"></div><div class="dsb-item"><span class="dsb-key">Z</span> undo</div>';
+  }else{
+    bar.innerHTML='<div class="dsb-item"><span class="dsb-key">P</span> place points</div><div class="dsb-sep"></div><div class="dsb-item"><span class="dsb-key">E</span> adjust points</div>';
+  }
+  _updateUndoBtn();
+}
+
+function setDMode(mode,fid){
+  if(mode==='direct_select'){
+    if(!Draw)return;
+    _stopCustomDraw(true);
+    var feats=Draw.getAll().features,first=feats.find(function(f){return f.properties.isExcl!=='1';})||feats[0];
+    var id=fid||(first&&first.id);
+    if(id){
+      try{Draw.changeMode('direct_select',{featureId:id});
+        document.getElementById('dBtn-edit').classList.add('act');updateStatusBar('edit');
+      }catch(err){console.warn(err);}
+    }else toast('Draw a zone first','err');
+  }
+}
+
+function undoDraw(){
+  if(_cd.active){
+    // During draw: pop last placed point
+    if(_cd.pts.length>0){_cd.pts.pop();_updateCdLayers();updateVtxCount();_updateUndoBtn();}
+    return;
+  }
+  // During edit: restore previous Draw snapshot
+  if(!Draw||_undoStack.length===0)return;
+  var entry=_undoStack.pop();
+  if(entry.type==='draw_state'){
+    try{
+      Draw.deleteAll();
+      var fc=JSON.parse(entry.data);
+      fc.features.forEach(function(f){try{Draw.add(f);}catch(_){};});
+      // Re-enter direct_select on the main feature
+      var main=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
+      if(main){setTimeout(function(){try{Draw.changeMode('direct_select',{featureId:main.id});}catch(_){}},60);}
+    }catch(e){console.warn(e);}
+  }
+  updateVtxCount();checkSaveReady();_updateUndoBtn();
+}
+
+function delSelected(){
+  if(!Draw)return;
+  var sel=Draw.getSelectedIds();
+  if(sel.length){Draw.delete(sel);toast('Deleted');updateVtxCount();checkSaveReady();}
+  else{Draw.deleteAll();S.curExcl=[];renderExclList();updateVtxCount();checkSaveReady();toast('Cleared');}
+}
+
+function toggleExclMode(){
+  S.exclMode=!S.exclMode;
+  document.getElementById('dBtn-excl').classList.toggle('act-red',S.exclMode);
+  document.getElementById('startExclBtn').classList.toggle('act',S.exclMode);
+  if(S.exclMode){_startCustomDraw(true);toast('Click points to draw the exclusion area','warn');}
+  else{_stopCustomDraw(true);document.getElementById('drawModeBadge').textContent=S.editTargetId?'Edit':'Draw';updateStatusBar('select');}
+}
+
+function renderExclList(){document.getElementById('exclList').innerHTML=S.curExcl.map(function(ex,i){return '<div class="excl-item"><span class="excl-nm">\u2298 '+ex.name+'</span><button class="excl-del" onclick="removeExcl('+i+')">\u2715</button></div>';}).join('');}
+function removeExcl(i){var ex=S.curExcl[i];S.curExcl.splice(i,1);var f=Draw&&Draw.getAll().features.find(function(x){return x.properties.exclId===ex.id;});if(f)Draw.delete([f.id]);renderExclList();}
+function renderAdjList(){
+  var hdr=document.getElementById('adjHeader'),lst=document.getElementById('adjList'),nearby=S.eruvin.filter(function(e){return e.id!==S.editTargetId;});
+  if(!nearby.length){hdr.style.display='none';return;}hdr.style.display='block';
+  lst.innerHTML=nearby.map(function(e){var ex=S.curAdj.find(function(a){return a.id===e.id;}),on=ex&&ex.canEnter;return '<div class="adj-item"><div><div class="adj-nm">'+e.name+'</div><div style="font-size:.66rem;color:rgba(255,255,255,.3)">'+e.city+'</div></div><div style="display:flex;align-items:center;gap:5px"><button class="toggle '+(on?'on':'')+'\" onclick="toggleAdj(\''+e.id+'\')"></button></div></div>';}).join('');
+}
+function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a){a={id:id,canEnter:true,note:''};S.curAdj.push(a);}else a.canEnter=!a.canEnter;renderAdjList();var e=S.eruvin.find(function(x){return x.id===id;});toast(a.canEnter?'Carrying allowed into '+(e&&e.name):'Carrying disabled into '+(e&&e.name),a.canEnter?'ok':'warn');}
+
+function saveZone(){
+  if(_cd.active){if(_cd.pts.length>=3){_finishCustomDraw();}else{toast('Draw zone boundary first (need 3+ points)','err');return;}setTimeout(saveZone,200);return;}
+  if(!Draw)return;
+  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim();
+  if(!name||!city){toast('Enter zone name and city','err');return;}
+  var feats=Draw.getAll().features,main=feats.find(function(f){return f.properties.isExcl!=='1';});
+  if(!main){toast('Draw zone boundary first','err');return;}
+  var coords=main.geometry.coordinates[0];
+  var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
+  var center=[(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2,(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2];
+  var excls=S.curExcl.slice();
+  feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
+  var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}}
+  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}
+  saveCustomZones();renderEruvList();renderStatus();closeDraw();
+}
+
+function saveCustomZones(){
+  // Persist every zone that isn't a BASE_ERUVIN original (or any zone if it's been edited)
+  var toSave=S.eruvin.filter(function(e){
+    var base=BASE_ERUVIN.find(function(b){return b.id===e.id;});
+    return !base||(base&&(e.status!==base.status||e.note!==base.note||e.lastChecked!==base.lastChecked));
+  });
+  if(window._db){
+    toSave.forEach(function(z){window._db.saveZone(z).catch(function(err){console.error('saveZone:',err);});});
+    // Also save brand-new custom zones
+    S.eruvin.filter(function(e){return !BASE_ERUVIN.find(function(b){return b.id===e.id;});}).forEach(function(z){window._db.saveZone(z);});
+  }
+  // Keep localStorage as offline fallback
+  try{var custom=S.eruvin.filter(function(e){return e.id.indexOf('custom-')===0||(e.owner&&!BASE_ERUVIN.find(function(b){return b.id===e.id;}));});localStorage.setItem('myeiruv_zones',JSON.stringify(custom));}catch(_){}
+}
+
+function refreshPage(){window.location.reload();}
+
+// ── Render all Firestore data onto the map ───────────────────────────────────
+function _renderAllMapData(){
+  S.eruvin.forEach(addEruvToMap);
+  (S.shuls||[]).forEach(addShulToMap);
+  renderEruvList();renderStatus();
+}
+
+// Shul markers on map
+var _shulMarkers=[];
+function addShulToMap(shul){
+  if(!shul||isNaN(shul.lat)||isNaN(shul.lng))return;
+  var el=document.createElement('div');
+  el.style.cssText='font-size:18px;line-height:1;cursor:pointer;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))';
+  el.textContent='🕍';
+  el.title=shul.name+' · '+shul.city;
+  var marker=new mapboxgl.Marker({element:el,anchor:'bottom'})
+    .setLngLat([shul.lng,shul.lat])
+    .setPopup(new mapboxgl.Popup({closeButton:false,offset:4})
+      .setHTML('<div class="pop-title">'+shul.name+'</div><div class="pop-status" style="font-size:.7rem;color:var(--muted)">'+shul.city+'</div>'))
+    .addTo(map);
+  _shulMarkers.push({id:shul.id,marker:marker});
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+var toastT;
+function toast(msg,type){var el=document.getElementById('toast');el.textContent=msg;el.className='on'+(type?' '+type:'');clearTimeout(toastT);toastT=setTimeout(function(){el.className='';},3400);}
+
+// INIT
+window.addEventListener('DOMContentLoaded',function(){
+  renderAlerts(); // renders "sign in" prompt until Firestore loads
+});
+
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, doc,
+  getDocs, getDoc, setDoc, deleteDoc, updateDoc, query, where
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyAogjpoQUXKrgRzYzwD7_CbC3tIPZ21Ejo",
+  authDomain:        "myeiruv-a9b88.firebaseapp.com",
+  projectId:         "myeiruv-a9b88",
+  storageBucket:     "myeiruv-a9b88.firebasestorage.app",
+  messagingSenderId: "609731050951",
+  appId:             "1:609731050951:web:5b9ee43c154dcbfd606de2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+const COL = {
+  zones:       collection(db,"zones"),
+  contractors: collection(db,"contractors"),
+  shuls:       collection(db,"shuls"),
+  alerts:      collection(db,"alerts"),
+  users:       collection(db,"users")
+};
+
+// ── Expose Google Auth to non-module scripts ─────────────────────────────────
+window._googleSignIn = async function(role) {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const fbUser = result.user;
+    const email  = fbUser.email.toLowerCase();
+    const isAdmin = email === ADMIN_EMAIL.toLowerCase();
+
+    // Load or create user doc in Firestore
+    let user = await window._db.getUser(email);
+    if (!user) {
+      user = {
+        name:              fbUser.displayName || email.split('@')[0],
+        email:             email,
+        avatar:            fbUser.photoURL || (fbUser.displayName||email)[0].toUpperCase(),
+        role:              isAdmin ? 'admin' : (role === 'contractor' ? 'contractor-pending' : 'user'),
+        contractorStatus:  role === 'contractor' ? 'pending' : 'none',
+        createdAt:         new Date().toISOString()
+      };
+    } else {
+      if (isAdmin) user.role = 'admin';
+      // Update display name / avatar from Google in case they changed
+      user.name   = fbUser.displayName || user.name;
+      user.avatar = fbUser.photoURL    || user.avatar;
+    }
+    if (role === 'contractor' && !isAdmin && user.contractorStatus !== 'approved') {
+      user.contractorStatus = 'pending';
+    }
+    await window._db.saveUser(user);
+    closeModal();
+    signInAs(user);
+  } catch(err) {
+    if (err.code !== 'auth/popup-closed-by-user') {
+      console.error('Google sign-in error:', err);
+      toast('Sign-in failed: ' + (err.message || 'unknown error'), 'err');
+    }
+  }
+};
+
+window._googleSignOut = async function() {
+  try { await signOut(auth); } catch(_) {}
+};
+
+// Listen for auth state — handles page refresh / session restore
+onAuthStateChanged(auth, async function(fbUser) {
+  if (fbUser && !S.user) {
+    const email = fbUser.email.toLowerCase();
+    const user  = await window._db.getUser(email);
+    if (user) signInAs(user);
+  }
+});
+
+const SEED_SHULS = [
+  {id:'shul-young-israel-bklyn',   name:'Young Israel of Brooklyn',  city:'Brooklyn, NY',     lat:40.6501, lng:-73.9496},
+  {id:'shul-beth-abraham-teaneck', name:'Congregation Beth Abraham', city:'Teaneck, NJ',       lat:40.8945, lng:-74.0138},
+  {id:'shul-bnai-jeshurun-monsey', name:"B'nai Jeshurun",            city:'Monsey, NY',        lat:41.1112, lng:-74.0704},
+  {id:'shul-or-chadash-skokie',    name:'Or Chadash',                city:'Skokie, IL',        lat:42.0331, lng:-87.7476},
+  {id:'shul-kol-ami-silver-spring',name:'Kol Ami',                   city:'Silver Spring, MD', lat:39.0040, lng:-77.0256},
+  {id:'shul-bais-naftoli-la',      name:'Bais Naftoli',              city:'Los Angeles, CA',   lat:34.0540, lng:-118.3820},
+  {id:'shul-ohab-zedek-fivetowns', name:'Ohab Zedek',               city:'Woodmere, NY',      lat:40.6348, lng:-73.7112},
+];
+
+window._db = {
+
+  /* ── ZONES ────────────────────────────────────────────────── */
+  async loadZones() {
+    try {
+      let snap = await getDocs(COL.zones);
+      if (snap.empty) {
+        await Promise.all(BASE_ERUVIN.map(z => setDoc(doc(db,"zones",z.id), z)));
+        snap = await getDocs(COL.zones);
+      }
+      return snap.docs.map(d => ({...d.data(), id:d.id}));
+    } catch(e) { console.error("loadZones:",e); return null; }
+  },
+  async saveZone(zone) {
+    try { await setDoc(doc(db,"zones",zone.id), zone); return true; }
+    catch(e) { console.error("saveZone:",e); return false; }
+  },
+  async patchZone(id, fields) {
+    try { await updateDoc(doc(db,"zones",id), fields); return true; }
+    catch(e) { console.error("patchZone:",e); return false; }
+  },
+  async deleteZone(id) {
+    try { await deleteDoc(doc(db,"zones",id)); return true; }
+    catch(e) { console.error("deleteZone:",e); return false; }
+  },
+
+  /* ── USERS ────────────────────────────────────────────────── */
+  async loadUsers() {
+    try {
+      const snap = await getDocs(COL.users);
+      return snap.docs.map(d => ({...d.data(), email:d.id}));
+    } catch(e) { console.error("loadUsers:",e); return []; }
+  },
+  async getUser(email) {
+    try {
+      const snap = await getDoc(doc(db,"users",email.toLowerCase()));
+      return snap.exists() ? {...snap.data(), email:snap.id} : null;
+    } catch(e) { return null; }
+  },
+  async saveUser(user) {
+    if (!user?.email) return false;
+    try {
+      const {email, ...data} = user;
+      await setDoc(doc(db,"users",email.toLowerCase()), data, {merge:true});
+      return true;
+    } catch(e) { console.error("saveUser:",e); return false; }
+  },
+  async patchUser(email, fields) {
+    try { await updateDoc(doc(db,"users",email.toLowerCase()), fields); return true; }
+    catch(e) { return false; }
+  },
+
+  /* ── CONTRACTORS ──────────────────────────────────────────── */
+  async loadContractors() {
+    try {
+      const snap = await getDocs(COL.contractors);
+      return snap.docs.map(d => ({...d.data(), email:d.id}));
+    } catch(e) { console.error("loadContractors:",e); return []; }
+  },
+  async saveContractor(ct) {
+    if (!ct?.email) return false;
+    try {
+      const {email, ...data} = ct;
+      await setDoc(doc(db,"contractors",email.toLowerCase()), data, {merge:true});
+      return true;
+    } catch(e) { console.error("saveContractor:",e); return false; }
+  },
+  async patchContractor(email, fields) {
+    try { await updateDoc(doc(db,"contractors",email.toLowerCase()), fields); return true; }
+    catch(e) { return false; }
+  },
+  async deleteContractor(email) {
+    try { await deleteDoc(doc(db,"contractors",email.toLowerCase())); return true; }
+    catch(e) { return false; }
+  },
+
+  /* ── SHULS ────────────────────────────────────────────────── */
+  async loadShuls() {
+    try {
+      let snap = await getDocs(COL.shuls);
+      if (snap.empty) {
+        await Promise.all(SEED_SHULS.map(s => setDoc(doc(db,"shuls",s.id), s)));
+        snap = await getDocs(COL.shuls);
+      }
+      return snap.docs.map(d => ({...d.data(), id:d.id}));
+    } catch(e) { console.error("loadShuls:",e); return []; }
+  },
+  async saveShul(shul) {
+    if (!shul.id) shul.id = 'shul-'+Date.now();
+    try { await setDoc(doc(db,"shuls",shul.id), shul, {merge:true}); return shul.id; }
+    catch(e) { console.error("saveShul:",e); return null; }
+  },
+  async deleteShul(id) {
+    try { await deleteDoc(doc(db,"shuls",id)); return true; }
+    catch(e) { return false; }
+  },
+
+  /* ── ALERTS ───────────────────────────────────────────────── */
+  async loadAlerts(userEmail) {
+    try {
+      const q = query(COL.alerts, where("userEmail","==",userEmail.toLowerCase()));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({...d.data(), id:d.id}));
+    } catch(e) { console.error("loadAlerts:",e); return []; }
+  },
+  async saveAlert(alert) {
+    if (!alert.id) alert.id = 'alert-'+Date.now();
+    try { await setDoc(doc(db,"alerts",alert.id), alert, {merge:true}); return true; }
+    catch(e) { console.error("saveAlert:",e); return false; }
+  },
+  async patchAlert(id, fields) {
+    try { await updateDoc(doc(db,"alerts",id), fields); return true; }
+    catch(e) { return false; }
+  },
+  async deleteAlert(id) {
+    try { await deleteDoc(doc(db,"alerts",id)); return true; }
+    catch(e) { return false; }
+  },
+
+  /* ── BOOT: load everything in parallel ────────────────────── */
+  async bootAll() {
+    const [zones, users, contractors, shuls] = await Promise.all([
+      this.loadZones(), this.loadUsers(),
+      this.loadContractors(), this.loadShuls()
+    ]);
+
+    if (zones?.length) {
+      S.eruvin = zones.map(z => Object.assign({}, z,
+        {exclusions:z.exclusions||[], adjacency:z.adjacency||[]}));
+    }
+    window._fsUsers       = users       || [];
+    window._fsContractors = contractors || [];
+    S.shuls               = shuls       || [];
+
+    console.log(`[MyEiruv] zones:${S.eruvin.length} shuls:${S.shuls.length} users:${window._fsUsers.length}`);
+
+    if (window._mapLoaded) { _renderAllMapData(); }
+    else                   { window._zonesReady = true; }
+    // Session restore is handled by onAuthStateChanged in the auth block above
+  }
+};
+
+window._db.bootAll();
+</script>
+</body>
+</html>
