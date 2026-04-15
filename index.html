@@ -39,11 +39,14 @@ header{
 .hdr-logo-wrap{
   display:flex;align-items:center;flex-shrink:0;
   position:relative;z-index:2;
+  background:rgba(15,25,45,0.72);
+  border-radius:10px;
+  padding:3px 10px 3px 6px;
 }
 .hdr-logo{
-  height:75px;width:auto;display:block;
+  height:68px;width:auto;display:block;
   mix-blend-mode:screen;
-  filter:contrast(1.1) saturate(1.15) brightness(1.05);
+  filter:contrast(1.05) saturate(1.1) brightness(1.1);
   cursor:pointer;
   transition:opacity .2s;
 }
@@ -605,9 +608,7 @@ header{
       <div id="vMain">
         <div class="modal-title">Welcome to MyEiruv</div>
         <div class="modal-sub">Sign in or create an account to set alerts, manage zones, and more.</div>
-        <button class="goog-btn" onclick="doGoogle('user')"><svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg> Continue with Google</button>
         <button class="goog-btn apply" onclick="showV('vContractor')">&#128296; Apply as Contractor</button>
-        <div class="divider"><span>or email</span></div>
         <!-- Sign In / Sign Up tabs -->
         <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;">
           <button id="authTabSI" onclick="switchAuthTab('si')" style="flex:1;padding:7px;border:none;background:var(--navy);color:#fff;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign In</button>
@@ -633,8 +634,7 @@ header{
       <div id="vRegister" style="display:none">
         <div class="modal-title">Create Account</div>
         <div class="modal-sub">Join MyEiruv — stay informed every Shabbos.</div>
-        <button class="goog-btn" onclick="doGoogle('user')"><svg width="16" height="16" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/><path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg> Sign Up with Google</button>
-        <div class="divider"><span>or email</span></div>
+
         <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="rName2" type="text"></div>
         <div class="fg"><label class="lbl">Email</label><input class="fi" id="rEmail2" type="email"></div>
         <div class="fg"><label class="lbl">Password</label><input class="fi" id="rPass2" type="password" placeholder="Min 6 chars"></div>
@@ -911,8 +911,8 @@ const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.D
 const ADMIN_EMAIL='maprabinowitz@gmail.com';
 const TWILIO_SID='ACf0d4ea35c13c332346a4cdc6f0b93964';
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
-const TWILIO_TOKEN=''; // ← paste your Twilio Auth Token here
-const TWILIO_FROM=''; // ← paste your Twilio phone number e.g. +12015551234
+const TWILIO_TOKEN='789e7653d111c56420a801f9a675f565';
+const TWILIO_FROM='+18884875752'; // ← paste your Twilio phone number e.g. +12015551234
 const ANTHROPIC_KEY='YOUR_ANTHROPIC_API_KEY_HERE'; // ← paste your key from console.anthropic.com
 mapboxgl.accessToken=TOKEN;
 const PROX='-74.006,40.712';
@@ -1788,7 +1788,18 @@ function renderAdmin(sec){
   if(sec==='overview'){
     var up=S.eruvin.filter(function(e){return e.status==='up';}).length,dn=S.eruvin.filter(function(e){return e.status==='down';}).length,rv=S.eruvin.filter(function(e){return e.status==='review';}).length;
     var pend=conts.filter(function(u){return u.status==='pending';});
-    var html='<span class="adm-sec">Overview</span><div class="adm-stats"><div class="sbox"><div class="sbox-n">'+S.eruvin.length+'</div><div class="sbox-l">Zones</div></div><div class="sbox"><div class="sbox-n" style="color:var(--green)">'+up+'</div><div class="sbox-l">Up</div></div><div class="sbox"><div class="sbox-n" style="color:var(--amber)">'+rv+'</div><div class="sbox-l">Review</div></div><div class="sbox"><div class="sbox-n" style="color:var(--red)">'+dn+'</div><div class="sbox-l">Down</div></div></div>';
+    var fsOk=window._fsUsers&&window._fsUsers.length>0;
+    var fsWarn=!fsOk?'<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:.78rem;color:#7a5010;"><strong>⚠️ Firestore not connected.</strong> Zone saves won't persist to cloud.<br>Go to <a href="https://console.firebase.google.com/project/myeiruv-a9b88/firestore/rules" target="_blank" style="color:#2563b0">Firebase Console → Firestore → Rules</a> and paste:<br><pre style="background:#f8f4e8;border-radius:5px;padding:7px;margin-top:6px;font-size:.68rem;overflow-x:auto">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+    match /zones/{id} { allow read: if true; }
+    match /shuls/{id} { allow read: if true; }
+  }
+}</pre></div>':'';
+    var html=fsWarn+'<span class="adm-sec">Overview</span><div class="adm-stats"><div class="sbox"><div class="sbox-n">'+S.eruvin.length+'</div><div class="sbox-l">Zones</div></div><div class="sbox"><div class="sbox-n" style="color:var(--green)">'+up+'</div><div class="sbox-l">Up</div></div><div class="sbox"><div class="sbox-n" style="color:var(--amber)">'+rv+'</div><div class="sbox-l">Review</div></div><div class="sbox"><div class="sbox-n" style="color:var(--red)">'+dn+'</div><div class="sbox-l">Down</div></div></div>';
     html+='<div class="adm-stats" style="margin-top:6px"><div class="sbox"><div class="sbox-n">'+(S.shuls||[]).length+'</div><div class="sbox-l">Shuls</div></div><div class="sbox"><div class="sbox-n">'+users.length+'</div><div class="sbox-l">Users</div></div><div class="sbox"><div class="sbox-n">'+conts.length+'</div><div class="sbox-l">Contractors</div></div></div>';
     if(pend.length){html+='<span class="adm-sec">Pending Applications</span>';pend.forEach(function(u){html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge b-rv">Pending</span></div><div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div></div>';});}
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
