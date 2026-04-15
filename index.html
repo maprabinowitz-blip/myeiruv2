@@ -457,6 +457,13 @@ header{
           <div class="u-drop-em" id="dEm">—</div>
           <div class="u-drop-badge" id="dRole">User</div>
         </div>
+        <div style="padding:6px 14px 4px;">
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:3px;font-weight:600">📱 SMS Alerts Phone</div>
+          <div style="display:flex;gap:5px;">
+            <input id="dPhone" class="fi" type="tel" placeholder="+1 (555) 000-0000" style="font-size:.76rem;padding:5px 8px;flex:1;">
+            <button onclick="saveUserPhone()" style="padding:5px 10px;border-radius:6px;border:none;background:var(--navy);color:#fff;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;">Save</button>
+          </div>
+        </div>
         <button class="u-drop-it" onclick="goAlerts()">&#128276; My Alerts</button>
         <div class="u-drop-sep"></div>
         <button class="u-drop-it red" onclick="doSignOut()">Sign Out</button>
@@ -579,6 +586,7 @@ header{
     <button class="anav" onclick="aN(this,'contractors')">Contractors</button>
     <button class="anav" onclick="aN(this,'shuls')">Shuls</button>
     <button class="anav" onclick="aN(this,'posts')">Posts</button>
+    <button class="anav" onclick="aN(this,'sms')">📱 SMS Blast</button>
   </div>
   <div class="adm-body" id="admBody"></div>
 </div>
@@ -901,6 +909,10 @@ header{
 <script>
 const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.DxC4l12BdksgQuSZnArQXg';
 const ADMIN_EMAIL='maprabinowitz@gmail.com';
+const TWILIO_SID='ACf0d4ea35c13c332346a4cdc6f0b93964';
+// NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
+const TWILIO_TOKEN=''; // ← paste your Twilio Auth Token here
+const TWILIO_FROM=''; // ← paste your Twilio phone number e.g. +12015551234
 const ANTHROPIC_KEY='YOUR_ANTHROPIC_API_KEY_HERE'; // ← paste your key from console.anthropic.com
 mapboxgl.accessToken=TOKEN;
 const PROX='-74.006,40.712';
@@ -1637,6 +1649,7 @@ function signInAs(user){
   document.getElementById('dNm').textContent=user.name;
   document.getElementById('dEm').textContent=user.email;
   document.getElementById('dRole').textContent=user.role==='admin'?'Admin':user.role==='contractor'?'Contractor':user.contractorStatus==='pending'?'Pending':'Member';
+  var phoneEl=document.getElementById('dPhone');if(phoneEl)phoneEl.value=user.phone||'';
   var isAdmin=user.role==='admin',isCont=user.role==='contractor'||isAdmin;
   document.getElementById('adminTrigger').style.display=isAdmin?'flex':'none';
   // importMapTrigger removed — Import is only inside the zone editor
@@ -1721,6 +1734,48 @@ function postAnn(){
   if(document.getElementById('annT'))document.getElementById('annT').value='';
   if(document.getElementById('annB'))document.getElementById('annB').value='';
 }
+function saveUserPhone(){
+  if(!S.user){toast('Sign in first','err');return;}
+  var phone=(document.getElementById('dPhone')&&document.getElementById('dPhone').value.trim())||'';
+  S.user.phone=phone;
+  _cacheAndSaveUser(S.user);
+  toast(phone?'Phone saved for SMS alerts':'Phone removed','ok');
+}
+async function sendSmsBlast(){
+  var msg=(document.getElementById('smsMsg')&&document.getElementById('smsMsg').value.trim())||'';
+  if(!msg){toast('Message required','err');return;}
+  var eruvId=document.getElementById('smsEruv')&&document.getElementById('smsEruv').value;
+  var users=window._fsUsers||[];
+  var targets=users.filter(function(u){
+    if(!u.phone)return false;
+    if(eruvId){return (u.eruvSubscriptions||[]).includes(eruvId)||(u.alerts||[]).some(function(a){return a.eruv===eruvId;});}
+    return true;
+  });
+  if(!targets.length){toast('No subscribers with phone numbers found','err');return;}
+  var btn=document.getElementById('smsSendBtn');
+  var status=document.getElementById('smsStatus');
+  btn.disabled=true;btn.textContent='Sending…';
+  var sent=0,failed=0;
+  var creds=btoa(TWILIO_SID+':'+TWILIO_TOKEN);
+  for(var i=0;i<targets.length;i++){
+    var phone=targets[i].phone.replace(/\D/g,'');
+    if(phone.length===10)phone='+1'+phone;
+    else if(!phone.startsWith('+'))phone='+'+phone;
+    try{
+      var resp=await fetch('https://api.twilio.com/2010-04-01/Accounts/'+TWILIO_SID+'/Messages.json',{
+        method:'POST',
+        headers:{'Authorization':'Basic '+creds,'Content-Type':'application/x-www-form-urlencoded'},
+        body:'From='+encodeURIComponent(TWILIO_FROM)+'&To='+encodeURIComponent(phone)+'&Body='+encodeURIComponent(msg)
+      });
+      if(resp.ok)sent++;else failed++;
+    }catch(e){failed++;}
+    if(status)status.textContent='Sending '+( i+1)+'/'+targets.length+'…';
+  }
+  btn.disabled=false;btn.textContent='📤 Send SMS';
+  toast('Sent: '+sent+' · Failed: '+failed,sent>0?'ok':'err');
+  if(status)status.textContent='Last blast: '+sent+' sent, '+failed+' failed';
+}
+
 function filterUsers(v){var el=document.getElementById('userListEl');if(el)el.innerHTML=mkUserList(window._fsUsers||[],v.toLowerCase());}
 function mkUserList(users,q){
   var f=q?users.filter(function(u){return u.name.toLowerCase().indexOf(q)>=0||u.email.toLowerCase().indexOf(q)>=0;}):users;
@@ -1755,6 +1810,19 @@ function renderAdmin(sec){
     body.innerHTML=html;
   }else if(sec==='posts'){
     body.innerHTML='<span class="adm-sec">Post Announcement</span><div class="fg"><label class="lbl">Title</label><input class="fi" id="annT" placeholder="e.g. Brooklyn Eiruv Update"></div><div class="fg"><label class="lbl">Message</label><textarea class="fi" id="annB" rows="3" style="resize:vertical;min-height:60px"></textarea></div><button class="btn btn-navy btn-full" onclick="postAnn()">Post to All Users</button>';
+  }else if(sec==='sms'){
+    var subCount=(window._fsUsers||[]).filter(function(u){return u.phone;}).length;
+    body.innerHTML='<span class="adm-sec">📱 SMS Blast Notification</span>'
+      +'<div style="background:#f0f4ff;border:1px solid #c8d4f0;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:.78rem;color:#334;line-height:1.6">'
+      +'<strong>'+subCount+'</strong> subscriber(s) with phone numbers on file.<br>'
+      +'Cost: ~$'+( (subCount*0.008).toFixed(2) )+' per blast (Twilio ~$0.008/text).</div>'
+      +(TWILIO_TOKEN?'':'<div style="background:#fff8e8;border:1px solid #f0c040;border-radius:7px;padding:9px 12px;margin-bottom:12px;font-size:.76rem;color:#7a5010;">⚠️ Twilio Auth Token not set. Edit TWILIO_TOKEN and TWILIO_FROM in the code.</div>')
+      +'<div class="fg"><label class="lbl">Eruv (optional)</label><select class="fi" id="smsEruv"><option value="">All subscribers</option>'
+      +S.eruvin.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('')
+      +'</select></div>'
+      +'<div class="fg"><label class="lbl">Message</label><textarea class="fi" id="smsMsg" rows="3" style="resize:vertical;min-height:70px" placeholder="e.g. ✅ Brooklyn Eiruv is UP this Shabbos Parshas Vayeira. — myeiruv.org"></textarea></div>'
+      +'<div id="smsStatus" style="font-size:.76rem;margin-bottom:8px;color:var(--muted)"></div>'
+      +'<button class="btn btn-navy btn-full" onclick="sendSmsBlast()" id="smsSendBtn">📤 Send SMS</button>';
   }
 }
 function adminAddShul(){
@@ -2550,8 +2618,8 @@ function saveZone(){
   var excls=S.curExcl.slice();
   feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
   var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
-  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}}
-  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
+  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
   saveCustomZones();renderEruvList();renderStatus();closeDraw();
 }
 
