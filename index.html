@@ -41,9 +41,9 @@ header{
   position:relative;z-index:2;
 }
 .hdr-logo{
-  height:60px;width:auto;display:block;
-  mix-blend-mode:multiply;
-  filter:contrast(1.05) saturate(1.1);
+  height:75px;width:auto;display:block;
+  mix-blend-mode:screen;
+  filter:contrast(1.1) saturate(1.15) brightness(1.05);
   cursor:pointer;
   transition:opacity .2s;
 }
@@ -442,10 +442,7 @@ header{
     <button class="hbtn hbtn-ghost" id="editZonesTrigger" style="display:none" onclick="openZonePicker()">&#9999;&#65039; Edit Zones</button>
     <button class="hbtn hbtn-gold" id="drawTrigger" style="display:none" onclick="openDraw('draw')">+ Create Zone</button>
     <button class="signin-pill" id="signinPill" onclick="openModal('vMain')">
-      <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="position:absolute;bottom:0"><circle cx="7" cy="5.5" r="2.5" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/><path d="M2 14c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="rgba(255,255,255,.9)" stroke-width="1.2" stroke-linecap="round"/></svg>
-        <svg width="14" height="6" viewBox="0 0 14 6" fill="none" style="position:absolute;top:0"><ellipse cx="7" cy="4" rx="5.5" ry="2.2" fill="rgba(255,255,255,.85)"/><ellipse cx="7" cy="2.5" rx="3.5" ry="2.2" fill="rgba(255,255,255,.85)"/><ellipse cx="7" cy="4" rx="6.5" ry="1.2" fill="rgba(255,255,255,.6)"/></svg>
-      </span>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/><path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="rgba(255,255,255,.9)" stroke-width="1.2" stroke-linecap="round"/></svg>
       Sign In
     </button>
     <div style="position:relative;display:none;margin-left:4px" id="userPillWrap">
@@ -1216,22 +1213,89 @@ function planRoute(){
   var btn=document.getElementById('routeBtn');
   btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> Checking…';
   clearRouteLayer();
+  var GROUTES_KEY='AIzaSyDnJ0h-tN_c8WG8CBE8DBZJC0DIMW6C3V8';
+  var _routeCache={};
+  function roundCoord(v){return Math.round(v*1000)/1000;}
+  function cacheKey(sc,ec){return roundCoord(sc.lng)+','+roundCoord(sc.lat)+'|'+roundCoord(ec.lng)+','+roundCoord(ec.lat);}
+
+  // Decode Google encoded polyline to [[lng,lat],...]
+  function decodePolyline(str){
+    var idx=0,lat=0,lng=0,coords=[];
+    while(idx<str.length){
+      var b,shift=0,result=0;
+      do{b=str.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);
+      lat+=(result&1)?~(result>>1):(result>>1);
+      shift=0;result=0;
+      do{b=str.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);
+      lng+=(result&1)?~(result>>1):(result>>1);
+      coords.push([lng/1e5,lat/1e5]);
+    }
+    return coords;
+  }
+
   function go(sc,ec){
     if(!sc){toast('Start not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
     if(!ec){toast('End not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-    // walking profile + curb snapping + prefer walking paths + exclude motorway/ferry
+
+    var ck=cacheKey(sc,ec);
+    if(_routeCache[ck]){processRoute(_routeCache[ck],sc,ec);return;}
+
+    // Try Google Routes API first
+    var googleUrl='https://routes.googleapis.com/directions/v2:computeRoutes';
+    var googleBody={
+      origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
+      destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},
+      travelMode:'WALK',
+      computeAlternativeRoutes:false,
+      routeModifiers:{avoidFerries:true},
+      polylineQuality:'HIGH_QUALITY'
+    };
+    fetch(googleUrl,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GROUTES_KEY,'X-Goog-FieldMask':'routes.polyline,routes.distanceMeters,routes.duration,routes.legs.steps'},
+    body:JSON.stringify(googleBody)
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.routes&&d.routes.length&&d.routes[0].polyline){
+        var r=d.routes[0];
+        var coords=decodePolyline(r.polyline.encodedPolyline);
+        var steps=(r.legs&&r.legs[0]&&r.legs[0].steps)||[];
+        var result={coords:coords,distance:r.distanceMeters||0,duration:parseInt(r.duration)||0,steps:steps,source:'google'};
+        _routeCache[ck]=result;
+        processRoute(result,sc,ec);
+      } else {
+        console.warn('Google Routes failed, falling back to Mapbox',d);
+        fallbackMapbox(sc,ec,ck);
+      }
+    }).catch(function(err){
+      console.warn('Google Routes error, falling back:',err);
+      fallbackMapbox(sc,ec,ck);
+    });
+  }
+
+  function fallbackMapbox(sc,ec,ck){
     var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
       +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
-      +'?overview=full&geometries=geojson&steps=true'
-      +'&approaches=curb%3Bcurb'
-      +'&exclude=ferry'
-      +'&access_token='+TOKEN;
+      +'?overview=full&geometries=geojson&steps=true&approaches=curb%3Bcurb&exclude=ferry&access_token='+TOKEN;
     fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.code&&d.code!=='Ok'){console.error('Directions API error:',d.code,d.message);toast('Route error: '+d.message,'err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      if(d.code&&d.code!=='Ok'){toast('Route error: '+d.message,'err');btn.innerHTML='Check Route';btn.disabled=false;return;}
       if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      var route=d.routes[0],coords=route.geometry.coordinates;
-      var baseId='rt-'+Date.now();
-      S.routeLayerId=baseId;
+      var r=d.routes[0];
+      var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox'};
+      _routeCache[ck]=result;
+      processRoute(result,sc,ec);
+    }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+  }
+
+  function processRoute(result,sc,ec){
+    var coords=result.coords;
+    var baseId='rt-'+Date.now();
+    S.routeLayerId=baseId;
+    // Normalize into the shape the rendering code expects
+    var route={geometry:{coordinates:coords},distance:result.distance,duration:result.duration,legs:[{steps:result.steps||[]}]};
+    renderRouteResult(route,coords,baseId,sc,ec);
+  }
+
+  function renderRouteResult(route,coords,baseId,sc,ec){
 
       // Check every coord for zone membership (full resolution)
       var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
@@ -1333,20 +1397,26 @@ function planRoute(){
         // Start marker — walking man with kippah (custom SVG)
         var startEl=document.createElement('div');
         startEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))';
-        startEl.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">'
-          // kippah
-          +'<ellipse cx="14" cy="7" rx="7" ry="3.5" fill="#1a2c4a"/>'
-          +'<ellipse cx="14" cy="7" rx="7" ry="3.5" fill="none" stroke="#c8923a" stroke-width="1"/>'
+        startEl.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42">'
+          // shtreimel brim (wide fur band)
+          +'<ellipse cx="15" cy="10" rx="10" ry="3" fill="#3a1e08"/>'
+          +'<ellipse cx="7"  cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
+          +'<ellipse cx="11" cy="8.8" rx="2"   ry="1.6" fill="#7a3d18"/>'
+          +'<ellipse cx="15" cy="8.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
+          +'<ellipse cx="19" cy="8.8" rx="2"   ry="1.6" fill="#7a3d18"/>'
+          +'<ellipse cx="23" cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
+          // shtreimel velvet crown
+          +'<ellipse cx="15" cy="7" rx="6.5" ry="5" fill="#0f0704"/>'
           // head
-          +'<circle cx="14" cy="11" r="4.5" fill="#f5c8a0"/>'
-          // body (walking pose)
-          +'<line x1="14" y1="15.5" x2="14" y2="24" stroke="#1a2c4a" stroke-width="2.5" stroke-linecap="round"/>'
+          +'<circle cx="15" cy="15" r="4.5" fill="#f5c8a0"/>'
+          // body
+          +'<line x1="15" y1="19.5" x2="15" y2="28" stroke="#1a2c4a" stroke-width="2.5" stroke-linecap="round"/>'
           // arms
-          +'<line x1="14" y1="18" x2="9" y2="22" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
-          +'<line x1="14" y1="18" x2="19" y2="21" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
-          // legs (walking)
-          +'<line x1="14" y1="24" x2="9" y2="32" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
-          +'<line x1="14" y1="24" x2="19" y2="30" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
+          +'<line x1="15" y1="22" x2="10" y2="26" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
+          +'<line x1="15" y1="22" x2="20" y2="25" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
+          // legs
+          +'<line x1="15" y1="28" x2="10" y2="36" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
+          +'<line x1="15" y1="28" x2="20" y2="34" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
           +'</svg>';
         routeMarkers.push(new mapboxgl.Marker({element:startEl,anchor:'bottom'}).setLngLat([sc.lng,sc.lat]).addTo(map));
 
@@ -1394,7 +1464,6 @@ function planRoute(){
       var pending=exits.length,done=0;
       if(!pending){finish();return;}
       exits.forEach(function(exit,i){reverseGeocode(exit.lng,exit.lat,function(label){exits[i].label=label;done++;if(done>=pending)finish();});});
-    }).catch(function(err){console.error(err);toast('Route error','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
   if(sc&&ec){go(sc,ec);return;}
   var needSc=!sc,needEc=!ec,resolved={};
@@ -1409,6 +1478,39 @@ function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-full
 // SIDEBAR
 function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);}
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
+// ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
+// Returns "Shabbos Parshas X" or weekday name for a given Date
+var PARSHIOS=[
+  'Bereishis','Noach','Lech Lecha','Vayeira','Chayei Sarah','Toldos','Vayeitzei','Vayishlach','Vayeishev','Mikeitz','Vayigash','Vayechi',
+  'Shemos','Va\'eira','Bo','Beshalach','Yisro','Mishpatim','Terumah','Tetzaveh','Ki Sisa','Vayakheil','Pekudei',
+  'Vayikra','Tzav','Shemini','Tazria','Metzora','Acharei Mos','Kedoshim','Emor','Behar','Bechukosai',
+  'Bamidbar','Nasso','Behaaloscha','Shelach','Korach','Chukas','Balak','Pinchas','Matos','Masei',
+  'Devarim','Va\'eschanan','Eikev','Re\'eh','Shoftim','Ki Seitzei','Ki Savo','Nitzavim','Vayeilech','Ha\'azinu','V\'Zos HaBracha'
+];
+function getParsha(date){
+  // Approximate weekly parsha cycle — Shabbos is the reference point
+  // Bereishis week 1 falls ~Oct 2024 (after Simchas Torah)
+  var BASE=new Date('2024-10-26'); // Bereishis 5785 (Shabbos)
+  var msPerWeek=7*24*60*60*1000;
+  var week=Math.round((date-BASE)/msPerWeek);
+  var idx=((week%PARSHIOS.length)+PARSHIOS.length)%PARSHIOS.length;
+  return PARSHIOS[idx];
+}
+function getEruvTimestamp(){
+  var now=new Date();
+  var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Shabbos'];
+  var dayName=days[now.getDay()];
+  var time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  if(now.getDay()===6){// Shabbos
+    return 'Shabbos Parshas '+getParsha(now)+', '+time;
+  }
+  // Show upcoming Shabbos parsha on Fri/Thu
+  if(now.getDay()===5||now.getDay()===4){
+    var nextShabbos=new Date(now);nextShabbos.setDate(now.getDate()+(6-now.getDay()));
+    return dayName+' '+time+' · Parshas '+getParsha(nextShabbos);
+  }
+  return dayName+' '+time;
+}
 function renderStatus(f){
   f=f||'all';
   var list=f==='all'?S.eruvin:S.eruvin.filter(function(e){return e.status===f;});
@@ -1493,7 +1595,8 @@ function doEmail(){
   if(!email||!pass){err.textContent='Please fill all fields.';err.style.display='block';return;}
   var isAdmin=email===ADMIN_EMAIL.toLowerCase();
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;});
-  if(!user){user={name:email.split('@')[0],email:email,password:pass,role:isAdmin?'admin':'user',avatar:email[0].toUpperCase(),contractorStatus:'none'};}
+  if(!user&&!isAdmin){err.textContent='No account found. Please sign up first.';err.style.display='block';return;}
+  if(!user&&isAdmin){user={name:'Admin',email:email,password:pass,role:'admin',avatar:'A',contractorStatus:'none'};}
   else{if(user.password&&user.password!==pass){err.textContent='Incorrect password.';err.style.display='block';return;}if(isAdmin)user.role='admin';user.password=pass;}
   _cacheAndSaveUser(user);
   closeModal();signInAs(user);
@@ -1567,7 +1670,7 @@ function aN(btn,sec){document.querySelectorAll('.anav').forEach(function(b){b.cl
 function admStatus(id,status){
   var e=S.eruvin.find(function(x){return x.id===id;});if(!e)return;
   var note=status!=='up'?(prompt('Note (optional):','')||''):'';
-  e.status=status;e.note=note;e.lastChecked=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  e.status=status;e.note=note;e.lastChecked=getEruvTimestamp();
   try{map.setPaintProperty('eruv-'+id+'-line','line-color',SCOL[status]);}catch(_){}
   try{map.setPaintProperty('eruv-'+id+'-fill','fill-color',SCOL[status]);}catch(_){}
   if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked});
@@ -2447,8 +2550,8 @@ function saveZone(){
   var excls=S.curExcl.slice();
   feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
   var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
-  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}}
-  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}}
+  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){if(ok)toast('Zone saved & synced to cloud: '+name,'ok');});}
   saveCustomZones();renderEruvList();renderStatus();closeDraw();
 }
 
