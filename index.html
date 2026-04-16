@@ -18,7 +18,7 @@
   --green:#22a865;--red:#d94040;--amber:#e08020;
   --sh:0 2px 14px rgba(20,40,90,.10);
   --shl:0 8px 40px rgba(20,40,90,.18);
-  --r:10px;--hh:72px;--sw:380px;
+  --r:10px;--hh:84px;--sw:380px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;color:var(--text);}
@@ -39,16 +39,14 @@ header{
 .hdr-logo-wrap{
   display:flex;align-items:center;flex-shrink:0;
   position:relative;z-index:2;
-  background:rgba(15,25,45,0.72);
-  border-radius:10px;
-  padding:3px 10px 3px 6px;
 }
 .hdr-logo{
-  height:68px;width:auto;display:block;
-  mix-blend-mode:screen;
-  filter:contrast(1.05) saturate(1.1) brightness(1.1);
+  height:80px;width:auto;display:block;
+  mix-blend-mode:multiply;
+  filter:contrast(1.1) saturate(1.2) brightness(0.95) invert(0);
   cursor:pointer;
   transition:opacity .2s;
+  background:transparent;
 }
 .hdr-logo:hover{opacity:.85;}
 
@@ -913,7 +911,7 @@ const TWILIO_SID='ACf0d4ea35c13c332346a4cdc6f0b93964';
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
 const TWILIO_TOKEN='789e7653d111c56420a801f9a675f565';
 const TWILIO_FROM='+18884875752'; // ← paste your Twilio phone number e.g. +12015551234
-const ANTHROPIC_KEY='YOUR_ANTHROPIC_API_KEY_HERE'; // ← paste your key from console.anthropic.com
+const ANTHROPIC_KEY=''; // AI zone building requires an Anthropic API key
 mapboxgl.accessToken=TOKEN;
 const PROX='-74.006,40.712';
 const SCOL={up:'#22a865',review:'#e08020',down:'#d94040'};
@@ -1789,17 +1787,8 @@ function renderAdmin(sec){
     var up=S.eruvin.filter(function(e){return e.status==='up';}).length,dn=S.eruvin.filter(function(e){return e.status==='down';}).length,rv=S.eruvin.filter(function(e){return e.status==='review';}).length;
     var pend=conts.filter(function(u){return u.status==='pending';});
     var fsOk=window._fsUsers&&window._fsUsers.length>0;
-    var fsWarn=!fsOk?'<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:.78rem;color:#7a5010;"><strong>⚠️ Firestore not connected.</strong> Zone saves won't persist to cloud.<br>Go to <a href="https://console.firebase.google.com/project/myeiruv-a9b88/firestore/rules" target="_blank" style="color:#2563b0">Firebase Console → Firestore → Rules</a> and paste:<br><pre style="background:#f8f4e8;border-radius:5px;padding:7px;margin-top:6px;font-size:.68rem;overflow-x:auto">rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
-    }
-    match /zones/{id} { allow read: if true; }
-    match /shuls/{id} { allow read: if true; }
-  }
-}</pre></div>':'';
-    var html=fsWarn+'<span class="adm-sec">Overview</span><div class="adm-stats"><div class="sbox"><div class="sbox-n">'+S.eruvin.length+'</div><div class="sbox-l">Zones</div></div><div class="sbox"><div class="sbox-n" style="color:var(--green)">'+up+'</div><div class="sbox-l">Up</div></div><div class="sbox"><div class="sbox-n" style="color:var(--amber)">'+rv+'</div><div class="sbox-l">Review</div></div><div class="sbox"><div class="sbox-n" style="color:var(--red)">'+dn+'</div><div class="sbox-l">Down</div></div></div>';
+    var fsWarn=!fsOk?'<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:.78rem;color:#7a5010"><strong>&#9888; Firestore not connected.</strong> Zone saves won&#39;t sync to cloud. Fix Firestore rules in Firebase Console.</div>':'';
+        var html=fsWarn+'<span class="adm-sec">Overview</span><div class="adm-stats"><div class="sbox"><div class="sbox-n">'+S.eruvin.length+'</div><div class="sbox-l">Zones</div></div><div class="sbox"><div class="sbox-n" style="color:var(--green)">'+up+'</div><div class="sbox-l">Up</div></div><div class="sbox"><div class="sbox-n" style="color:var(--amber)">'+rv+'</div><div class="sbox-l">Review</div></div><div class="sbox"><div class="sbox-n" style="color:var(--red)">'+dn+'</div><div class="sbox-l">Down</div></div></div>';
     html+='<div class="adm-stats" style="margin-top:6px"><div class="sbox"><div class="sbox-n">'+(S.shuls||[]).length+'</div><div class="sbox-l">Shuls</div></div><div class="sbox"><div class="sbox-n">'+users.length+'</div><div class="sbox-l">Users</div></div><div class="sbox"><div class="sbox-n">'+conts.length+'</div><div class="sbox-l">Contractors</div></div></div>';
     if(pend.length){html+='<span class="adm-sec">Pending Applications</span>';pend.forEach(function(u){html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge b-rv">Pending</span></div><div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div></div>';});}
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
@@ -1959,6 +1948,10 @@ function onDescType(val){
 }
 
 function processMapImport(){
+  if(!ANTHROPIC_KEY){
+    document.getElementById('mi-status').textContent='⚠ AI features need an Anthropic API key. Ask your admin to set ANTHROPIC_KEY in the code.';
+    toast('AI key not configured','err');return;
+  }
   var raw=document.getElementById('mi-paste').value.trim(),desc=document.getElementById('mi-desc').value.trim();
   if(!raw&&!desc){toast('Describe the zone or upload a file','err');return;}
   var btn=document.querySelector('#mi-step1 .btn-navy');btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> AI is building your zone…';
