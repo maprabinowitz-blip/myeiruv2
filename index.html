@@ -18,7 +18,7 @@
   --green:#22a865;--red:#d94040;--amber:#e08020;
   --sh:0 2px 14px rgba(20,40,90,.10);
   --shl:0 8px 40px rgba(20,40,90,.18);
-  --r:10px;--hh:96px;--sw:380px;
+  --r:10px;--hh:104px;--sw:380px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;color:var(--text);}
@@ -41,9 +41,9 @@ header{
   position:relative;z-index:2;
 }
 .hdr-logo{
-  height:92px;width:auto;display:block;
+  height:100px;width:auto;display:block;
   mix-blend-mode:screen;
-  filter:brightness(1.15) saturate(1.1) contrast(1.05);
+  filter:brightness(1.2) saturate(1.05) contrast(1.0);
   cursor:pointer;
   transition:opacity .2s;
 }
@@ -430,7 +430,6 @@ header{
 <header>
   <div class="hdr-logo-wrap">
     <img class="hdr-logo" src="logo.png" alt="MyEiruv" onclick="refreshPage()" title="MyEiruv — click to refresh">
-    <button class="logo-refresh" onclick="refreshPage()" title="Refresh">&#8635;</button>
   </div>
   <div class="hdr-brand" id="hdrBrand">
     <div class="hdr-brand-small">Community Eiruv Platform</div>
@@ -906,11 +905,11 @@ header{
 <script>
 const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.DxC4l12BdksgQuSZnArQXg';
 const ADMIN_EMAIL='maprabinowitz@gmail.com';
-const TWILIO_SID='ACf0d4ea35c13c332346a4cdc6f0b93964';
+const TWILIO_SID=''; // Paste your new Twilio SID here
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
-const TWILIO_TOKEN='789e7653d111c56420a801f9a675f565';
-const TWILIO_FROM='+18884875752'; // ← paste your Twilio phone number e.g. +12015551234
-const ANTHROPIC_KEY='sk-ant-placeholder'; // Replace with your key from console.anthropic.com
+const TWILIO_TOKEN=''; // Paste your new Twilio Auth Token here
+const TWILIO_FROM='+18884875752';
+const ANTHROPIC_KEY='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';
 mapboxgl.accessToken=TOKEN;
 const PROX='-74.006,40.712';
 const SCOL={up:'#22a865',review:'#e08020',down:'#d94040'};
@@ -950,6 +949,7 @@ map.on('load',()=>{
   }else{
     // Render what we have (BASE_ERUVIN fallback) while Firestore loads
     S.eruvin.forEach(addEruvToMap);
+    (SEED_SHULS||[]).forEach(addShulToMap);
     renderEruvList();renderStatus();
   }
 });
