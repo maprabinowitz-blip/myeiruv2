@@ -1701,6 +1701,35 @@ document.addEventListener('click',function(e){if(!e.target.closest('#userPillWra
 function openAdmin(){document.getElementById('adminDrawer').classList.add('on');renderAdmin('overview');}
 function closeAdmin(){document.getElementById('adminDrawer').classList.remove('on');}
 function aN(btn,sec){document.querySelectorAll('.anav').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');renderAdmin(sec);}
+function sendEruvEmailAlerts(eruv,status,note){
+  var alerts=(window._fsUsers||[]).filter(function(u){
+    return u.email&&(S.alerts||[]).concat(
+      (window._fsUsers||[]).flatMap?
+      (window._fsUsers||[]).flatMap(function(x){return x.alerts||[];}):[]
+    ).some(function(a){return a&&a.eruv===eruv.id;}) ||
+    (u.alerts||[]).some(function(a){return a&&a.eruv===eruv.id;});
+  });
+  // Also check all users' alerts stored in Firestore
+  var allAlerts=[];
+  (window._fsUsers||[]).forEach(function(u){(u.alerts||[]).forEach(function(a){if(a.eruv===eruv.id)allAlerts.push({email:u.email,name:u.name||u.email});});});
+  if(!allAlerts.length){console.log('No email subscribers for',eruv.name);return;}
+  allAlerts.forEach(function(sub){
+    fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+      body:JSON.stringify({
+        to:sub.email,toName:sub.name,
+        eruvName:eruv.name,eruvCity:eruv.city,
+        status:status,note:note,
+        donateUrl:eruv.donateUrl||'',
+        timestamp:getEruvTimestamp()
+      })
+    }).then(function(r){return r.json();}).then(function(d){
+      console.log('Email sent to',sub.email,d);
+    }).catch(function(err){console.error('Email error:',err);});
+  });
+  toast('Status updated + email alerts sent','ok');
+}
 function admStatus(id,status){
   var e=S.eruvin.find(function(x){return x.id===id;});if(!e)return;
   var note=status!=='up'?(prompt('Note (optional):','')||''):'';
@@ -1708,7 +1737,8 @@ function admStatus(id,status){
   try{map.setPaintProperty('eruv-'+id+'-line','line-color',SCOL[status]);}catch(_){}
   try{map.setPaintProperty('eruv-'+id+'-fill','fill-color',SCOL[status]);}catch(_){}
   if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked});
-  renderEruvList();renderStatus();toast(e.name+' → '+status,'ok');renderAdmin('overview');
+  sendEruvEmailAlerts(e,status,note);
+  renderEruvList();renderStatus();renderAdmin('overview');
 }
 function admDel(id){
   if(!confirm('Delete this eiruv?'))return;
@@ -2000,7 +2030,7 @@ function processMapImport(){
   if(desc)userContent+='DESCRIPTION:\n'+desc+'\n\n';
   if(raw)userContent+='MAP DATA:\n'+raw.slice(0,6000);
 
-  fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
+  fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
     .then(function(r){
       if(r.status===401||r.status===403){btn.innerHTML='✦ Build Zone';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Zone builder unavailable. Please try again.';toast('Zone builder unavailable','err');return Promise.reject('auth');}
       return r.json();
