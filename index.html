@@ -41,11 +41,10 @@ header{
   position:relative;z-index:2;
 }
 .hdr-logo{
-  height:100px;width:auto;display:block;
-  mix-blend-mode:screen;
-  filter:brightness(1.2) saturate(1.05) contrast(1.0);
+  height:90px;width:auto;display:block;
   cursor:pointer;
-  transition:opacity .2s;
+  transition:opacity .18s;
+  filter:drop-shadow(0 1px 8px rgba(74,144,217,.35));
 }
 .hdr-logo:hover{opacity:.85;}
 
@@ -429,7 +428,42 @@ header{
 
 <header>
   <div class="hdr-logo-wrap">
-    <img class="hdr-logo" src="logo.png" alt="MyEiruv" onclick="refreshPage()" title="MyEiruv — click to refresh">
+    <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv — click to refresh" viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="height:90px;width:auto;cursor:pointer;">
+  <!-- Eruv wires arcing across top -->
+  <path d="M10 28 Q140 2 270 28" stroke="#4a90d9" stroke-width="2.2" fill="none" opacity="0.9"/>
+  <path d="M10 34 Q140 8 270 34" stroke="#6ab0f0" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <!-- Left utility pole -->
+  <line x1="22" y1="18" x2="22" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="12" y1="28" x2="32" y2="28" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="14" y1="34" x2="30" y2="34" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Right utility pole -->
+  <line x1="258" y1="18" x2="258" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="248" y1="28" x2="268" y2="28" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="250" y1="34" x2="266" y2="34" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Skyline silhouette -->
+  <g fill="#2a4a7a" opacity="0.85">
+    <!-- Buildings left -->
+    <rect x="38" y="48" width="14" height="22"/>
+    <rect x="54" y="42" width="10" height="28"/>
+    <rect x="66" y="50" width="12" height="20"/>
+    <!-- Shul/dome center -->
+    <rect x="118" y="50" width="44" height="20"/>
+    <path d="M130 50 Q140 28 150 50Z"/>
+    <!-- Star of David on top -->
+    <polygon points="140,22 143,27 137,27" fill="#e8c84a" opacity="1"/>
+    <polygon points="140,31 143,26 137,26" fill="#e8c84a" opacity="1"/>
+    <!-- Buildings right -->
+    <rect x="174" y="44" width="12" height="26"/>
+    <rect x="188" y="50" width="10" height="20"/>
+    <rect x="200" y="46" width="14" height="24"/>
+    <rect x="216" y="52" width="10" height="18"/>
+  </g>
+  <!-- Ground arc -->
+  <path d="M30 70 Q140 78 250 70" stroke="#4a90d9" stroke-width="2" fill="none" opacity="0.7"/>
+  <!-- MYEIRUV text banner -->
+  <rect x="72" y="72" width="136" height="17" rx="3" fill="#1a2c4a" opacity="0.9"/>
+  <text x="140" y="84" text-anchor="middle" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
+</svg>
   </div>
   <div class="hdr-brand" id="hdrBrand">
     <div class="hdr-brand-small">Community Eiruv Platform</div>
@@ -627,17 +661,7 @@ header{
           <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
         </div>
       </div>
-      <div id="vRegister" style="display:none">
-        <div class="modal-title">Create Account</div>
-        <div class="modal-sub">Join MyEiruv — stay informed every Shabbos.</div>
 
-        <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="rName2" type="text"></div>
-        <div class="fg"><label class="lbl">Email</label><input class="fi" id="rEmail2" type="email"></div>
-        <div class="fg"><label class="lbl">Password</label><input class="fi" id="rPass2" type="password" placeholder="Min 6 chars"></div>
-        <div class="e-msg" id="rErr2"></div>
-        <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
-        <div class="modal-footer">Have account? <a onclick="showV('vMain')">Sign In</a></div>
-      </div>
       <div id="vForgot" style="display:none">
         <div class="modal-title">Reset Password</div>
         <div class="modal-sub">Enter your email and we'll send you a reset link.</div>
