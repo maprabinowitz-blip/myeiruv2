@@ -1813,10 +1813,10 @@ async function sendSmsBlast(){
     if(phone.length===10)phone='+1'+phone;
     else if(!phone.startsWith('+'))phone='+'+phone;
     try{
-      var resp=await fetch('https://api.twilio.com/2010-04-01/Accounts/'+TWILIO_SID+'/Messages.json',{
+      var resp=await fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
         method:'POST',
-        headers:{'Authorization':'Basic '+creds,'Content-Type':'application/x-www-form-urlencoded'},
-        body:'From='+encodeURIComponent(TWILIO_FROM)+'&To='+encodeURIComponent(phone)+'&Body='+encodeURIComponent(msg)
+        headers:{'Content-Type':'application/json','X-Action':'twilio-sms'},
+        body:JSON.stringify({to:phone,from:TWILIO_FROM,body:msg})
       });
       if(resp.ok)sent++;else failed++;
     }catch(e){failed++;}
@@ -1991,7 +1991,7 @@ function onDescType(val){
     if(val===_lastIdentifyTxt)return;
     _lastIdentifyTxt=val;
     fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',max_tokens:120,
         system:'You are identifying an eiruv zone from a description. Reply in ONE short sentence only: state the zone name and city/neighborhood you identified, and note if the description seems complete enough to build a polygon. Be concise. Example: "Looks like the Teaneck Eiruv (Teaneck, NJ) — good detail, ready to build." If unclear, say what info is still missing.',
