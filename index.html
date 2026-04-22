@@ -933,6 +933,7 @@ header{
 <script>
 const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.DxC4l12BdksgQuSZnArQXg';
 const ADMIN_EMAIL='maprabinowitz@gmail.com';
+const GROUTES_KEY='AIzaSyDnJ0h-tN_c8WG8CBE8DBZJC0DIMW6C3V8';
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
 
 
@@ -1249,7 +1250,7 @@ function planRoute(){
   var btn=document.getElementById('routeBtn');
   btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> Checking…';
   clearRouteLayer();
-  var GROUTES_KEY='AIzaSyDnJ0h-tN_c8WG8CBE8DBZJC0DIMW6C3V8';
+
   var _routeCache={};
   function roundCoord(v){return Math.round(v*1000)/1000;}
   function cacheKey(sc,ec){return roundCoord(sc.lng)+','+roundCoord(sc.lat)+'|'+roundCoord(ec.lng)+','+roundCoord(ec.lat);}
@@ -1704,7 +1705,15 @@ function closeDrop(){dropOpen=false;var d=document.getElementById('userDrop');if
 document.addEventListener('click',function(e){if(!e.target.closest('#userPillWrap'))closeDrop();});
 
 // ADMIN
-function openAdmin(){document.getElementById('adminDrawer').classList.add('on');renderAdmin('overview');}
+function openAdmin(){
+  document.getElementById('adminDrawer').classList.add('on');
+  // Refresh users from Firestore
+  if(window._db&&window._db.loadUsers){
+    window._db.loadUsers().then(function(u){if(u&&u.length)window._fsUsers=u;renderAdmin('overview');});
+  } else {
+    renderAdmin('overview');
+  }
+}
 function closeAdmin(){document.getElementById('adminDrawer').classList.remove('on');}
 function aN(btn,sec){document.querySelectorAll('.anav').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');renderAdmin(sec);}
 function sendEruvEmailAlerts(eruv,status,note){
@@ -2073,8 +2082,9 @@ function processMapImport(){
       showImportPreview(parsed.coords,desc,parsed);
     }).catch(function(e){
       if(e==='auth')return;
-      console.error(e);
-      toast('Could not build zone — check your internet connection','err');
+      console.error('Zone builder error:',e);
+      document.getElementById('mi-status').textContent='⚠ Error: '+( e&&e.message||e||'unknown');
+      toast('Zone builder error — see status message','err');
       btn.innerHTML='✦ Build Zone';btn.disabled=false;
     });
 }
