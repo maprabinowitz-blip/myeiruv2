@@ -80,8 +80,7 @@ header{
   color:#fff;letter-spacing:-.02em;
   text-shadow:0 2px 20px rgba(0,0,0,.4);
   line-height:1;
-  background:linear-gradient(90deg,#fff 60%,rgba(255,255,255,.75));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+
 }
 
 .hdr-r{display:flex;align-items:center;gap:6px;margin-left:auto;flex-shrink:0;}
@@ -1527,7 +1526,7 @@ function planRoute(){
 function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
 
 // SIDEBAR
-function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
+function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);try{history.pushState({tab:id},'','#'+id);}catch(e){}}
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
 // ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
 // Returns "Shabbos Parshas X" or weekday name for a given Date
@@ -2961,9 +2960,9 @@ window._db = {
 
 // Back button support
 window.addEventListener('popstate',function(e){
-  var tab=(e.state&&e.state.tab)||'status';
-  var btn=document.querySelector('.s-tab[onclick*="sTab(this,\'"+tab+"\')"]')||document.querySelector('.s-tab');
-  if(btn)btn.click();
+  var tab=(e.state&&e.state.tab)||location.hash.replace('#','')||'check';
+  var allTabs=document.querySelectorAll('.s-tab');
+  for(var i=0;i<allTabs.length;i++){if(allTabs[i].getAttribute('onclick')||'').includes("'"+tab+"'")){allTabs[i].click();break;}}
 });
 // Restore session immediately from localStorage (cross-tab persistence)
 (function(){
