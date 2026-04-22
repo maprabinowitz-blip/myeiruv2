@@ -929,10 +929,9 @@ header{
 <script>
 const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.DxC4l12BdksgQuSZnArQXg';
 const ADMIN_EMAIL='maprabinowitz@gmail.com';
-const TWILIO_SID=''; // Paste your new Twilio SID here
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
-const TWILIO_TOKEN=''; // Paste your new Twilio Auth Token here
-const TWILIO_FROM='+18884875752';
+
+
 // Anthropic key is stored securely in Cloudflare Worker
 mapboxgl.accessToken=TOKEN;
 const PROX='-74.006,40.712';
@@ -1807,7 +1806,6 @@ async function sendSmsBlast(){
   var status=document.getElementById('smsStatus');
   btn.disabled=true;btn.textContent='Sending…';
   var sent=0,failed=0;
-  var creds=btoa(TWILIO_SID+':'+TWILIO_TOKEN);
   for(var i=0;i<targets.length;i++){
     var phone=targets[i].phone.replace(/\D/g,'');
     if(phone.length===10)phone='+1'+phone;
@@ -1816,7 +1814,7 @@ async function sendSmsBlast(){
       var resp=await fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
         method:'POST',
         headers:{'Content-Type':'application/json','X-Action':'twilio-sms'},
-        body:JSON.stringify({to:phone,from:TWILIO_FROM,body:msg})
+        body:JSON.stringify({to:phone,message:msg})
       });
       if(resp.ok)sent++;else failed++;
     }catch(e){failed++;}
@@ -1869,7 +1867,7 @@ function renderAdmin(sec){
       +'<div style="background:#f0f4ff;border:1px solid #c8d4f0;border-radius:8px;padding:11px 14px;margin-bottom:14px;font-size:.78rem;color:#334;line-height:1.6">'
       +'<strong>'+subCount+'</strong> subscriber(s) with phone numbers on file.<br>'
       +'Cost: ~$'+( (subCount*0.008).toFixed(2) )+' per blast (Twilio ~$0.008/text).</div>'
-      +(TWILIO_TOKEN?'':'<div style="background:#fff8e8;border:1px solid #f0c040;border-radius:7px;padding:9px 12px;margin-bottom:12px;font-size:.76rem;color:#7a5010;">⚠️ Twilio Auth Token not set. Edit TWILIO_TOKEN and TWILIO_FROM in the code.</div>')
+      +''
       +'<div class="fg"><label class="lbl">Eruv (optional)</label><select class="fi" id="smsEruv"><option value="">All subscribers</option>'
       +S.eruvin.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join('')
       +'</select></div>'
