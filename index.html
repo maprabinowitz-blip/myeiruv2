@@ -909,7 +909,7 @@ const TWILIO_SID=''; // Paste your new Twilio SID here
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
 const TWILIO_TOKEN=''; // Paste your new Twilio Auth Token here
 const TWILIO_FROM='+18884875752';
-const ANTHROPIC_KEY='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';
+// Anthropic key is stored securely in Cloudflare Worker
 mapboxgl.accessToken=TOKEN;
 const PROX='-74.006,40.712';
 const SCOL={up:'#22a865',review:'#e08020',down:'#d94040'};
@@ -973,7 +973,7 @@ function showEruvPopup(e){
   const dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
   const lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status];
   const adj=(e.adjacency||[]).filter(a=>a.canEnter).map(a=>{const z=S.eruvin.find(x=>x.id===a.id);return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
-  const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="color:#2563b0;font-size:.7rem">♥ Donate</a>':'';
+  const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 10px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'';
   new mapboxgl.Popup({closeButton:false,offset:5}).setLngLat(e.center).setHTML('<div class="pop-title">'+e.name+'</div><div class="pop-status">'+dot+' '+lbl+'</div>'+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj+don).addTo(map);
 }
 function addExclToMap(eruvId,ex){
@@ -1485,7 +1485,7 @@ function planRoute(){
 function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
 
 // SIDEBAR
-function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);}
+function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
 // ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
 // Returns "Shabbos Parshas X" or weekday name for a given Date
@@ -1528,7 +1528,7 @@ function renderStatus(f){
 }
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Review',down:'Down'};
-  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="flyTo(['+e.center+'],\''+e.name+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="color:#2563b0;font-size:.7rem">♥ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
+  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="flyTo(['+e.center+'],\''+e.name+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
 }
 function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}
 
@@ -1841,12 +1841,19 @@ function adminDelShul(id){
 }
 
 // CONTRACTOR DASH
+function saveCtDonateUrl(id,url){
+  var e=S.eruvin.find(function(x){return x.id===id;});
+  if(!e)return;
+  e.donateUrl=url.trim();
+  if(window._db)window._db.saveZone(e).then(function(){toast(url?'Donation link saved ❤':'Donation link removed','ok');});
+  renderEruvList();renderStatus();
+}
 function openCtDash(){document.getElementById('ctDash').classList.add('on');renderCtDash();}
 function closeCtDash(){document.getElementById('ctDash').classList.remove('on');}
 function renderCtDash(){
   var myZones=S.user&&S.user.role==='admin'?S.eruvin:S.eruvin.filter(function(e){return e.owner===S.user.email;});
   var up=myZones.filter(function(e){return e.status==='up';}).length,dn=myZones.filter(function(e){return e.status==='down';}).length;
-  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:28px;color:var(--muted);font-size:.83rem">No zones yet.<br><br><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">Create First Zone</button></div>');
+  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div style="margin:6px 0 4px"><input class="fi" id="ctDonate-'+e.id+'" type="url" value="'+(e.donateUrl||'')'+'" placeholder="Donation link (optional)" style="font-size:.72rem;padding:4px 7px" onchange="saveCtDonateUrl(\''+e.id+'\',this.value)"></div><div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:28px;color:var(--muted);font-size:.83rem">No zones yet.<br><br><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">Create First Zone</button></div>');
 }
 
 // ZONE PICKER
@@ -1969,7 +1976,7 @@ function processMapImport(){
   if(desc)userContent+='DESCRIPTION:\n'+desc+'\n\n';
   if(raw)userContent+='MAP DATA:\n'+raw.slice(0,6000);
 
-  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
+  fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
     .then(function(r){
       if(r.status===401||r.status===403){btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Open this file inside Claude.ai for AI features to work.';toast('AI needs Claude.ai — open file as artifact','err');return Promise.reject('auth');}
       return r.json();
@@ -1992,9 +1999,10 @@ function processMapImport(){
         if(m2){try{parsed={coords:JSON.parse(m2[0])};}catch(_){}}
       }
 
+      if(parsed&&parsed.error){toast(parsed.error,'err');document.getElementById('mi-status').textContent='⚠ '+parsed.error;return;}
       if(!parsed||!parsed.coords||parsed.coords.length<3){
-        toast('AI couldn\'t generate coordinates — try adding more street names or landmarks.','err');
-        document.getElementById('mi-status').textContent='⚠ Be more specific: name streets, neighborhoods, or cardinal boundaries.';
+        toast('AI couldn\'t generate coordinates — describe an eiruv boundary using street names.','err');
+        document.getElementById('mi-status').textContent='⚠ Describe eiruv boundaries only: e.g. "The Brooklyn Eiruv follows Ocean Ave on the east..."';
         return;
       }
 
@@ -2909,6 +2917,19 @@ window._db = {
   }
 };
 
+// Back button support
+window.addEventListener('popstate',function(e){
+  var tab=(e.state&&e.state.tab)||'status';
+  var btn=document.querySelector('.s-tab[onclick*="sTab(this,\'"+tab+"\')"]')||document.querySelector('.s-tab');
+  if(btn)btn.click();
+});
+// Restore session immediately from localStorage (cross-tab persistence)
+(function(){
+  try{
+    var saved=localStorage.getItem('myeiruv_session');
+    if(saved){var u=JSON.parse(saved);if(u&&u.email){signInAs(u);}}
+  }catch(e){}
+})();
 window._db.bootAll();
 </script>
 </body>
