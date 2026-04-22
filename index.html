@@ -701,8 +701,8 @@ header{
   <div class="modal fade-up" style="max-width:520px">
     <button class="modal-close" onclick="closeMapImport()">&#10005;</button>
     <div class="modal-body">
-      <div class="modal-title">&#129302; AI Zone Builder</div>
-      <div class="modal-sub">Upload a map file <em>or</em> just describe the zone in plain language — AI will build it on Mapbox for you to fine-tune.</div>
+      <div class="modal-title">✦ Zone Builder</div>
+      <div class="modal-sub">Upload a map file <em>or</em> just describe the zone in plain language — Describe your zone in plain language and we'll build it on the map for you to fine-tune.</div>
       <div id="mi-step1">
 
         <!-- Upload dropzone -->
@@ -722,14 +722,14 @@ header{
 
         <!-- Description — the star of the show -->
         <div class="fg">
-          <label class="lbl">Describe the zone <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(AI will figure out the rest)</span></label>
+          <label class="lbl">Describe the zone <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(we'll figure out the rest)</span></label>
           <textarea class="fi" id="mi-desc" rows="4" placeholder="e.g. The Brooklyn Eiruv roughly follows Ocean Avenue on the east, the Belt Parkway on the south, McDonald Ave on the west, and Eastern Parkway on the north. It's in Brooklyn, NY and is currently up and kosher." style="resize:vertical;min-height:90px;line-height:1.55" oninput="onDescType(this.value)"></textarea>
-          <!-- Live AI identification chip -->
+          <!-- Live identification chip -->
           <div id="mi-identify" style="display:none;margin-top:7px;padding:7px 11px;background:#f0f5ff;border:1px solid #c7d9f8;border-radius:8px;font-size:.75rem;color:#1a3a7a;line-height:1.5;display:flex;align-items:flex-start;gap:7px">
-            <span style="flex-shrink:0;font-size:.85rem">🤖</span>
+            <span style="flex-shrink:0;font-size:.85rem">✦</span>
             <span id="mi-identify-text">Identifying…</span>
           </div>
-          <div style="font-size:.68rem;color:var(--muted2);margin-top:5px">💡 Mention street names, landmarks, and which city. AI identifies as you type and builds the polygon.</div>
+          <div style="font-size:.68rem;color:var(--muted2);margin-top:5px">💡 Mention street names, landmarks, and which city. We'll identify it as you type.</div>
         </div>
 
         <!-- Raw paste (collapsed) -->
@@ -741,7 +741,7 @@ header{
         </details>
 
         <div id="mi-status" style="font-size:.77rem;color:var(--muted);margin:8px 0"></div>
-        <button class="btn btn-navy btn-full" onclick="processMapImport()" style="margin-top:4px">&#129302; Build Zone with AI</button>
+        <button class="btn btn-navy btn-full" onclick="processMapImport()" style="margin-top:4px">✦ Build Zone</button>
       </div>
 
       <!-- Step 2: Preview -->
@@ -1960,8 +1960,8 @@ function onDescType(val){
   _identifyTimer=setTimeout(function(){
     if(val===_lastIdentifyTxt)return;
     _lastIdentifyTxt=val;
-    fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+      method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',max_tokens:120,
         system:'You are identifying an eiruv zone from a description. Reply in ONE short sentence only: state the zone name and city/neighborhood you identified, and note if the description seems complete enough to build a polygon. Be concise. Example: "Looks like the Teaneck Eiruv (Teaneck, NJ) — good detail, ready to build." If unclear, say what info is still missing.',
@@ -1980,7 +1980,7 @@ function onDescType(val){
 function processMapImport(){
   var raw=document.getElementById('mi-paste').value.trim(),desc=document.getElementById('mi-desc').value.trim();
   if(!raw&&!desc){toast('Describe the zone or upload a file','err');return;}
-  var btn=document.querySelector('#mi-step1 .btn-navy');btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> AI is building your zone…';
+  var btn=document.querySelector('#mi-step1 .btn-navy');btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> Building your zone…';
   document.getElementById('mi-status').textContent='';
 
   // Try to parse structured formats first (no AI needed)
@@ -1989,7 +1989,7 @@ function processMapImport(){
   if(!coords&&raw)coords=parseCsvCoords(raw);
   if(coords&&coords.length>=3&&!desc){
     // Clean structured file — skip AI, just preview
-    btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;
+    btn.innerHTML='✦ Build Zone';btn.disabled=false;
     importedCoords=coords;_aiMeta={};showImportPreview(coords,desc);return;
   }
 
@@ -2002,12 +2002,12 @@ function processMapImport(){
 
   fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
     .then(function(r){
-      if(r.status===401||r.status===403){btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Open this file inside Claude.ai for AI features to work.';toast('AI needs Claude.ai — open file as artifact','err');return Promise.reject('auth');}
+      if(r.status===401||r.status===403){btn.innerHTML='✦ Build Zone';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Zone builder unavailable. Please try again.';toast('Zone builder unavailable','err');return Promise.reject('auth');}
       return r.json();
     })
     .then(function(data){
       var txt=(data.content&&data.content[0]&&data.content[0].text)||'';
-      btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;
+      btn.innerHTML='✦ Build Zone';btn.disabled=false;
 
       // Parse the structured JSON response
       var parsed=null;
@@ -2036,8 +2036,8 @@ function processMapImport(){
     }).catch(function(e){
       if(e==='auth')return;
       console.error(e);
-      toast('Could not reach AI — check your internet connection','err');
-      btn.innerHTML='🤖 Build Zone with AI';btn.disabled=false;
+      toast('Could not build zone — check your internet connection','err');
+      btn.innerHTML='✦ Build Zone';btn.disabled=false;
     });
 }
 var _aiMeta={};
@@ -2063,7 +2063,7 @@ function showImportPreview(coords,desc,aiData){
   var statusIcon={up:'🟢',review:'🟡',down:'🔴'}[meta.status]||'🟢';
   var infoHtml='<strong>✅ Zone built — '+coords.length+' boundary points</strong>';
   if(meta.name||meta.city)infoHtml+='<br>📍 '+(meta.name||'—')+' · '+(meta.city||'—');
-  if(meta.status)infoHtml+='<br>'+statusIcon+' AI suggests status: <strong>'+{up:'Up & Kosher',review:'Under Review',down:'Down'}[meta.status]+'</strong>';
+  if(meta.status)infoHtml+='<br>'+statusIcon+' Suggested status: <strong>'+{up:'Up & Kosher',review:'Under Review',down:'Down'}[meta.status]+'</strong>';
   if(meta.note)infoHtml+='<br><em style="color:var(--muted)">'+meta.note+'</em>';
   infoHtml+='<br><span style="color:var(--muted2)">Center: '+ctr[1].toFixed(4)+', '+ctr[0].toFixed(4)+'</span>';
   document.getElementById('mi-info').innerHTML=infoHtml;
