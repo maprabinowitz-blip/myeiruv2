@@ -585,8 +585,12 @@ header{
           <div class="fg"><label class="lbl">Eiruv</label><select class="fi" id="alertEruv"><option>Select city first</option></select></div>
           <div class="fg"><label class="lbl">Notify Via</label>
             <div class="nchips">
-              <button class="nc on" onclick="this.classList.toggle('on')">&#128231; Email</button>
+              <button class="nc on" id="alertViaEmail" onclick="this.classList.toggle('on')">&#128231; Email</button>
+              <button class="nc" id="alertViaSms" onclick="this.classList.toggle('on');document.getElementById('alertPhoneWrap').style.display=this.classList.contains('on')?'block':'none'">&#128244; SMS</button>
             </div>
+          </div>
+          <div class="fg" id="alertPhoneWrap" style="display:none"><label class="lbl">Phone for SMS</label>
+            <input class="fi" id="alertPhone" type="tel" placeholder="+1 (555) 000-0000">
           </div>
           <div class="fg"><label class="lbl">Send Time</label>
             <select class="fi"><option>Every Friday at 9:00 AM</option><option>Every Friday at 10:00 AM</option><option>Thursday + Friday</option></select>
@@ -1563,7 +1567,10 @@ function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!ale
 function saveAlert(){
   var city=document.getElementById('alertCity').value,eruv=document.getElementById('alertEruv').value;
   if(!city||eruv.indexOf('Select')>=0){toast('Select city and eiruv','err');return;}
-  var al={id:'alert-'+Date.now(),userEmail:S.user.email.toLowerCase(),city:city,eruv:eruv,active:true,createdAt:new Date().toISOString()};
+  var viaEmail=document.getElementById('alertViaEmail')&&document.getElementById('alertViaEmail').classList.contains('on');
+  var viaSms=document.getElementById('alertViaSms')&&document.getElementById('alertViaSms').classList.contains('on');
+  var phone=(document.getElementById('alertPhone')&&document.getElementById('alertPhone').value.trim())||S.user.phone||'';
+  var al={id:'alert-'+Date.now(),userEmail:S.user.email.toLowerCase(),userName:S.user.name||'',userPhone:phone,city:city,eruv:eruv,viaEmail:viaEmail!==false,viaSms:viaSms&&!!phone,active:true,createdAt:new Date().toISOString()};
   S.alerts.push(al);
   if(window._db)window._db.saveAlert(al);
   renderAlerts();alertOpen=false;document.getElementById('alertForm').classList.remove('on');toast('Alert saved — '+eruv,'ok');
@@ -1701,33 +1708,36 @@ function openAdmin(){document.getElementById('adminDrawer').classList.add('on');
 function closeAdmin(){document.getElementById('adminDrawer').classList.remove('on');}
 function aN(btn,sec){document.querySelectorAll('.anav').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');renderAdmin(sec);}
 function sendEruvEmailAlerts(eruv,status,note){
-  var alerts=(window._fsUsers||[]).filter(function(u){
-    return u.email&&(S.alerts||[]).concat(
-      (window._fsUsers||[]).flatMap?
-      (window._fsUsers||[]).flatMap(function(x){return x.alerts||[];}):[]
-    ).some(function(a){return a&&a.eruv===eruv.id;}) ||
-    (u.alerts||[]).some(function(a){return a&&a.eruv===eruv.id;});
+  // Load all alerts for this eruv from Firestore then notify
+  if(window._db&&window._db.loadAlertsByEruv){
+    window._db.loadAlertsByEruv(eruv.id).then(function(alerts){
+      _dispatchAlerts(eruv,status,note,alerts||[]);
+    });
+  } else {
+    // Fallback: use cached alerts
+    var cached=(window._allAlerts||[]).filter(function(a){return a.eruv===eruv.id&&a.active;});
+    _dispatchAlerts(eruv,status,note,cached);
+  }
+}
+function _dispatchAlerts(eruv,status,note,alerts){
+  if(!alerts.length){toast(eruv.name+' → '+status,'ok');return;}
+  var sent=0;
+  alerts.forEach(function(a){
+    if(a.viaEmail!==false&&a.userEmail){
+      fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+        method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+        body:JSON.stringify({to:a.userEmail,toName:a.userName||a.userEmail,eruvName:eruv.name,eruvCity:eruv.city,status:status,note:note,donateUrl:eruv.donateUrl||'',timestamp:getEruvTimestamp()})
+      }).then(function(){sent++;}).catch(function(e){console.error('Email err:',e);});
+    }
+    if(a.viaSms&&a.userPhone){
+      var msg=(status==='up'?'✅':'status'==='review'?'⚠️':'❌')+' '+eruv.name+' is '+(status==='up'?'UP & Kosher':status==='review'?'under review':'DOWN')+(note?' — '+note:'')+'. — myeiruv.org';
+      fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+        method:'POST',headers:{'Content-Type':'application/json','X-Action':'twilio-sms'},
+        body:JSON.stringify({to:a.userPhone,message:msg})
+      }).catch(function(e){console.error('SMS err:',e);});
+    }
   });
-  // Also check all users' alerts stored in Firestore
-  var allAlerts=[];
-  (window._fsUsers||[]).forEach(function(u){(u.alerts||[]).forEach(function(a){if(a.eruv===eruv.id)allAlerts.push({email:u.email,name:u.name||u.email});});});
-  if(!allAlerts.length){console.log('No email subscribers for',eruv.name);return;}
-  allAlerts.forEach(function(sub){
-    fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-      body:JSON.stringify({
-        to:sub.email,toName:sub.name,
-        eruvName:eruv.name,eruvCity:eruv.city,
-        status:status,note:note,
-        donateUrl:eruv.donateUrl||'',
-        timestamp:getEruvTimestamp()
-      })
-    }).then(function(r){return r.json();}).then(function(d){
-      console.log('Email sent to',sub.email,d);
-    }).catch(function(err){console.error('Email error:',err);});
-  });
-  toast('Status updated + email alerts sent','ok');
+  setTimeout(function(){toast(eruv.name+' → '+status+' · '+alerts.length+' alert(s) sent','ok');},500);
 }
 function admStatus(id,status){
   var e=S.eruvin.find(function(x){return x.id===id;});if(!e)return;
@@ -2931,6 +2941,13 @@ window._db = {
       const snap = await getDocs(q);
       return snap.docs.map(d => ({...d.data(), id:d.id}));
     } catch(e) { console.error("loadAlerts:",e); return []; }
+  },
+  async loadAlertsByEruv(eruvId) {
+    try {
+      const q = query(COL.alerts, where("eruv","==",eruvId), where("active","==",true));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({...d.data(), id:d.id}));
+    } catch(e) { console.error("loadAlertsByEruv:",e); return []; }
   },
   async saveAlert(alert) {
     if (!alert.id) alert.id = 'alert-'+Date.now();
