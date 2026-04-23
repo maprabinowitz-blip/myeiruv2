@@ -2889,8 +2889,15 @@ window._db = {
     } catch(e) { console.error("loadZones:",e); return null; }
   },
   async saveZone(zone) {
-    try { await setDoc(doc(db,"zones",zone.id), zone); return true; }
-    catch(e) { console.error("saveZone:",e); return false; }
+    try { 
+      await setDoc(doc(db,"zones",zone.id), zone); 
+      console.log("[Firestore] Zone saved:", zone.id);
+      return true; 
+    }
+    catch(e) { 
+      console.error("[Firestore] saveZone FAILED:", e.code, e.message); 
+      return false; 
+    }
   },
   async patchZone(id, fields) {
     try { await updateDoc(doc(db,"zones",id), fields); return true; }
@@ -2919,8 +2926,12 @@ window._db = {
     try {
       const {email, ...data} = user;
       await setDoc(doc(db,"users",email.toLowerCase()), data, {merge:true});
+      console.log("[Firestore] User saved:", email);
       return true;
-    } catch(e) { console.error("saveUser:",e); return false; }
+    } catch(e) { 
+      console.error("[Firestore] saveUser FAILED:", e.code, e.message); 
+      return false; 
+    }
   },
   async patchUser(email, fields) {
     try { await updateDoc(doc(db,"users",email.toLowerCase()), fields); return true; }
