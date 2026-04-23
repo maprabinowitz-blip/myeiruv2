@@ -1669,6 +1669,8 @@ function doRegister(){
   var isAdmin=email===ADMIN_EMAIL.toLowerCase();
   var user={name:name,email:email,password:pass,role:isAdmin?'admin':'user',avatar:name[0].toUpperCase(),contractorStatus:'none'};
   _cacheAndSaveUser(user);closeModal();signInAs(user);
+  // Reload all users so admin panel stays fresh
+  if(window._db)window._db.loadUsers().then(function(u){if(u&&u.length)window._fsUsers=u;});
 }
 function doContractorApply(){
   var name=document.getElementById('cName').value.trim(),email=document.getElementById('cEmail').value.trim().toLowerCase();
@@ -1889,6 +1891,12 @@ function renderAdmin(sec){
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ap" onclick="flyTo(['+e.center+'],\''+e.name+'\');closeAdmin()">View</button><button class="act-btn ao" onclick="closeAdmin();openDraw(\'edit\',\''+e.id+'\')">Edit</button><button class="act-btn ar" onclick="admDel(\''+e.id+'\')">Delete</button></div></div>';});
     body.innerHTML=html;
   }else if(sec==='users'){
+    // Always reload fresh from Firestore
+    if(window._db)window._db.loadUsers().then(function(u){
+      if(u)window._fsUsers=u;
+      var el=document.getElementById('userListEl');
+      if(el){var span=document.querySelector('.adm-sec');if(span&&span.textContent.startsWith('Users'))span.textContent='Users ('+window._fsUsers.length+')';el.innerHTML=mkUserList(window._fsUsers,'');}
+    });
     body.innerHTML='<span class="adm-sec">Users ('+users.length+')</span><input class="fi" placeholder="Search…" oninput="filterUsers(this.value)" style="margin-bottom:9px;padding:7px 11px;font-size:.79rem"><div id="userListEl">'+mkUserList(users,'')+'</div>';
   }else if(sec==='contractors'){
     body.innerHTML='<span class="adm-sec">Add Contractor</span><div class="acard" style="margin-bottom:12px"><div class="fg"><label class="lbl">Email</label><input class="fi" id="addCtEmail" placeholder="email@example.com" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Name</label><input class="fi" id="addCtName" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Area</label><input class="fi" id="addCtArea" style="padding:7px 10px;font-size:.8rem"></div><button class="act-btn ap" onclick="adminAddCt()" style="width:100%;padding:7px">Add as Contractor</button></div><span class="adm-sec">Active & Pending</span>'+(conts.length?conts.map(function(u){return '<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge '+(u.status==='approved'?'b-up':'b-rv')+'">'+(u.status==='approved'?'Active':'Pending')+'</span></div>'+(u.status==='pending'?'<div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div>':'')+'</div>';}).join(''):'<div style="font-size:.8rem;color:var(--muted)">No contractors yet.</div>');
