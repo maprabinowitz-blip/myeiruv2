@@ -662,11 +662,11 @@ header{
       <div id="vMain">
         <div class="modal-title">Welcome to MyEiruv</div>
         <div class="modal-sub">Sign in or create an account to set alerts, manage zones, and more.</div>
-        <button class="goog-btn apply" onclick="showV('vContractor')">&#128296; Apply as Contractor</button>
         <!-- Sign In / Sign Up tabs -->
         <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;">
-          <button id="authTabSI" onclick="switchAuthTab('si')" style="flex:1;padding:7px;border:none;background:var(--navy);color:#fff;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign In</button>
-          <button id="authTabSU" onclick="switchAuthTab('su')" style="flex:1;padding:7px;border:none;background:#fff;color:var(--muted);font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign Up</button>
+          <button id="authTabSI" onclick="switchAuthTab('si')" style="flex:1;padding:7px;border:none;background:var(--navy);color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign In</button>
+          <button id="authTabSU" onclick="switchAuthTab('su')" style="flex:1;padding:7px;border:none;background:#fff;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign Up</button>
+          <button id="authTabCT" onclick="switchAuthTab('ct')" style="flex:1;padding:7px;border:none;background:#fff;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;border-left:1px solid var(--border);">🔨 Contractor</button>
         </div>
         <!-- Sign In fields -->
         <div id="authSIFields">
@@ -683,6 +683,16 @@ header{
           <div class="fg"><label class="lbl">Password</label><input class="fi" id="rPass" type="password" placeholder="Min 6 chars"></div>
           <div class="e-msg" id="rErr"></div>
           <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
+        </div>
+        <!-- Contractor tab -->
+        <div id="authCTFields" style="display:none">
+          <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="cName2" type="text"></div>
+          <div class="fg"><label class="lbl">Email</label><input class="fi" id="cEmail2" type="email"></div>
+          <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone2" type="tel"></div>
+          <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea2" placeholder="e.g. Brooklyn, NY" oninput="identifyCity(this.value,'cArea2Hint')"></div>
+          <div id="cArea2Hint" style="font-size:.71rem;color:var(--blue);margin-top:-6px;margin-bottom:8px;min-height:16px;"></div>
+          <div class="e-msg" id="cErr2"></div>
+          <button class="btn btn-navy btn-full" onclick="doContractorApply2()">Submit Application</button>
         </div>
       </div>
 
@@ -1622,13 +1632,45 @@ function openModal(v){document.getElementById('authBd').classList.add('on');show
 function closeModal(){document.getElementById('authBd').classList.remove('on');}
 function showV(id){['vMain','vRegister','vContractor','vForgot'].forEach(function(v){var el=document.getElementById(v);if(el)el.style.display=v===id?'block':'none';});}
 function switchAuthTab(tab){
-  var isSI=tab==='si';
+  var isSI=tab==='si',isSU=tab==='su',isCT=tab==='ct';
   document.getElementById('authTabSI').style.background=isSI?'var(--navy)':'#fff';
   document.getElementById('authTabSI').style.color=isSI?'#fff':'var(--muted)';
-  document.getElementById('authTabSU').style.background=isSI?'#fff':'var(--navy)';
-  document.getElementById('authTabSU').style.color=isSI?'var(--muted)':'#fff';
+  document.getElementById('authTabSU').style.background=isSU?'var(--navy)':'#fff';
+  document.getElementById('authTabSU').style.color=isSU?'#fff':'var(--muted)';
+  document.getElementById('authTabCT').style.background=isCT?'var(--navy)':'#fff';
+  document.getElementById('authTabCT').style.color=isCT?'#fff':'var(--muted)';
   document.getElementById('authSIFields').style.display=isSI?'block':'none';
-  document.getElementById('authSUFields').style.display=isSI?'none':'block';
+  document.getElementById('authSUFields').style.display=isSU?'block':'none';
+  document.getElementById('authCTFields').style.display=isCT?'block':'none';
+}
+function identifyCity(val,hintId){
+  var hint=document.getElementById(hintId);if(!hint)return;
+  if(val.length<4){hint.textContent='';return;}
+  clearTimeout(window._cityTimer);
+  window._cityTimer=setTimeout(function(){
+    fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(val)+'.json?types=place,neighborhood,locality&access_token='+TOKEN+'&limit=1')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.features&&d.features[0]){
+          hint.textContent='📍 '+d.features[0].place_name;
+          hint.style.color='var(--blue)';
+        }else{hint.textContent='';}
+      }).catch(function(){hint.textContent='';});
+  },600);
+}
+function doContractorApply2(){
+  var name=(document.getElementById('cName2')&&document.getElementById('cName2').value.trim())||'';
+  var email=(document.getElementById('cEmail2')&&document.getElementById('cEmail2').value.trim().toLowerCase())||'';
+  var phone=(document.getElementById('cPhone2')&&document.getElementById('cPhone2').value.trim())||'';
+  var area=(document.getElementById('cArea2')&&document.getElementById('cArea2').value.trim())||'';
+  var err=document.getElementById('cErr2');err.style.display='none';
+  if(!name||!email){err.textContent='Name and email required.';err.style.display='block';return;}
+  var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,phone:phone,area:area,avatar:name[0].toUpperCase(),contractorStatus:'pending'};
+  user.contractorStatus='pending';user.role='user';
+  _cacheAndSaveUser(user);
+  var ct={email:email,name:name,phone:phone,area:area,status:'pending',appliedAt:new Date().toISOString()};
+  if(window._db)window._db.saveContractor(ct);
+  closeModal();toast('Application submitted! Admin will review shortly.','ok');
 }
 function doForgotPassword(){
   var email=document.getElementById('forgotEmail').value.trim();
@@ -2759,7 +2801,7 @@ var _shulMarkers=[];
 function addShulToMap(shul){
   if(!shul||isNaN(shul.lat)||isNaN(shul.lng))return;
   var el=document.createElement('div');
-  el.style.cssText='font-size:18px;line-height:1;cursor:pointer;filter:drop-shadow(0 1px 3px rgba(0,0,0,.4))';
+  el.style.cssText='font-size:11px;line-height:1;cursor:pointer;opacity:0.85;';
   el.textContent='🕍';
   el.title=shul.name+' · '+shul.city;
   var marker=new mapboxgl.Marker({element:el,anchor:'bottom'})
@@ -2866,13 +2908,43 @@ onAuthStateChanged(auth, async function(fbUser) {
 });
 
 const SEED_SHULS = [
-  {id:'shul-young-israel-bklyn',   name:'Young Israel of Brooklyn',  city:'Brooklyn, NY',     lat:40.6501, lng:-73.9496},
-  {id:'shul-beth-abraham-teaneck', name:'Congregation Beth Abraham', city:'Teaneck, NJ',       lat:40.8945, lng:-74.0138},
-  {id:'shul-bnai-jeshurun-monsey', name:"B'nai Jeshurun",            city:'Monsey, NY',        lat:41.1112, lng:-74.0704},
-  {id:'shul-or-chadash-skokie',    name:'Or Chadash',                city:'Skokie, IL',        lat:42.0331, lng:-87.7476},
-  {id:'shul-kol-ami-silver-spring',name:'Kol Ami',                   city:'Silver Spring, MD', lat:39.0040, lng:-77.0256},
-  {id:'shul-bais-naftoli-la',      name:'Bais Naftoli',              city:'Los Angeles, CA',   lat:34.0540, lng:-118.3820},
-  {id:'shul-ohab-zedek-fivetowns', name:'Ohab Zedek',               city:'Woodmere, NY',      lat:40.6348, lng:-73.7112},
+  // Brooklyn, NY
+  {id:'shul-young-israel-bklyn',      name:'Young Israel of Brooklyn',         city:'Brooklyn, NY',     lat:40.6501, lng:-73.9496},
+  {id:'shul-cong-beth-jacob-bklyn',   name:'Congregation Beth Jacob',          city:'Brooklyn, NY',     lat:40.6480, lng:-73.9430},
+  {id:'shul-agudath-israel-bklyn',    name:'Agudath Israel of Flatbush',       city:'Brooklyn, NY',     lat:40.6355, lng:-73.9601},
+  {id:'shul-torah-vodaath-bklyn',     name:'Yeshiva Torah Vodaath',            city:'Brooklyn, NY',     lat:40.6520, lng:-73.9410},
+  {id:'shul-bais-yaakov-bklyn',       name:'Bais Yaakov of Brooklyn',          city:'Brooklyn, NY',     lat:40.6389, lng:-73.9628},
+  {id:'shul-khal-adas-yereim-bklyn',  name:'Khal Adas Yereim',                city:'Brooklyn, NY',     lat:40.6370, lng:-73.9580},
+  // Woodmere / Five Towns, NY
+  {id:'shul-ohab-zedek-fivetowns',    name:'Ohab Zedek',                       city:'Woodmere, NY',     lat:40.6348, lng:-73.7112},
+  {id:'shul-young-israel-woodmere',   name:'Young Israel of Woodmere',         city:'Woodmere, NY',     lat:40.6367, lng:-73.7145},
+  {id:'shul-white-shul-fivetowns',    name:'The White Shul',                   city:'Woodmere, NY',     lat:40.6260, lng:-73.7210},
+  {id:'shul-bais-medrash-fivetowns',  name:'Bais Medrash of Woodmere',         city:'Woodmere, NY',     lat:40.6320, lng:-73.7180},
+  // Teaneck, NJ
+  {id:'shul-beth-abraham-teaneck',    name:'Congregation Beth Abraham',        city:'Teaneck, NJ',      lat:40.8945, lng:-74.0138},
+  {id:'shul-bnai-yeshurun-teaneck',   name:"B'nai Yeshurun",                   city:'Teaneck, NJ',      lat:40.8920, lng:-74.0090},
+  {id:'shul-beis-chana-teaneck',      name:'Beis Chana of Teaneck',            city:'Teaneck, NJ',      lat:40.8960, lng:-74.0175},
+  {id:'shul-rinat-yisrael-teaneck',   name:'Rinat Yisrael',                    city:'Teaneck, NJ',      lat:40.8978, lng:-74.0155},
+  {id:'shul-young-israel-teaneck',    name:'Young Israel of Teaneck',          city:'Teaneck, NJ',      lat:40.8900, lng:-74.0120},
+  // Monsey, NY
+  {id:'shul-bnai-jeshurun-monsey',    name:"B'nai Jeshurun",                   city:'Monsey, NY',       lat:41.1112, lng:-74.0704},
+  {id:'shul-bais-medrash-monsey',     name:'Bais Medrash Zichron Moshe',       city:'Monsey, NY',       lat:41.1080, lng:-74.0720},
+  {id:'shul-khal-vizhnitz-monsey',    name:'Khal Vizhnitz',                    city:'Monsey, NY',       lat:41.1140, lng:-74.0680},
+  {id:'shul-satmar-monsey',           name:'Satmar of Monsey',                 city:'Monsey, NY',       lat:41.1095, lng:-74.0755},
+  // Skokie, IL
+  {id:'shul-or-chadash-skokie',       name:'Or Chadash',                       city:'Skokie, IL',       lat:42.0331, lng:-87.7476},
+  {id:'shul-kins-skokie',             name:'Keser Israel - North Shore',       city:'Skokie, IL',       lat:42.0380, lng:-87.7420},
+  {id:'shul-cong-bene-sholem-skokie', name:'Congregation Bene Sholem',         city:'Skokie, IL',       lat:42.0290, lng:-87.7500},
+  {id:'shul-young-israel-skokie',     name:'Young Israel of Skokie',           city:'Skokie, IL',       lat:42.0350, lng:-87.7460},
+  // Silver Spring, MD
+  {id:'shul-kol-ami-silver-spring',   name:'Kol Ami',                          city:'Silver Spring, MD',lat:39.0040, lng:-77.0256},
+  {id:'shul-shaarei-tfila-ss',        name:'Shaarei Tfila',                    city:'Silver Spring, MD',lat:39.0020, lng:-77.0230},
+  {id:'shul-bais-yisrael-ss',         name:'Bais Yisrael',                     city:'Silver Spring, MD',lat:39.0060, lng:-77.0280},
+  // Los Angeles, CA
+  {id:'shul-bais-naftoli-la',         name:'Bais Naftoli',                     city:'Los Angeles, CA',  lat:34.0540, lng:-118.3820},
+  {id:'shul-bais-bezalel-la',         name:'Bais Bezalel',                     city:'Los Angeles, CA',  lat:34.0560, lng:-118.3790},
+  {id:'shul-young-israel-la',         name:'Young Israel of Los Angeles',      city:'Los Angeles, CA',  lat:34.0520, lng:-118.3850},
+  {id:'shul-beth-jacob-la',           name:'Beth Jacob Congregation',          city:'Los Angeles, CA',  lat:34.0580, lng:-118.3760},
 ];
 
 window._db = {
