@@ -2880,23 +2880,45 @@ window._db = {
   /* ── ZONES ────────────────────────────────────────────────── */
   async loadZones() {
     try {
+      const fromFS = z => {
+        if(z.coords&&z.coords[0]&&z.coords[0].g!==undefined)
+          z.coords = z.coords.map(c => [c.g,c.a]);
+        if(z.exclusions) z.exclusions = z.exclusions.map(ex => ({
+          ...ex, coords: ex.coords&&ex.coords[0]&&ex.coords[0].g!==undefined
+            ? ex.coords.map(c=>[c.g,c.a]) : (ex.coords||[])
+        }));
+        return z;
+      };
       let snap = await getDocs(COL.zones);
       if (snap.empty) {
-        await Promise.all(BASE_ERUVIN.map(z => setDoc(doc(db,"zones",z.id), z)));
+        // Seed BASE_ERUVIN - convert nested arrays for Firestore
+        const toFS = z => {
+          const s={...z};
+          s.coords=s.coords.map(c=>({g:c[0],a:c[1]}));
+          s.exclusions=(s.exclusions||[]).map(ex=>({...ex,coords:(ex.coords||[]).map(c=>({g:c[0],a:c[1]}))}));
+          return s;
+        };
+        await Promise.all(BASE_ERUVIN.map(z => setDoc(doc(db,"zones",z.id), toFS(z))));
         snap = await getDocs(COL.zones);
       }
-      return snap.docs.map(d => ({...d.data(), id:d.id}));
+      return snap.docs.map(d => fromFS({...d.data(), id:d.id}));
     } catch(e) { console.error("loadZones:",e); return null; }
   },
   async saveZone(zone) {
-    try { 
-      await setDoc(doc(db,"zones",zone.id), zone); 
+    try {
+      // Firestore doesn't support nested arrays - convert coords to objects
+      const toSave = {...zone};
+      if(toSave.coords) toSave.coords = toSave.coords.map(c => ({g:c[0],a:c[1]}));
+      if(toSave.exclusions) toSave.exclusions = toSave.exclusions.map(ex => ({
+        ...ex, coords: ex.coords ? ex.coords.map(c => ({g:c[0],a:c[1]})) : []
+      }));
+      await setDoc(doc(db,"zones",zone.id), toSave);
       console.log("[Firestore] Zone saved:", zone.id);
-      return true; 
+      return true;
     }
-    catch(e) { 
-      console.error("[Firestore] saveZone FAILED:", e.code, e.message); 
-      return false; 
+    catch(e) {
+      console.error("[Firestore] saveZone FAILED:", e.code, e.message);
+      return false;
     }
   },
   async patchZone(id, fields) {
