@@ -429,38 +429,43 @@ header{
 <header>
   <div class="hdr-logo-wrap">
     <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv — click to refresh" viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="height:90px;width:auto;cursor:pointer;">
-  <!-- Eruv wires arcing across top -->
   <path d="M10 28 Q140 2 270 28" stroke="#4a90d9" stroke-width="2.2" fill="none" opacity="0.9"/>
   <path d="M10 34 Q140 8 270 34" stroke="#6ab0f0" stroke-width="1.2" fill="none" opacity="0.6"/>
-  <!-- Left utility pole -->
   <line x1="22" y1="18" x2="22" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
   <line x1="12" y1="28" x2="32" y2="28" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
   <line x1="14" y1="34" x2="30" y2="34" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Right utility pole -->
   <line x1="258" y1="18" x2="258" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
   <line x1="248" y1="28" x2="268" y2="28" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
   <line x1="250" y1="34" x2="266" y2="34" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Skyline silhouette -->
+  <!-- Bird on wire -->
+  <g transform="translate(72,12)">
+    <ellipse cx="0" cy="0" rx="5" ry="3.5" fill="#c8d8f0"/>
+    <circle cx="5" cy="-2.5" r="3" fill="#c8d8f0"/>
+    <polygon points="7.5,-3 10,-1.5 7.5,-1" fill="#e8c84a"/>
+    <circle cx="6" cy="-3.2" r="0.8" fill="#1a2c4a"/>
+    <path d="M-5,0 L-9,2.5 L-7.5,-0.5Z" fill="#a8c0e0"/>
+    <line x1="-1" y1="3" x2="-3" y2="6" stroke="#c8d8f0" stroke-width="0.8"/>
+    <line x1="1" y1="3.2" x2="1" y2="6" stroke="#c8d8f0" stroke-width="0.8"/>
+    <path d="M-3,-1 Q1,-5 4.5,-2" stroke="#a8c0e0" stroke-width="1" fill="none"/>
+  </g>
+  <!-- Skyline -->
   <g fill="#2a4a7a" opacity="0.85">
-    <!-- Buildings left -->
     <rect x="38" y="48" width="14" height="22"/>
     <rect x="54" y="42" width="10" height="28"/>
     <rect x="66" y="50" width="12" height="20"/>
-    <!-- Shul/dome center -->
     <rect x="118" y="50" width="44" height="20"/>
     <path d="M130 50 Q140 28 150 50Z"/>
-    <!-- Star of David on top -->
-    <polygon points="140,22 143,27 137,27" fill="#e8c84a" opacity="1"/>
-    <polygon points="140,31 143,26 137,26" fill="#e8c84a" opacity="1"/>
-    <!-- Buildings right -->
     <rect x="174" y="44" width="12" height="26"/>
     <rect x="188" y="50" width="10" height="20"/>
     <rect x="200" y="46" width="14" height="24"/>
     <rect x="216" y="52" width="10" height="18"/>
   </g>
-  <!-- Ground arc -->
+  <!-- Star of David above dome -->
+  <g transform="translate(140,18)">
+    <polygon points="0,-8 6.9,4 -6.9,4" fill="none" stroke="#e8c84a" stroke-width="1.8"/>
+    <polygon points="0,8 6.9,-4 -6.9,-4" fill="none" stroke="#e8c84a" stroke-width="1.8"/>
+  </g>
   <path d="M30 70 Q140 78 250 70" stroke="#4a90d9" stroke-width="2" fill="none" opacity="0.7"/>
-  <!-- MYEIRUV text banner -->
   <rect x="72" y="72" width="136" height="17" rx="3" fill="#1a2c4a" opacity="0.9"/>
   <text x="140" y="84" text-anchor="middle" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
 </svg>
@@ -933,7 +938,7 @@ header{
 <script>
 const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.DxC4l12BdksgQuSZnArQXg';
 const ADMIN_EMAIL='maprabinowitz@gmail.com';
-const GROUTES_KEY='AIzaSyDnJ0h-tN_c8WG8CBE8DBZJC0DIMW6C3V8';
+const GROUTES_KEY='AIzaSyDnJ0h-tN_c8WG8CBE8DBZJC0DIMW6C3V8'; // Also add as GOOGLE_ROUTES_KEY in Cloudflare Worker
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
 
 
@@ -1287,10 +1292,10 @@ function planRoute(){
       routeModifiers:{avoidFerries:true},
       polylineQuality:'HIGH_QUALITY'
     };
-    fetch(googleUrl,{
+    fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Goog-Api-Key':GROUTES_KEY,'X-Goog-FieldMask':'routes.polyline,routes.distanceMeters,routes.duration,routes.legs.steps'},
-    body:JSON.stringify(googleBody)
+      headers:{'Content-Type':'application/json','X-Action':'google-routes'},
+      body:JSON.stringify(googleBody)
     }).then(function(r){return r.json();}).then(function(d){
       if(d.routes&&d.routes.length&&d.routes[0].polyline){
         var r=d.routes[0];
