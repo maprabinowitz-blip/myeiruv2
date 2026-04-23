@@ -528,7 +528,7 @@ header{
         <p class="ps">Enter any address, shul, or landmark.</p>
         <div class="addr-wrap">
           <svg class="addr-ico" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 6.5a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" stroke-width="1.1"/><path d="M10 5c0 4-4 6.5-4 6.5S2 9 2 5a4 4 0 018 0z" stroke="currentColor" stroke-width="1.1"/></svg>
-          <input id="addrInput" class="fi addr-fi" type="text" placeholder="Address, shul, landmark…" oninput="onType(this.value,'check')" onkeydown="onKey(event,'check')" autocomplete="off">
+          <input id="addrInput" class="fi addr-fi" type="text" placeholder="Address, shul, landmark…" oninput="onType(this.value,'check')" onkeydown="onKey(event,'check')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button class="me-btn" onclick="useMyLoc()">&#9901; Me</button>
           <div class="ac-box" id="ac-check"></div>
         </div>
@@ -551,7 +551,7 @@ header{
         <div class="route-stop">
           <div class="stop-dot sa">A</div>
           <div style="flex:1;position:relative">
-            <input id="rStart" class="fi" type="text" placeholder="Start: address or place…" oninput="onType(this.value,'rStart')" onkeydown="onKey(event,'rStart')" autocomplete="off" style="padding-right:52px">
+            <input id="rStart" class="fi" type="text" placeholder="Start: address or place…" oninput="onType(this.value,'rStart')" onkeydown="onKey(event,'rStart')" autocomplete="off" autocorrect="off" spellcheck="false" style="padding-right:52px">
             <button class="me-btn" onclick="useMyLocRoute()">&#9901; Me</button>
             <div class="ac-box" id="ac-rStart"></div>
           </div>
@@ -559,7 +559,7 @@ header{
         <div class="route-stop">
           <div class="stop-dot sb" style="background:none;font-size:1.1rem;">📍</div>
           <div style="flex:1;position:relative">
-            <input id="rEnd" class="fi" type="text" placeholder="End: address or place…" oninput="onType(this.value,'rEnd')" onkeydown="onKey(event,'rEnd')" autocomplete="off">
+            <input id="rEnd" class="fi" type="text" placeholder="End: address or place…" oninput="onType(this.value,'rEnd')" onkeydown="onKey(event,'rEnd')" autocomplete="off" autocorrect="off" spellcheck="false">
             <div class="ac-box" id="ac-rEnd"></div>
           </div>
         </div>
@@ -828,7 +828,7 @@ header{
     <!-- Search bar -->
     <div class="draw-search-wrap" id="drawSearchWrap">
       <div style="position:relative">
-        <input class="fi" id="drawSearch" type="text" placeholder="Search address or area…" oninput="onType(this.value,'drawSearch')" onkeydown="onKey(event,'drawSearch')" autocomplete="off">
+        <input class="fi" id="drawSearch" type="text" placeholder="Search address or area…" oninput="onType(this.value,'drawSearch')" onkeydown="onKey(event,'drawSearch')" autocomplete="off" autocorrect="off" spellcheck="false">
         <div class="ac-box" id="ac-drawSearch"></div>
       </div>
     </div>
