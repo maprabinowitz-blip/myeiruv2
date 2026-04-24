@@ -1008,6 +1008,8 @@ map.on('load',()=>{
     // Render what we have (BASE_ERUVIN fallback) while Firestore loads
     S.eruvin.forEach(addEruvToMap);
     (SEED_SHULS||[]).forEach(addShulToMap);
+    // Also load from Google Places for comprehensive coverage
+    setTimeout(loadAllShulsFromGoogle, 2000);
     renderEruvList();renderStatus();
   }
 });
@@ -2800,6 +2802,8 @@ function _renderAllMapData(){
 var _shulMarkers=[];
 function addShulToMap(shul){
   if(!shul||isNaN(shul.lat)||isNaN(shul.lng))return;
+  // Don't add duplicates
+  if(_shulMarkers.find(function(m){return m.id===shul.id;}))return;
   var el=document.createElement('div');
   el.style.cssText='font-size:11px;line-height:1;cursor:pointer;opacity:0.85;';
   el.textContent='🕍';
@@ -2810,6 +2814,50 @@ function addShulToMap(shul){
       .setHTML('<div class="pop-title">'+shul.name+'</div><div class="pop-status" style="font-size:.7rem;color:var(--muted)">'+shul.city+'</div>'))
     .addTo(map);
   _shulMarkers.push({id:shul.id,marker:marker});
+}
+
+// Load shuls from Google Places for a given location
+async function loadShulsFromGoogle(lat,lng,pagetoken){
+  try{
+    var body=pagetoken?{pagetoken:pagetoken}:{lat:lat,lng:lng,radius:3000,keyword:'synagogue shul jewish'};
+    var resp=await fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Action':'google-places'},
+      body:JSON.stringify(body)
+    });
+    var data=await resp.json();
+    if(data.results){
+      data.results.forEach(function(place){
+        var shul={
+          id:'gp-'+place.place_id,
+          name:place.name,
+          city:place.vicinity||'',
+          lat:place.geometry.location.lat,
+          lng:place.geometry.location.lng
+        };
+        addShulToMap(shul);
+      });
+      // Load next page if available (Google Places returns up to 3 pages of 20)
+      if(data.next_page_token){
+        setTimeout(function(){loadShulsFromGoogle(lat,lng,data.next_page_token);},2000);
+      }
+    }
+  }catch(e){console.warn('Google Places shuls error:',e);}
+}
+
+// Load shuls for all eruv centers
+function loadAllShulsFromGoogle(){
+  // Load near each eruv center
+  S.eruvin.forEach(function(e){
+    if(e.center){
+      var parts=e.center.toString().split(',');
+      if(parts.length>=2){
+        setTimeout(function(){
+          loadShulsFromGoogle(parseFloat(parts[1]),parseFloat(parts[0]));
+        },Math.random()*3000); // stagger requests
+      }
+    }
+  });
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
