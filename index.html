@@ -1310,7 +1310,7 @@ function planRoute(){
       routeModifiers:{avoidFerries:true},
       polylineQuality:'HIGH_QUALITY'
     };
-    fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+    fetch('https://api.myeiruv.org',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Action':'google-routes'},
       body:JSON.stringify(googleBody)
@@ -1790,14 +1790,14 @@ function _dispatchAlerts(eruv,status,note,alerts){
   var sent=0;
   alerts.forEach(function(a){
     if(a.viaEmail!==false&&a.userEmail){
-      fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+      fetch('https://api.myeiruv.org',{
         method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
         body:JSON.stringify({to:a.userEmail,toName:a.userName||a.userEmail,eruvName:eruv.name,eruvCity:eruv.city,status:status,note:note,donateUrl:eruv.donateUrl||'',timestamp:getEruvTimestamp()})
       }).then(function(){sent++;}).catch(function(e){console.error('Email err:',e);});
     }
     if(a.viaSms&&a.userPhone){
       var msg=(status==='up'?'✅':'status'==='review'?'⚠️':'❌')+' '+eruv.name+' is '+(status==='up'?'UP & Kosher':status==='review'?'under review':'DOWN')+(note?' — '+note:'')+'. — myeiruv.org';
-      fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+      fetch('https://api.myeiruv.org',{
         method:'POST',headers:{'Content-Type':'application/json','X-Action':'twilio-sms'},
         body:JSON.stringify({to:a.userPhone,message:msg})
       }).catch(function(e){console.error('SMS err:',e);});
@@ -1887,7 +1887,7 @@ async function sendSmsBlast(){
     if(phone.length===10)phone='+1'+phone;
     else if(!phone.startsWith('+'))phone='+'+phone;
     try{
-      var resp=await fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+      var resp=await fetch('https://api.myeiruv.org',{
         method:'POST',
         headers:{'Content-Type':'application/json','X-Action':'twilio-sms'},
         body:JSON.stringify({to:phone,message:msg})
@@ -2070,7 +2070,7 @@ function onDescType(val){
   _identifyTimer=setTimeout(function(){
     if(val===_lastIdentifyTxt)return;
     _lastIdentifyTxt=val;
-    fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+    fetch('https://api.myeiruv.org',{
       method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',max_tokens:120,
@@ -2110,7 +2110,7 @@ function processMapImport(){
   if(desc)userContent+='DESCRIPTION:\n'+desc+'\n\n';
   if(raw)userContent+='MAP DATA:\n'+raw.slice(0,6000);
 
-  fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
     .then(function(r){
       if(r.status===401||r.status===403){btn.innerHTML='✦ Build Zone';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Zone builder unavailable. Please try again.';toast('Zone builder unavailable','err');return Promise.reject('auth');}
       return r.json();
@@ -2811,7 +2811,7 @@ function addShulToMap(shul){
 async function loadShulsFromGoogle(lat,lng,pagetoken){
   try{
     var body=pagetoken?{pagetoken:pagetoken}:{lat:lat,lng:lng,radius:3000,keyword:'synagogue shul jewish'};
-    var resp=await fetch('https://restless-tooth-048f.maprabinowitz.workers.dev',{
+    var resp=await fetch('https://api.myeiruv.org',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Action':'google-places'},
       body:JSON.stringify(body)
