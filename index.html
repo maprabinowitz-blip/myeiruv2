@@ -2142,7 +2142,20 @@ function processMapImport(){
 
       importedCoords=parsed.coords;
       _aiMeta={name:parsed.name||'',city:parsed.city||'',status:parsed.status||'up',note:parsed.note||''};
-      showImportPreview(parsed.coords,desc,parsed);
+      // Close import modal and open draw panel with pre-filled data
+      document.getElementById('mapImportBd').classList.remove('on');
+      openDraw('draw');
+      // Pre-fill zone name and city
+      setTimeout(function(){
+        if(parsed.name&&document.getElementById('zoneName'))document.getElementById('zoneName').value=parsed.name;
+        if(parsed.city&&document.getElementById('zoneCity'))document.getElementById('zoneCity').value=parsed.city;
+        if(parsed.status&&document.getElementById('zoneStatus'))document.getElementById('zoneStatus').value=parsed.status;
+        // Draw the coords on the map
+        if(importedCoords&&importedCoords.length>=3){
+          _importAndDraw(importedCoords);
+        }
+        toast('Zone built! Review boundary and save.','ok');
+      },500);
     }).catch(function(e){
       if(e==='auth')return;
       console.error('Zone builder error:',e);
@@ -2184,6 +2197,20 @@ function showImportPreview(coords,desc,aiData){
   else if(desc)document.getElementById('mi-name').value=desc.split(' ').slice(0,4).join(' ');
   if(meta.city)document.getElementById('mi-city').value=meta.city;
   if(meta.status){var sel=document.getElementById('mi-status-sel');if(sel)sel.value=meta.status;}
+}
+function _importAndDraw(coords){
+  importedCoords=coords;
+  // Trigger the draw with imported coordinates
+  setTimeout(function(){
+    if(typeof _loadImportedCoordsIntoDraw==='function')_loadImportedCoordsIntoDraw(coords);
+    else if(typeof importZoneToEditor==='function'){
+      // Auto-fill and trigger import
+      var nameEl=document.getElementById('zoneName');
+      var cityEl=document.getElementById('zoneCity');
+      if(nameEl&&_aiMeta.name)nameEl.value=_aiMeta.name;
+      if(cityEl&&_aiMeta.city)cityEl.value=_aiMeta.city;
+    }
+  },800);
 }
 function importZoneToEditor(){
   var name=document.getElementById('mi-name').value.trim(),city=document.getElementById('mi-city').value.trim(),status=document.getElementById('mi-status-sel').value;
