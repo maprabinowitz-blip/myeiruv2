@@ -19,7 +19,7 @@
   --green:#22a865;--red:#d94040;--amber:#e08020;
   --sh:0 2px 14px rgba(20,40,90,.10);
   --shl:0 8px 40px rgba(20,40,90,.18);
-  --r:10px;--hh:104px;--sw:380px;
+  --r:10px;--hh:68px;--sw:380px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;color:var(--text);}
@@ -43,10 +43,9 @@ header{
   margin:0;padding:0;line-height:0;
 }
 .hdr-logo{
-  height:90px;width:auto;display:block;
+  height:68px;width:auto;display:block;
   cursor:pointer;
   transition:opacity .18s;
-  filter:drop-shadow(0 1px 8px rgba(74,144,217,.35));
 }
 .hdr-logo:hover{opacity:.85;}
 
@@ -430,52 +429,49 @@ header{
 
 <header>
   <div class="hdr-logo-wrap">
-    <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv — click to refresh" viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="height:90px;width:auto;cursor:pointer;background:transparent;">
-  <!-- Eruv wires - top wire at y=14, bottom at y=20 -->
-  <path d="M10 14 Q140 2 270 14" stroke="#4a90d9" stroke-width="2.2" fill="none" opacity="0.9"/>
-  <path d="M10 20 Q140 8 270 20" stroke="#6ab0f0" stroke-width="1.2" fill="none" opacity="0.6"/>
-  <!-- Left pole -->
-  <line x1="22" y1="10" x2="22" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
-  <line x1="12" y1="14" x2="32" y2="14" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="14" y1="20" x2="30" y2="20" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Right pole -->
-  <line x1="258" y1="10" x2="258" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
-  <line x1="248" y1="14" x2="268" y2="14" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="250" y1="20" x2="266" y2="20" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Bird sitting ON top wire at y=14 -->
-  <g transform="translate(72,11)">
-    <ellipse cx="0" cy="0" rx="3.5" ry="2.2" fill="#6a8aaa"/>
-    <circle cx="3" cy="-2.5" r="2" fill="#6a8aaa"/>
-    <polygon points="4.2,-4.2 6.2,-2.5 4.2,-1.8" fill="#c8923a"/>
-    <circle cx="3.8" cy="-3.4" r="0.55" fill="#0a1628"/>
-    <circle cx="4.0" cy="-3.6" r="0.2" fill="#fff"/>
-    <path d="M-3.5,0.3 L-6.5,1.5 L-5,-0.5Z" fill="#4a6a88"/>
-    <line x1="-0.5" y1="2" x2="-1.5" y2="3.5" stroke="#6a8aaa" stroke-width="0.7"/>
-    <line x1="1" y1="2" x2="1" y2="3.5" stroke="#6a8aaa" stroke-width="0.7"/>
+    <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv" viewBox="0 0 260 68" xmlns="http://www.w3.org/2000/svg" style="height:68px;width:auto;cursor:pointer;">
+  <!-- Dark blue background -->
+  <rect width="260" height="68" rx="0" fill="#0f1f38"/>
+  <!-- Left pole - white -->
+  <line x1="30" y1="8" x2="30" y2="60" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="20" y1="18" x2="40" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <line x1="22" y1="24" x2="38" y2="24" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Right pole - white -->
+  <line x1="230" y1="8" x2="230" y2="60" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  <line x1="220" y1="18" x2="240" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+  <line x1="222" y1="24" x2="238" y2="24" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Eruv wires - light blue -->
+  <path d="M30 18 Q130 4 230 18" stroke="#7ab8f0" stroke-width="1.8" fill="none"/>
+  <path d="M30 24 Q130 10 230 24" stroke="#5a98d0" stroke-width="1" fill="none"/>
+  <!-- Bird on wire -->
+  <g transform="translate(80,15)">
+    <ellipse cx="0" cy="0" rx="4" ry="2.5" fill="#a0c8e8"/>
+    <circle cx="3.5" cy="-2.5" r="2.5" fill="#a0c8e8"/>
+    <polygon points="5,-4.5 7.5,-2.5 5,-1.8" fill="#f0c060"/>
+    <circle cx="4.5" cy="-3.2" r="0.7" fill="#0a1628"/>
+    <path d="M-4,0 L-7.5,1.5 L-6,-0.5Z" fill="#80a8c8"/>
+    <line x1="-0.5" y1="2.3" x2="-1.5" y2="4.5" stroke="#a0c8e8" stroke-width="0.8"/>
+    <line x1="1.2" y1="2.3" x2="1.2" y2="4.5" stroke="#a0c8e8" stroke-width="0.8"/>
   </g>
-  <!-- Skyline - dome peak at y=38 -->
-  <g fill="#2a4a7a" opacity="0.88">
-    <rect x="38" y="52" width="14" height="18"/>
-    <rect x="54" y="46" width="10" height="24"/>
-    <rect x="66" y="54" width="12" height="16"/>
-    <rect x="118" y="54" width="44" height="16"/>
-    <!-- Dome peak at y=38 -->
-    <path d="M128 54 Q140 38 152 54Z"/>
-    <rect x="174" y="48" width="12" height="22"/>
-    <rect x="188" y="54" width="10" height="16"/>
-    <rect x="200" y="50" width="14" height="20"/>
-    <rect x="216" y="56" width="10" height="14"/>
+  <!-- Skyline - lighter blue on dark bg -->
+  <g fill="#3a6090" opacity="0.9">
+    <rect x="48" y="38" width="12" height="22"/>
+    <rect x="62" y="33" width="8" height="27"/>
+    <rect x="72" y="40" width="10" height="20"/>
+    <rect x="110" y="40" width="40" height="20"/>
+    <path d="M118 40 Q130 26 142 40Z"/>
+    <rect x="152" y="35" width="10" height="25"/>
+    <rect x="164" y="40" width="8" height="20"/>
+    <rect x="174" y="37" width="12" height="23"/>
+    <rect x="188" y="42" width="8" height="18"/>
   </g>
-  <!-- Star of David - centered at y=28, bottom point touches dome peak at y=38 -->
-  <!-- Star height is 14px (7 up + 7 down), center at y=28 means bottom at y=35 -->
-  <!-- Move center to y=31 so bottom point y=38 touches dome -->
-  <g transform="translate(140,31)">
-    <polygon points="0,-7 6.1,3.5 -6.1,3.5" fill="none" stroke="#b8963a" stroke-width="1.8" opacity="0.9"/>
-    <polygon points="0,7 6.1,-3.5 -6.1,-3.5" fill="none" stroke="#b8963a" stroke-width="1.8" opacity="0.9"/>
+  <!-- Star of David on dome -->
+  <g transform="translate(130,22)">
+    <polygon points="0,-6 5.2,3 -5.2,3" fill="none" stroke="#c8a840" stroke-width="1.5" opacity="0.95"/>
+    <polygon points="0,6 5.2,-3 -5.2,-3" fill="none" stroke="#c8a840" stroke-width="1.5" opacity="0.95"/>
   </g>
-  <path d="M30 70 Q140 78 250 70" stroke="#4a90d9" stroke-width="2" fill="none" opacity="0.7"/>
-  <rect x="72" y="72" width="136" height="17" rx="3" fill="#1a2c4a" opacity="0.9"/>
-  <text x="140" y="84" text-anchor="middle" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
+  <!-- MYEIRUV text -->
+  <text x="130" y="64" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#ffffff" letter-spacing="3.5">MYEIRUV</text>
 </svg>
   </div>
   <div class="hdr-brand" id="hdrBrand">
@@ -2911,8 +2907,7 @@ function _renderAllMapData(){
   setTimeout(function(){
     var count=0;
     (SEED_SHULS||[]).forEach(function(s){addShulToMap(s);count++;});
-    console.log('[MyEiruv] Loaded',count,'seed shuls on map');
-    toast(count+' shuls loaded on map','ok');
+
   },1500);
 }
 
@@ -2958,7 +2953,7 @@ function _loadShulsOSM(lat,lng,radius){
           addShulToMap({id:id,name:name,city:p.address&&(p.address.city||p.address.town||p.address.suburb)||'',lat:parseFloat(p.lat),lng:parseFloat(p.lon)});
           added++;
         });
-        if(added>0)console.log('[MyEiruv]',added,'shuls from Nominatim:',term);
+  
       }).catch(function(e){console.warn('[MyEiruv] Nominatim error:',e.message);});
     },i*1000); // stagger requests to respect rate limit
   });
@@ -3069,7 +3064,7 @@ import {
 
 const firebaseConfig = {
   apiKey:            "AIzaSyAogjpoQUXKrgRzYzwD7_CbC3tIPZ21Ejo",
-  authDomain:        "myeiruv.org",
+  authDomain:        "myeiruv-a9b88.firebaseapp.com",
   projectId:         "myeiruv-a9b88",
   storageBucket:     "myeiruv-a9b88.firebasestorage.app",
   messagingSenderId: "609731050951",
