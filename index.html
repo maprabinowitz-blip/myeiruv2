@@ -2834,33 +2834,32 @@ function addShulToMap(shul){
   _shulMarkers.push({id:shul.id,marker:marker});
 }
 
-// Load shuls from Google Places for a given location
+// Load shuls from OpenStreetMap Overpass API - free, no key needed
 async function loadShulsFromGoogle(lat,lng,pagetoken){
   try{
-    var body=pagetoken?{pagetoken:pagetoken}:{lat:lat,lng:lng,radius:3000,keyword:'synagogue shul jewish'};
-    var resp=await fetch('https://api.myeiruv.org',{
+    // Build Overpass query for synagogues within 3km
+    var radius=3000;
+    var query='[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+');node["amenity"="place_of_worship"]["name"~"shul|synagogue|chabad|temple|yeshiva|beis|bais|kehila|agudah|anshe|bnai|ohel|khal",i](around:'+radius+','+lat+','+lng+'););out body;';
+    var resp=await fetch('https://overpass-api.de/api/interpreter',{
       method:'POST',
-      headers:{'Content-Type':'application/json','X-Action':'google-places'},
-      body:JSON.stringify(body)
+      body:'data='+encodeURIComponent(query)
     });
     var data=await resp.json();
-    if(data.results){
-      data.results.forEach(function(place){
+    if(data.elements){
+      data.elements.forEach(function(place){
+        if(!place.lat||!place.lon)return;
+        var name=place.tags&&(place.tags.name||place.tags['name:en'])||'Synagogue';
         var shul={
-          id:'gp-'+place.place_id,
-          name:place.name,
-          city:place.vicinity||'',
-          lat:place.geometry.location.lat,
-          lng:place.geometry.location.lng
+          id:'osm-'+place.id,
+          name:name,
+          city:place.tags&&place.tags['addr:city']||'',
+          lat:place.lat,
+          lng:place.lon
         };
         addShulToMap(shul);
       });
-      // Load next page if available (Google Places returns up to 3 pages of 20)
-      if(data.next_page_token){
-        setTimeout(function(){loadShulsFromGoogle(lat,lng,data.next_page_token);},2000);
-      }
     }
-  }catch(e){console.warn('Google Places shuls error:',e);}
+  }catch(e){console.warn('OpenStreetMap shuls error:',e);}
 }
 
 // Load shuls for all eruv centers
