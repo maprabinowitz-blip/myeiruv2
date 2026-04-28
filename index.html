@@ -2117,10 +2117,28 @@ function extractFromGeoJSON(gj){
   else if(gj.type==='LineString')ring=gj.coordinates;
   return ring&&ring.length>=3?ring:null;
 }
+function parseKML(text){
+  try{
+    var parser=new DOMParser();
+    var doc=parser.parseFromString(text,'text/xml');
+    // Try coordinates tag
+    var coordsEl=doc.querySelector('coordinates');
+    if(!coordsEl)return null;
+    var raw=coordsEl.textContent.trim();
+    var coords=raw.split(/\s+/).map(function(c){
+      var parts=c.split(',');
+      if(parts.length>=2){var lng=parseFloat(parts[0]),lat=parseFloat(parts[1]);if(!isNaN(lng)&&!isNaN(lat))return[lng,lat];}
+      return null;
+    }).filter(Boolean);
+    return coords.length>=3?coords:null;
+  }catch(e){return null;}
+}
 function parseCsvCoords(text){
+  // Handle KML
+  if(text.indexOf('<kml')>=0||text.indexOf('<coordinates')>=0)return parseKML(text);
   var lines=text.trim().split('\n'),coords=[];
   lines.forEach(function(line){
-    line=line.trim();if(!line)return;
+    line=line.trim();if(!line||line[0]==='<')return;
     var parts=line.split(/[\s,\t]+/);
     if(parts.length>=2){var a=parseFloat(parts[0]),b=parseFloat(parts[1]);if(!isNaN(a)&&!isNaN(b)){if(Math.abs(a)<=90&&Math.abs(b)<=180)coords.push([b,a]);else coords.push([a,b]);}}
   });
@@ -2165,9 +2183,26 @@ function processMapImport(){
   try{coords=extractFromGeoJSON(JSON.parse(raw));}catch(_){}
   if(!coords&&raw)coords=parseCsvCoords(raw);
   if(coords&&coords.length>=3&&!desc){
-    // Clean structured file — skip AI, just preview
+    // Clean structured file — skip AI, load directly into draw editor
     btn.innerHTML='✦ Build Zone';btn.disabled=false;
-    importedCoords=coords;_aiMeta={};showImportPreview(coords,desc);return;
+    importedCoords=coords;_aiMeta={};
+    document.getElementById('mapImportBd').classList.remove('on');
+    openDraw('draw');
+    setTimeout(function(){
+      if(typeof Draw!=='undefined'&&Draw){
+        var ring=coords.slice();var f=ring[0],l=ring[ring.length-1];
+        if(f[0]!==l[0]||f[1]!==l[1])ring.push([f[0],f[1]]);
+        try{
+          Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[ring]},properties:{}});
+          var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
+          if(typeof drawMap!=='undefined'&&drawMap)drawMap.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:60});
+          var sb=document.getElementById('saveZoneBtn');if(sb){sb.style.opacity='1';sb.style.pointerEvents='auto';}
+          _setDrawStep(3);
+          toast('File loaded! Review boundary and save.','ok');
+        }catch(e){toast('File loaded — fill details and save.','ok');}
+      }
+    },800);
+    return;
   }
 
   // AI path — either need to parse messy content, OR user described it in text
@@ -2209,20 +2244,43 @@ function processMapImport(){
 
       importedCoords=parsed.coords;
       _aiMeta={name:parsed.name||'',city:parsed.city||'',status:parsed.status||'up',note:parsed.note||''};
-      // Close import modal and open draw panel with pre-filled data
+
+      // Show preview first, then let user confirm and edit
       document.getElementById('mapImportBd').classList.remove('on');
       openDraw('draw');
-      // Pre-fill zone name and city
       setTimeout(function(){
+        // Pre-fill fields
         if(parsed.name&&document.getElementById('zoneName'))document.getElementById('zoneName').value=parsed.name;
         if(parsed.city&&document.getElementById('zoneCity'))document.getElementById('zoneCity').value=parsed.city;
         if(parsed.status&&document.getElementById('zoneStatus'))document.getElementById('zoneStatus').value=parsed.status;
-        // Draw the coords on the map
-        if(importedCoords&&importedCoords.length>=3){
-          _importAndDraw(importedCoords);
+        if(parsed.note&&document.getElementById('zoneNote'))document.getElementById('zoneNote').value=parsed.note;
+
+        // Load coords into draw map as editable polygon
+        if(typeof Draw!=='undefined'&&Draw&&importedCoords&&importedCoords.length>=3){
+          var ring=importedCoords.slice();
+          var f=ring[0],l=ring[ring.length-1];
+          if(f[0]!==l[0]||f[1]!==l[1])ring.push([f[0],f[1]]);
+          try{
+            Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[ring]},properties:{}});
+            // Fit map to polygon
+            var lngs=importedCoords.map(function(c){return c[0];});
+            var lats=importedCoords.map(function(c){return c[1];});
+            if(typeof drawMap!=='undefined'&&drawMap){
+              drawMap.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:60,duration:500});
+            }
+            // Enable save button
+            var saveBtn=document.getElementById('saveZoneBtn');
+            if(saveBtn){saveBtn.style.opacity='1';saveBtn.style.pointerEvents='auto';}
+            _setDrawStep(3);
+            toast('Zone loaded! Review boundary, drag points to edit, then save.','ok');
+          }catch(e){
+            console.error('Draw.add error:',e);
+            toast('Zone built — review the boundary and save.','ok');
+          }
+        } else {
+          toast('Zone built! Fill in the details and save.','ok');
         }
-        toast('Zone built! Review boundary and save.','ok');
-      },500);
+      },800);
     }).catch(function(e){
       if(e==='auth')return;
       console.error('Zone builder error:',e);
