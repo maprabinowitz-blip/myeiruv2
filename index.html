@@ -1377,28 +1377,12 @@ function planRoute(){
         processRoute(result,sc,ec);
       } else {
         console.warn('Google Routes failed, falling back to Mapbox',d);
-        fallbackMapbox(sc,ec,ck);
+        fallbackORS(sc,ec,ck);
       }
     }).catch(function(err){
-      console.warn('Google Routes error, falling back:',err);
-      fallbackMapbox(sc,ec,ck);
+      console.warn('Google Routes error, falling back to OSRM:',err);
+      fallbackORS(sc,ec,ck);
     });
-  }
-
-  function fallbackMapbox(sc,ec,ck){
-    var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
-      +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
-      +'?overview=full&geometries=geojson&steps=true&approaches=curb%3Bcurb&exclude=ferry&access_token='+TOKEN;
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.code&&d.code!=='Ok'||!d.routes||!d.routes.length){
-        // Try OpenRouteService as final fallback
-        fallbackORS(sc,ec,ck);return;
-      }
-      var r=d.routes[0];
-      var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox'};
-      _routeCache[ck]=result;
-      processRoute(result,sc,ec);
-    }).catch(function(){fallbackORS(sc,ec,ck);});
   }
 
   function fallbackORS(sc,ec,ck){
