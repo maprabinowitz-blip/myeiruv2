@@ -2171,13 +2171,13 @@ function processMapImport(){
   }
 
   // AI path — either need to parse messy content, OR user described it in text
-  var systemPrompt='You are a GIS assistant for a Jewish eiruv boundary mapping app.\n\nGiven a description or geographic data, return a polygon boundary for the eiruv.\n\nSTRICT OUTPUT RULES:\n- Return ONLY a single JSON object. No prose, no markdown, no code fences.\n- Format: {"name":"...","city":"City, ST","status":"up","note":"","coords":[[lng,lat],...]}\n- status must be exactly "up", "review", or "down"\n- coords: array of [longitude, latitude] pairs (longitude FIRST)\n- Use 16–28 points for a realistic neighborhood-scale polygon\n- Place points at actual street intersections when streets are named\n- Do NOT repeat the first point at the end\n- Longitude is the east-west value (negative for USA west of prime meridian)\n- Latitude is the north-south value\n\nExample for a small area: {"name":"Teaneck Eiruv","city":"Teaneck, NJ","status":"up","note":"","coords":[[-74.03,40.91],[-74.00,40.92],[-73.99,40.90],[-74.00,40.88],[-74.03,40.88]]}';
+  var systemPrompt='You are a GIS expert building eiruv zone polygons for a Jewish community map.\n\nRules:\n1. If given file data (GeoJSON/KML/CSV coords) - extract those exact coordinates\n2. If given street boundary descriptions - generate accurate GPS coordinates\n3. If given both file + description - combine them intelligently\n\nOutput ONLY this JSON (no other text):\n{\"name\":\"Zone Name\",\"city\":\"City, ST\",\"status\":\"up\",\"note\":\"\",\"coords\":[[lng,lat],...]}\n\nRules:\n- coords are [longitude, latitude] pairs, longitude FIRST\n- 12-40 pairs for a realistic boundary\n- status must be up/review/down\n- For US: longitude -65 to -125, latitude 25 to 50\n- Do NOT repeat first point at end\n- Place points at real street intersections when streets named\n\nExamples: Teaneck NJ ~[-74.03,40.89], Brooklyn NY ~[-73.95,40.65], Monsey NY ~[-74.07,41.11]';
 
   var userContent='';
   if(desc)userContent+='DESCRIPTION:\n'+desc+'\n\n';
   if(raw)userContent+='MAP DATA:\n'+raw.slice(0,6000);
 
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:2000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:3000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
     .then(function(r){
       if(r.status===401||r.status===403){btn.innerHTML='✦ Build Zone';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Zone builder unavailable. Please try again.';toast('Zone builder unavailable','err');return Promise.reject('auth');}
       return r.json();
@@ -2266,17 +2266,31 @@ function showImportPreview(coords,desc,aiData){
   if(meta.status){var sel=document.getElementById('mi-status-sel');if(sel)sel.value=meta.status;}
 }
 function _importAndDraw(coords){
+  if(!coords||coords.length<3)return;
   importedCoords=coords;
-  // Trigger the draw with imported coordinates
+  // Load coords directly into draw map
   setTimeout(function(){
-    if(typeof _loadImportedCoordsIntoDraw==='function')_loadImportedCoordsIntoDraw(coords);
-    else if(typeof importZoneToEditor==='function'){
-      // Auto-fill and trigger import
-      var nameEl=document.getElementById('zoneName');
-      var cityEl=document.getElementById('zoneCity');
-      if(nameEl&&_aiMeta.name)nameEl.value=_aiMeta.name;
-      if(cityEl&&_aiMeta.city)cityEl.value=_aiMeta.city;
-    }
+    try{
+      // Close the ring for GeoJSON
+      var ring=coords.slice();
+      var f=ring[0],l=ring[ring.length-1];
+      if(f[0]!==l[0]||f[1]!==l[1])ring.push([f[0],f[1]]);
+      // Add to draw map if available
+      if(typeof drawMap!=='undefined'&&drawMap){
+        var geom={type:'Feature',geometry:{type:'Polygon',coordinates:[ring]},properties:{}};
+        if(drawMap.getSource('ai-import')){drawMap.getSource('ai-import').setData(geom);}
+        else{
+          drawMap.addSource('ai-import',{type:'geojson',data:geom});
+          drawMap.addLayer({id:'ai-import-fill',type:'fill',source:'ai-import',paint:{'fill-color':'#1a2c4a','fill-opacity':0.15}});
+          drawMap.addLayer({id:'ai-import-line',type:'line',source:'ai-import',paint:{'line-color':'#1a2c4a','line-width':2.5,'line-dasharray':[3,2]}});
+        }
+        // Fit bounds
+        var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
+        drawMap.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:40});
+      }
+      // Store for saving
+      S._pendingImportCoords=coords;
+    }catch(e){console.warn('_importAndDraw error:',e);}
   },800);
 }
 function importZoneToEditor(){
