@@ -2829,6 +2829,12 @@ function _renderAllMapData(){
     }
   });
   renderEruvList();renderStatus();
+  setTimeout(function(){
+    var count=0;
+    (SEED_SHULS||[]).forEach(function(s){addShulToMap(s);count++;});
+    console.log('[MyEiruv] Loaded',count,'seed shuls on map');
+    toast(count+' shuls loaded on map','ok');
+  },1500);
 }
 
 // Shul markers on map
