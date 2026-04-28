@@ -1738,7 +1738,8 @@ function doForgotPassword(){
   if(window._firebaseAuth){
     sendPasswordResetEmail(window._firebaseAuth,email).then(function(){
       err.style.cssText='display:block;color:var(--green);background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2)';
-      err.textContent='Reset link sent! Check your email.';
+      err.style.cssText='display:block;color:var(--green);background:rgba(34,197,94,.08);border-color:rgba(34,197,94,.2)';
+      err.textContent='Reset link sent by Firebase! Check your inbox (and spam folder).';
     }).catch(function(e){
       err.textContent=e.message||'Error sending reset email.';err.style.display='block';
     });
@@ -1769,8 +1770,19 @@ function doRegister(){
   var isAdmin=email===ADMIN_EMAIL.toLowerCase();
   var user={name:name,email:email,password:pass,role:isAdmin?'admin':'user',avatar:name[0].toUpperCase(),contractorStatus:'none'};
   _cacheAndSaveUser(user);closeModal();signInAs(user);
-  // Reload all users so admin panel stays fresh
   if(window._db)window._db.loadUsers().then(function(u){if(u&&u.length)window._fsUsers=u;});
+  // Send welcome email via Brevo
+  fetch('https://api.myeiruv.org',{
+    method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({
+      to:email,toName:name,
+      eruvName:'Welcome to MyEiruv!',
+      eruvCity:'',
+      status:'up',
+      note:'Your account has been created. Sign in at myeiruv.org to set eruv alerts and stay informed every Shabbos.',
+      timestamp:new Date().toLocaleDateString()
+    })
+  }).catch(function(){});
 }
 function doContractorApply(){
   var name=document.getElementById('cName').value.trim(),email=document.getElementById('cEmail').value.trim().toLowerCase();
@@ -2212,14 +2224,34 @@ function processMapImport(){
   if(desc)userContent+='DESCRIPTION:\n'+desc+'\n\n';
   if(raw)userContent+='MAP DATA:\n'+raw.slice(0,6000);
 
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'anthropic'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:3000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]})})
-    .then(function(r){
-      if(r.status===401||r.status===403){btn.innerHTML='✦ Build Zone';btn.disabled=false;document.getElementById('mi-status').textContent='⚠ Zone builder unavailable. Please try again.';toast('Zone builder unavailable','err');return Promise.reject('auth');}
-      return r.json();
-    })
-    .then(function(data){
-      var txt=(data.content&&data.content[0]&&data.content[0].text)||'';
-      btn.innerHTML='✦ Build Zone';btn.disabled=false;
+  var aiPayload=JSON.stringify({model:'claude-sonnet-4-6',max_tokens:3000,system:systemPrompt,messages:[{role:'user',content:userContent.trim()||desc}]});
+  function tryAI(url,headers,onDone){
+    fetch(url,{method:'POST',headers:headers,body:aiPayload})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var txt=(d.content&&d.content[0]&&d.content[0].text)||'';
+        onDone(txt,null);
+      }).catch(function(e){onDone(null,e);});
+  }
+  // Try Worker first, fall back to direct Anthropic
+  tryAI('https://api.myeiruv.org',{'Content-Type':'application/json','X-Action':'anthropic'},function(txt,err){
+    if(!txt){
+      // Fallback: direct Anthropic call
+      tryAI('https://api.anthropic.com/v1/messages',{
+        'Content-Type':'application/json',
+        'x-api-key':typeof ANTHROPIC_KEY!=='undefined'&&ANTHROPIC_KEY||'',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },function(txt2,err2){
+        processTxt(txt2);
+      });
+      return;
+    }
+    processTxt(txt);
+  });
+  function processTxt(txt){
+    btn.innerHTML='✦ Build Zone';btn.disabled=false;
+    if(!txt){document.getElementById('mi-status').textContent='⚠ Zone builder unavailable — check Worker secrets.';toast('Zone builder unavailable','err');return;}
 
       // Parse the structured JSON response
       var parsed=null;
@@ -2281,13 +2313,7 @@ function processMapImport(){
           toast('Zone built! Fill in the details and save.','ok');
         }
       },800);
-    }).catch(function(e){
-      if(e==='auth')return;
-      console.error('Zone builder error:',e);
-      document.getElementById('mi-status').textContent='⚠ Error: '+( e&&e.message||e||'unknown');
-      toast('Zone builder error — see status message','err');
-      btn.innerHTML='✦ Build Zone';btn.disabled=false;
-    });
+  } // end processTxt
 }
 var _aiMeta={};
 function showImportPreview(coords,desc,aiData){
@@ -2983,7 +3009,7 @@ function _loadShulsForView(){
     // Show shul icons only when zoomed in enough
     var showShuls=zoom>=12;
     _shulMarkers.forEach(function(m){m.marker.getElement().style.display=showShuls?'block':'none';});
-    if(zoom<12)return; // Don't load at very high zoom - too many results
+    if(!showShuls)return; // Don't load at very high zoom - too many results
     var lat=center.lat,lng=center.lng;
     // Calculate radius from zoom level
     var radius=Math.min(15000,Math.round(40000/Math.pow(2,zoom-8)));
@@ -3020,13 +3046,11 @@ function _loadShulsOSM(lat,lng,radius){
 
 function addShulToMap(shul){
   if(!shul||isNaN(shul.lat)||isNaN(shul.lng))return;
-  // Don't add duplicates
   if(_shulMarkers.find(function(m){return m.id===shul.id;}))return;
-  // Add to S.shuls for search
   if(!S.shuls)S.shuls=[];
   if(!S.shuls.find(function(s){return s.id===shul.id;}))S.shuls.push(shul);
   var el=document.createElement('div');
-  el.style.cssText='font-size:16px;line-height:1;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5));';
+  el.style.cssText='font-size:16px;line-height:1;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5));display:none;';
   el.textContent='🕍';
   el.title=shul.name+' · '+shul.city;
   var marker=new mapboxgl.Marker({element:el,anchor:'bottom'})
