@@ -2837,29 +2837,49 @@ function addShulToMap(shul){
 // Load shuls from OpenStreetMap Overpass API - free, no key needed
 async function loadShulsFromGoogle(lat,lng,pagetoken){
   try{
-    // Build Overpass query for synagogues within 3km
     var radius=3000;
-    var query='[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+');node["amenity"="place_of_worship"]["name"~"shul|synagogue|chabad|temple|yeshiva|beis|bais|kehila|agudah|anshe|bnai|ohel|khal",i](around:'+radius+','+lat+','+lng+'););out body;';
-    var resp=await fetch('https://overpass-api.de/api/interpreter',{
-      method:'POST',
-      body:'data='+encodeURIComponent(query)
-    });
-    var data=await resp.json();
-    if(data.elements){
+    var query='[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+');node["building"="synagogue"](around:'+radius+','+lat+','+lng+');way["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+'););out center;';
+    
+    // Try multiple Overpass endpoints for reliability
+    var endpoints=[
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
+    ];
+    
+    var data=null;
+    for(var i=0;i<endpoints.length;i++){
+      try{
+        var resp=await fetch(endpoints[i],{
+          method:'POST',
+          headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:'data='+encodeURIComponent(query)
+        });
+        if(resp.ok){data=await resp.json();break;}
+      }catch(err){console.warn('Overpass endpoint failed:',endpoints[i]);}
+    }
+    
+    if(data&&data.elements&&data.elements.length){
+      var added=0;
       data.elements.forEach(function(place){
-        if(!place.lat||!place.lon)return;
-        var name=place.tags&&(place.tags.name||place.tags['name:en'])||'Synagogue';
-        var shul={
+        var plat=place.lat||(place.center&&place.center.lat);
+        var plng=place.lon||(place.center&&place.center.lon);
+        if(!plat||!plng)return;
+        var name=(place.tags&&(place.tags.name||place.tags['name:en']))||'Synagogue';
+        addShulToMap({
           id:'osm-'+place.id,
           name:name,
-          city:place.tags&&place.tags['addr:city']||'',
-          lat:place.lat,
-          lng:place.lon
-        };
-        addShulToMap(shul);
+          city:(place.tags&&place.tags['addr:city'])||'',
+          lat:plat,
+          lng:plng
+        });
+        added++;
       });
+      if(added>0)console.log('[MyEiruv] Loaded',added,'shuls near',lat,lng);
+    }else{
+      console.warn('[MyEiruv] No shuls found near',lat,lng);
     }
-  }catch(e){console.warn('OpenStreetMap shuls error:',e);}
+  }catch(e){console.warn('[MyEiruv] Shul loading error:',e.message);}
 }
 
 // Load shuls for all eruv centers
