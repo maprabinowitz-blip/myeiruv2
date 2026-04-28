@@ -42,7 +42,7 @@ export default {
       const html=`<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f4f6fb;margin:0"><div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden"><div style="background:linear-gradient(135deg,#0a1628,#1a3055);padding:28px 32px"><div style="color:#fff;font-size:22px;font-weight:700">MyEiruv</div></div><div style="padding:28px 32px"><h2 style="color:#0f1f38;margin:0 0 4px">${eruvName}</h2><p style="color:#6b7a99;font-size:14px;margin:0 0 20px">${eruvCity||''}</p><div style="background:#f4f6fb;border-radius:10px;padding:18px 20px;border-left:4px solid ${sc[status]||'#666'}"><div style="font-size:18px;font-weight:700;color:${sc[status]||'#666'}">${sl[status]||status}</div>${note?`<p style="color:#444;font-size:14px;margin:8px 0 0">${note}</p>`:''}</div>${timestamp?`<p style="color:#a8b4cc;font-size:12px;margin-top:12px">Updated: ${timestamp}</p>`:''}${db}<div style="margin-top:24px;padding-top:18px;border-top:1px solid #e2e7f0"><a href="https://myeiruv.org" style="color:#2563b0;font-size:13px;text-decoration:none">View on MyEiruv →</a></div></div></div></body></html>`;
       const res=await fetch('https://api.brevo.com/v3/smtp/email',{
         method:'POST',headers:{'Content-Type':'application/json','api-key':env.BREVO_KEY},
-        body:JSON.stringify({sender:{name:'MyEiruv',email:'alerts@myeiruv.org'},to:[{email:to,name:toName||to}],subject:`${eruvName} — ${sl[status]||status}`,htmlContent:html})
+        body:JSON.stringify({sender:{name:'MyEiruv',email:'maprabinowitz@gmail.com'},to:[{email:to,name:toName||to}],subject:`${eruvName} — ${sl[status]||status}`,htmlContent:html})
       });
       return r(await res.text(),res.status,ok);
     }
