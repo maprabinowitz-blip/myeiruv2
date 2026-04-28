@@ -1387,13 +1387,28 @@ function planRoute(){
       +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
       +'?overview=full&geometries=geojson&steps=true&approaches=curb%3Bcurb&exclude=ferry&access_token='+TOKEN;
     fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.code&&d.code!=='Ok'){toast('Route error: '+d.message,'err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      if(d.code&&d.code!=='Ok'||!d.routes||!d.routes.length){
+        // Try OpenRouteService as final fallback
+        fallbackORS(sc,ec,ck);return;
+      }
       var r=d.routes[0];
       var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox'};
       _routeCache[ck]=result;
       processRoute(result,sc,ec);
-    }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+    }).catch(function(){fallbackORS(sc,ec,ck);});
+  }
+
+  function fallbackORS(sc,ec,ck){
+    fetch('https://api.openrouteservice.org/v2/directions/foot-walking/geojson',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'5b3ce3597851110001cf6248b4e8c4c5a9f14b26b8b4b29e7c3d8f6e'},
+      body:JSON.stringify({coordinates:[[sc.lng,sc.lat],[ec.lng,ec.lat]]})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(!d.features||!d.features[0]){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      var f=d.features[0];
+      var result={coords:f.geometry.coordinates,distance:f.properties.summary.distance||0,duration:f.properties.summary.duration||0,steps:[],source:'ors'};
+      _routeCache[ck]=result;processRoute(result,sc,ec);
+    }).catch(function(){toast('Could not find route','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
 
   function processRoute(result,sc,ec){
