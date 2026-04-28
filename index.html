@@ -3,9 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MyEiruv — Know Before You Go</title>
-<link rel="icon" type="image/svg+xml" href="logo.png">
-<link rel="shortcut icon" href="logo.png">
+<link rel="icon" href="logo.png"><title>MyEiruv – Community Eiruv Platform</title>
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -46,7 +44,7 @@ header{
   height:90px;width:auto;display:block;
   cursor:pointer;
   transition:opacity .18s;
-  filter:drop-shadow(0 1px 8px rgba(74,144,217,.35)) brightness(1.05);
+  filter:drop-shadow(0 1px 8px rgba(74,144,217,.35));
 }
 .hdr-logo:hover{opacity:.85;}
 
@@ -430,8 +428,8 @@ header{
 
 <header>
   <div class="hdr-logo-wrap">
-    <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv" viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="height:90px;width:auto;cursor:pointer;display:block;background:transparent;">
-  <!-- Eruv wires -->
+    <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv — click to refresh" viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="height:90px;width:auto;cursor:pointer;">
+  <!-- Eruv wires - top wire at y=14, bottom at y=20 -->
   <path d="M10 14 Q140 2 270 14" stroke="#4a90d9" stroke-width="2.2" fill="none" opacity="0.9"/>
   <path d="M10 20 Q140 8 270 20" stroke="#6ab0f0" stroke-width="1.2" fill="none" opacity="0.6"/>
   <!-- Left pole -->
@@ -442,36 +440,40 @@ header{
   <line x1="258" y1="10" x2="258" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
   <line x1="248" y1="14" x2="268" y2="14" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
   <line x1="250" y1="20" x2="266" y2="20" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Tiny bird on wire -->
+  <!-- Bird sitting ON top wire at y=14 -->
   <g transform="translate(72,11)">
     <ellipse cx="0" cy="0" rx="3.5" ry="2.2" fill="#6a8aaa"/>
     <circle cx="3" cy="-2.5" r="2" fill="#6a8aaa"/>
     <polygon points="4.2,-4.2 6.2,-2.5 4.2,-1.8" fill="#c8923a"/>
     <circle cx="3.8" cy="-3.4" r="0.55" fill="#0a1628"/>
+    <circle cx="4.0" cy="-3.6" r="0.2" fill="#fff"/>
     <path d="M-3.5,0.3 L-6.5,1.5 L-5,-0.5Z" fill="#4a6a88"/>
     <line x1="-0.5" y1="2" x2="-1.5" y2="3.5" stroke="#6a8aaa" stroke-width="0.7"/>
     <line x1="1" y1="2" x2="1" y2="3.5" stroke="#6a8aaa" stroke-width="0.7"/>
   </g>
-  <!-- Skyline -->
+  <!-- Skyline - dome peak at y=38 -->
   <g fill="#2a4a7a" opacity="0.88">
     <rect x="38" y="52" width="14" height="18"/>
     <rect x="54" y="46" width="10" height="24"/>
     <rect x="66" y="54" width="12" height="16"/>
     <rect x="118" y="54" width="44" height="16"/>
+    <!-- Dome peak at y=38 -->
     <path d="M128 54 Q140 38 152 54Z"/>
     <rect x="174" y="48" width="12" height="22"/>
     <rect x="188" y="54" width="10" height="16"/>
     <rect x="200" y="50" width="14" height="20"/>
     <rect x="216" y="56" width="10" height="14"/>
   </g>
-  <!-- Star of David touching dome -->
+  <!-- Star of David - centered at y=28, bottom point touches dome peak at y=38 -->
+  <!-- Star height is 14px (7 up + 7 down), center at y=28 means bottom at y=35 -->
+  <!-- Move center to y=31 so bottom point y=38 touches dome -->
   <g transform="translate(140,31)">
     <polygon points="0,-7 6.1,3.5 -6.1,3.5" fill="none" stroke="#b8963a" stroke-width="1.8" opacity="0.9"/>
     <polygon points="0,7 6.1,-3.5 -6.1,-3.5" fill="none" stroke="#b8963a" stroke-width="1.8" opacity="0.9"/>
   </g>
   <path d="M30 70 Q140 78 250 70" stroke="#4a90d9" stroke-width="2" fill="none" opacity="0.7"/>
   <rect x="72" y="72" width="136" height="17" rx="3" fill="#1a2c4a" opacity="0.9"/>
-  <text x="140" y="84" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
+  <text x="140" y="84" text-anchor="middle" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
 </svg>
   </div>
   <div class="hdr-brand" id="hdrBrand">
@@ -507,7 +509,6 @@ header{
           </div>
         </div>
         <button class="u-drop-it" onclick="goAlerts()">&#128276; My Alerts</button>
-        <button class="u-drop-it" id="becomeContractorBtn" onclick="closeDrop();switchAuthTab('ct');openModal('vMain')" style="display:none">🔨 Become a Contractor</button>
         <div class="u-drop-sep"></div>
         <button class="u-drop-it red" onclick="doSignOut()">Sign Out</button>
       </div>
@@ -1348,18 +1349,17 @@ function planRoute(){
 
     var ck=cacheKey(sc,ec);
     if(_routeCache[ck]){processRoute(_routeCache[ck],sc,ec);return;}
+    // OSRM first - free unlimited routing
+    fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
+      .then(function(r){return r.json();}).then(function(d){
+        if(!d.routes||!d.routes.length){tryGoogle();return;}
+        var r=d.routes[0];
+        var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
+        _routeCache[ck]=result;processRoute(result,sc,ec);
+      }).catch(function(){tryGoogle();});
+    function tryGoogle(){
 
-    // Try OSRM first - free, unlimited
-    var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
-    fetch(osrmUrl).then(function(r){return r.json();}).then(function(d){
-      if(!d.routes||!d.routes.length){tryGoogleRoute();return;}
-      var r=d.routes[0],coords=r.geometry.coordinates;
-      var baseId='rt-'+Date.now();S.routeLayerId=baseId;
-      var result={coords:coords,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
-      _routeCache[ck]=result;processRoute(result,sc,ec);
-    }).catch(function(){tryGoogleRoute();});
-    function tryGoogleRoute(){
-    // Try Google Routes API
+    // Try Google Routes API first
     var googleUrl='https://routes.googleapis.com/directions/v2:computeRoutes';
     var googleBody={
       origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
@@ -1383,40 +1383,26 @@ function planRoute(){
         processRoute(result,sc,ec);
       } else {
         console.warn('Google Routes failed, falling back to Mapbox',d);
-        fallbackORS(sc,ec,ck);
+        fallbackMapbox(sc,ec,ck);
       }
     }).catch(function(err){
       console.warn('Google Routes error, falling back:',err);
-      fallbackORS(sc,ec,ck);
+      fallbackMapbox(sc,ec,ck);
     });
   }
 
-  function _skipMapbox(){} // removed
-function fallbackMapbox_unused(){
+  function fallbackMapbox(sc,ec,ck){
     var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
       +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
       +'?overview=full&geometries=geojson&steps=true&approaches=curb%3Bcurb&exclude=ferry&access_token='+TOKEN;
     fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.code&&d.code!=='Ok'||!d.routes||!d.routes.length){
-        // Try OpenRouteService as final fallback
-        fallbackORS(sc,ec,ck);return;
-      }
+      if(d.code&&d.code!=='Ok'){toast('Route error: '+d.message,'err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
       var r=d.routes[0];
       var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox'};
       _routeCache[ck]=result;
       processRoute(result,sc,ec);
-    }).catch(function(){fallbackORS(sc,ec,ck);});
-  }
-
-  function fallbackORS(sc,ec,ck){
-    // OSRM - completely free, no key, no distance limit
-    var url='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      var r=d.routes[0];
-      var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
-      _routeCache[ck]=result;processRoute(result,sc,ec);
-    }).catch(function(){toast('Could not find route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+    }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
 
   function processRoute(result,sc,ec){
@@ -1808,8 +1794,6 @@ function signInAs(user){
   document.getElementById('dEm').textContent=user.email;
   document.getElementById('dRole').textContent=user.role==='admin'?'Admin':user.role==='contractor'?'Contractor':user.contractorStatus==='pending'?'Pending':'Member';
   var phoneEl=document.getElementById('dPhone');if(phoneEl)phoneEl.value=user.phone||'';
-  var ctBtn=document.getElementById('becomeContractorBtn');
-  if(ctBtn)ctBtn.style.display=(user.role==='contractor'||user.contractorStatus==='pending')?'none':'block';
   var isAdmin=user.role==='admin',isCont=user.role==='contractor'||isAdmin;
   document.getElementById('adminTrigger').style.display=isAdmin?'flex':'none';
   // importMapTrigger removed — Import is only inside the zone editor
