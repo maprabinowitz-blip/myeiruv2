@@ -993,6 +993,10 @@ map.on('load',()=>{
   try{map.setPaintProperty('background','background-color','#f3efe6');}catch(e){}
   try{map.setPaintProperty('water','fill-color','#c4d8e8');}catch(e){}
   window._mapLoaded=true;
+  // Direct test - add one shul immediately
+  addShulToMap({id:'test-shul-1',name:'Test Shul Brooklyn',city:'Brooklyn, NY',lat:40.6501,lng:-73.9496});
+  addShulToMap({id:'test-shul-2',name:'Test Shul Teaneck',city:'Teaneck, NJ',lat:40.8945,lng:-74.0138});
+  toast('Map loaded - shuls rendering...','ok');
   if(window._zonesReady){
     _renderAllMapData();
   }else{
