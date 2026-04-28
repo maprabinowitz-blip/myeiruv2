@@ -2817,7 +2817,17 @@ function refreshPage(){window.location.reload();}
 // ── Render all Firestore data onto the map ───────────────────────────────────
 function _renderAllMapData(){
   S.eruvin.forEach(addEruvToMap);
+  // Always load seed shuls first
+  (SEED_SHULS||[]).forEach(addShulToMap);
+  // Then Firestore shuls
   (S.shuls||[]).forEach(addShulToMap);
+  // Then load from Overpass for each eruv
+  S.eruvin.forEach(function(e){
+    if(e.center&&e.center.length>=2){
+      var lat=e.center[1],lng=e.center[0];
+      setTimeout(function(){loadShulsFromGoogle(lat,lng);},Math.random()*2000+500);
+    }
+  });
   renderEruvList();renderStatus();
 }
 
