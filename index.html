@@ -999,8 +999,13 @@ map.on('load',()=>{
     // Render what we have (BASE_ERUVIN fallback) while Firestore loads
     S.eruvin.forEach(addEruvToMap);
     (SEED_SHULS||[]).forEach(addShulToMap);
-    // Also load from Google Places for comprehensive coverage
-    setTimeout(loadAllShulsFromGoogle, 2000);
+    // Load from OpenStreetMap for each eruv center
+    S.eruvin.forEach(function(e){
+      if(e.center&&e.center.length>=2){
+        var lat=e.center[1],lng=e.center[0];
+        setTimeout(function(){loadShulsFromGoogle(lat,lng);},Math.random()*2000+1000);
+      }
+    });
     renderEruvList();renderStatus();
   }
 });
