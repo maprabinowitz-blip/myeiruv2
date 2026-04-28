@@ -46,7 +46,7 @@ header{
   height:90px;width:auto;display:block;
   cursor:pointer;
   transition:opacity .18s;
-  filter:drop-shadow(0 1px 8px rgba(74,144,217,.35));
+  filter:drop-shadow(0 1px 8px rgba(74,144,217,.35)) brightness(1.05);
 }
 .hdr-logo:hover{opacity:.85;}
 
@@ -430,8 +430,8 @@ header{
 
 <header>
   <div class="hdr-logo-wrap">
-    <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv — click to refresh" viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="height:90px;width:auto;cursor:pointer;">
-  <!-- Eruv wires - top wire at y=14, bottom at y=20 -->
+    <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv" viewBox="0 0 280 90" xmlns="http://www.w3.org/2000/svg" style="height:90px;width:auto;cursor:pointer;display:block;">
+  <!-- Eruv wires -->
   <path d="M10 14 Q140 2 270 14" stroke="#4a90d9" stroke-width="2.2" fill="none" opacity="0.9"/>
   <path d="M10 20 Q140 8 270 20" stroke="#6ab0f0" stroke-width="1.2" fill="none" opacity="0.6"/>
   <!-- Left pole -->
@@ -442,40 +442,36 @@ header{
   <line x1="258" y1="10" x2="258" y2="70" stroke="#c8d8f0" stroke-width="3.5" stroke-linecap="round"/>
   <line x1="248" y1="14" x2="268" y2="14" stroke="#c8d8f0" stroke-width="2.5" stroke-linecap="round"/>
   <line x1="250" y1="20" x2="266" y2="20" stroke="#c8d8f0" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Bird sitting ON top wire at y=14 -->
+  <!-- Tiny bird on wire -->
   <g transform="translate(72,11)">
     <ellipse cx="0" cy="0" rx="3.5" ry="2.2" fill="#6a8aaa"/>
     <circle cx="3" cy="-2.5" r="2" fill="#6a8aaa"/>
     <polygon points="4.2,-4.2 6.2,-2.5 4.2,-1.8" fill="#c8923a"/>
     <circle cx="3.8" cy="-3.4" r="0.55" fill="#0a1628"/>
-    <circle cx="4.0" cy="-3.6" r="0.2" fill="#fff"/>
     <path d="M-3.5,0.3 L-6.5,1.5 L-5,-0.5Z" fill="#4a6a88"/>
     <line x1="-0.5" y1="2" x2="-1.5" y2="3.5" stroke="#6a8aaa" stroke-width="0.7"/>
     <line x1="1" y1="2" x2="1" y2="3.5" stroke="#6a8aaa" stroke-width="0.7"/>
   </g>
-  <!-- Skyline - dome peak at y=38 -->
+  <!-- Skyline -->
   <g fill="#2a4a7a" opacity="0.88">
     <rect x="38" y="52" width="14" height="18"/>
     <rect x="54" y="46" width="10" height="24"/>
     <rect x="66" y="54" width="12" height="16"/>
     <rect x="118" y="54" width="44" height="16"/>
-    <!-- Dome peak at y=38 -->
     <path d="M128 54 Q140 38 152 54Z"/>
     <rect x="174" y="48" width="12" height="22"/>
     <rect x="188" y="54" width="10" height="16"/>
     <rect x="200" y="50" width="14" height="20"/>
     <rect x="216" y="56" width="10" height="14"/>
   </g>
-  <!-- Star of David - centered at y=28, bottom point touches dome peak at y=38 -->
-  <!-- Star height is 14px (7 up + 7 down), center at y=28 means bottom at y=35 -->
-  <!-- Move center to y=31 so bottom point y=38 touches dome -->
+  <!-- Star of David touching dome -->
   <g transform="translate(140,31)">
     <polygon points="0,-7 6.1,3.5 -6.1,3.5" fill="none" stroke="#b8963a" stroke-width="1.8" opacity="0.9"/>
     <polygon points="0,7 6.1,-3.5 -6.1,-3.5" fill="none" stroke="#b8963a" stroke-width="1.8" opacity="0.9"/>
   </g>
   <path d="M30 70 Q140 78 250 70" stroke="#4a90d9" stroke-width="2" fill="none" opacity="0.7"/>
   <rect x="72" y="72" width="136" height="17" rx="3" fill="#1a2c4a" opacity="0.9"/>
-  <text x="140" y="84" text-anchor="middle" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
+  <text x="140" y="84" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
 </svg>
   </div>
   <div class="hdr-brand" id="hdrBrand">
@@ -1322,16 +1318,51 @@ function reverseGeocode(lng,lat,cb){
   }).catch(function(){cb(lat.toFixed(4)+', '+lng.toFixed(4));});
 }
 function planRoute(){
-  var sc=S.routeStart,ec=S.routeEnd;
   var btn=document.getElementById('routeBtn');
   btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> Checking…';
   clearRouteLayer();
 
   var _routeCache={};
-  function roundCoord(v){return Math.round(v*1000)/1000;}
-  function cacheKey(sc,ec){return roundCoord(sc.lng)+','+roundCoord(sc.lat)+'|'+roundCoord(ec.lng)+','+roundCoord(ec.lat);}
+  function cacheKey(sc,ec){return Math.round(sc.lng*1000)+','+Math.round(sc.lat*1000)+'|'+Math.round(ec.lng*1000)+','+Math.round(ec.lat*1000);}
 
-  // Decode Google encoded polyline to [[lng,lat],...]
+  function go(sc,ec){
+    if(!sc){toast('Start not found — try a more specific address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    if(!ec){toast('End not found — try a more specific address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    var ck=cacheKey(sc,ec);
+    if(_routeCache[ck]){renderRouteResult(_routeCache[ck].route,_routeCache[ck].coords,_routeCache[ck].baseId,sc,ec);return;}
+
+    // Try OSRM first (free, unlimited)
+    var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
+    fetch(osrmUrl).then(function(r){return r.json();}).then(function(d){
+      if(!d.routes||!d.routes.length){tryGoogle(sc,ec,ck);return;}
+      var r=d.routes[0];
+      var coords=r.geometry.coordinates;
+      var baseId='rt-'+Date.now();S.routeLayerId=baseId;
+      _routeCache[ck]={route:r,coords:coords,baseId:baseId};
+      renderRouteResult(r,coords,baseId,sc,ec);
+    }).catch(function(){tryGoogle(sc,ec,ck);});
+  }
+
+  function tryGoogle(sc,ec,ck){
+    fetch('https://api.myeiruv.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Action':'google-routes'},
+      body:JSON.stringify({
+        origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
+        destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},
+        travelMode:'WALK',computeAlternativeRoutes:false
+      })
+    }).then(function(r){return r.json();}).then(function(d){
+      if(!d.routes||!d.routes[0]||!d.routes[0].polyline){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      var coords=decodePolyline(d.routes[0].polyline.encodedPolyline);
+      var r={distance:d.routes[0].distanceMeters||0,duration:parseInt(d.routes[0].duration)||0,legs:[{steps:d.routes[0].legs&&d.routes[0].legs[0]&&d.routes[0].legs[0].steps||[]}]};
+      var baseId='rt-'+Date.now();S.routeLayerId=baseId;
+      _routeCache[ck]={route:r,coords:coords,baseId:baseId};
+      renderRouteResult(r,coords,baseId,sc,ec);
+    }).catch(function(){toast('Could not find route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+  }
+
+  // Decode Google polyline
   function decodePolyline(str){
     var idx=0,lat=0,lng=0,coords=[];
     while(idx<str.length){
@@ -1346,241 +1377,6 @@ function planRoute(){
     return coords;
   }
 
-  function go(sc,ec){
-    if(!sc){toast('Start not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-    if(!ec){toast('End not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-
-    var ck=cacheKey(sc,ec);
-    if(_routeCache[ck]){processRoute(_routeCache[ck],sc,ec);return;}
-
-    // Try Google Routes API first
-    var googleUrl='https://routes.googleapis.com/directions/v2:computeRoutes';
-    var googleBody={
-      origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
-      destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},
-      travelMode:'WALK',
-      computeAlternativeRoutes:false,
-      routeModifiers:{avoidFerries:true},
-      polylineQuality:'HIGH_QUALITY'
-    };
-    fetch('https://api.myeiruv.org',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Action':'google-routes'},
-      body:JSON.stringify(googleBody)
-    }).then(function(r){return r.json();}).then(function(d){
-      if(d.routes&&d.routes.length&&d.routes[0].polyline){
-        var r=d.routes[0];
-        var coords=decodePolyline(r.polyline.encodedPolyline);
-        var steps=(r.legs&&r.legs[0]&&r.legs[0].steps)||[];
-        var result={coords:coords,distance:r.distanceMeters||0,duration:parseInt(r.duration)||0,steps:steps,source:'google'};
-        _routeCache[ck]=result;
-        processRoute(result,sc,ec);
-      } else {
-        console.warn('Google Routes failed, falling back to Mapbox',d);
-        fallbackORS(sc,ec,ck);
-      }
-    }).catch(function(err){
-      console.warn('Google Routes error, falling back to OSRM:',err);
-      fallbackORS(sc,ec,ck);
-    });
-  }
-
-  function fallbackORS(sc,ec,ck){
-    // OSRM - completely free, no key, no distance limit
-    var url='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      var r=d.routes[0];
-      var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
-      _routeCache[ck]=result;processRoute(result,sc,ec);
-    }).catch(function(){toast('Could not find route','err');btn.innerHTML='Check Route';btn.disabled=false;});
-  }
-
-  function processRoute(result,sc,ec){
-    var coords=result.coords;
-    var baseId='rt-'+Date.now();
-    S.routeLayerId=baseId;
-    // Normalize into the shape the rendering code expects
-    var route={geometry:{coordinates:coords},distance:result.distance,duration:result.duration,legs:[{steps:result.steps||[]}]};
-    renderRouteResult(route,coords,baseId,sc,ec);
-  }
-
-  function renderRouteResult(route,coords,baseId,sc,ec){
-
-      // Check every coord for zone membership (full resolution)
-      var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
-
-      // Require at least 3% of the route to be inside before calling it partial
-      var insideCount=zones.filter(function(z){return z!==null;}).length;
-      var insidePct=insideCount/Math.max(1,zones.length);
-      if(insidePct<0.03){zones=zones.map(function(){return null;});}
-
-      // Build colored segments from full coords
-      var inSegs=[],outSegs=[],curIn=[],curOut=[];
-      for(var i=0;i<coords.length;i++){
-        var inZ=zones[i]!==null;
-        if(inZ){
-          if(curOut.length>=2)outSegs.push(curOut.slice());
-          curOut=[];curIn.push(coords[i]);
-        }else{
-          if(curIn.length>=2)inSegs.push(curIn.slice());
-          curIn=[];curOut.push(coords[i]);
-        }
-      }
-      if(curIn.length>=2)inSegs.push(curIn);
-      if(curOut.length>=2)outSegs.push(curOut);
-      // If all outside, ensure the full coords draw as one red line
-      if(!inSegs.length&&!outSegs.length&&coords.length>=2)outSegs.push(coords);
-
-      function addSeg(id,segs,color,width){
-        if(!segs.length)return;
-        var fc={type:'FeatureCollection',features:segs.filter(function(s){return s.length>=2;}).map(function(s){return{type:'Feature',geometry:{type:'LineString',coordinates:s}};})};
-        if(!fc.features.length)return;
-        try{
-          if(map.getSource(id)){map.getSource(id).setData(fc);}
-          else{
-            map.addSource(id,{type:'geojson',data:fc});
-            map.addLayer({id:id+'-case',type:'line',source:id,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#fff','line-width':width+3,'line-opacity':.9}});
-            map.addLayer({id:id+'-line',type:'line',source:id,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':color,'line-width':width,'line-opacity':1}});
-          }
-        }catch(e){console.error('addSeg:',e);}
-      }
-      addSeg(baseId+'-in',inSegs,'#22a865',4);
-      addSeg(baseId+'-out',outSegs,'#d94040',4);
-
-      var allOut=zones.every(function(z){return z===null;});
-      var exits=[],crosses=[],prev=zones[0];
-      for(var i=1;i<coords.length;i++){
-        var cur=zones[i];
-        if(prev!==null&&cur===null)exits.push({lng:coords[i][0],lat:coords[i][1],label:'exit point'});
-        if(prev!==null&&cur!==null&&prev.id!==cur.id&&!crosses.find(function(x){return x.from===prev.id&&x.to===cur.id;}))
-          crosses.push({from:prev.id,to:cur.id,lng:coords[i][0],lat:coords[i][1]});
-        prev=cur;
-      }
-
-      var singleZone=(!allOut&&!exits.length&&!crosses.length)?zones.find(function(z){return z!==null;})||null:null;
-      var fullyInside=!allOut&&!exits.length&&!crosses.length;
-
-      // Step-by-step directions only when fully inside eruv
-      var stepsHtml='';
-      if(fullyInside&&d.routes[0].legs&&d.routes[0].legs[0]&&d.routes[0].legs[0].steps){
-        var rawSteps=d.routes[0].legs[0].steps;
-        var stepRows=rawSteps.filter(function(s){return s.maneuver&&s.maneuver.instruction;}).map(function(s){
-          var slng=s.maneuver.location[0],slat=s.maneuver.location[1];
-          var inEruv=findEruv(slng,slat)!==null;
-          var t=s.maneuver.type,m=s.maneuver.modifier||'';
-          var icon='↑';
-          if(t==='depart')icon='🧕';
-          else if(t==='arrive')icon='📍';
-          else if(m.indexOf('left')>=0)icon='↰';
-          else if(m.indexOf('right')>=0)icon='↱';
-          else if(m.indexOf('u-turn')>=0)icon='↩';
-          var dist=s.distance>=1000?(s.distance/1000).toFixed(1)+' km':Math.round(s.distance)+' m';
-          var rowStyle=inEruv?'':'border-left:2px solid #d94040;padding-left:6px;background:rgba(217,64,64,.03);';
-          var badge=inEruv?'':'<span style="font-size:.62rem;color:#d94040;font-weight:600;margin-left:4px">outside eiruv</span>';
-          return '<div style="display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);'+rowStyle+'">'
-            +'<span style="font-size:.95rem;flex-shrink:0;width:20px;text-align:center">'+icon+'</span>'
-            +'<div style="flex:1"><div style="font-size:.79rem;color:var(--text);line-height:1.4">'+s.maneuver.instruction+badge+'</div>'
-            +'<div style="font-size:.68rem;color:var(--muted);margin-top:1px">'+dist+'</div></div></div>';
-        });
-        if(stepRows.length){
-          stepsHtml='<div style="margin-top:10px">'
-            +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Walking directions</div>'
-            +'<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+stepRows.join('')+'</div>'
-            +'</div>';
-        }
-      }
-
-      // Only mark the FIRST exit point on the map
-      function finish(){
-        if(exits.length){
-          var exit=exits[0];
-          var el=document.createElement('div');
-          el.style.cssText='width:16px;height:16px;border-radius:50%;background:#e08020;border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.45)';
-          routeMarkers.push(new mapboxgl.Marker({element:el}).setLngLat([exit.lng,exit.lat]).addTo(map));
-          var lid='exl-'+Date.now();
-          map.addSource(lid,{type:'geojson',data:{type:'Feature',geometry:{type:'Point',coordinates:[exit.lng,exit.lat]}}});
-          map.addLayer({id:lid,type:'circle',source:lid,paint:{'circle-radius':26,'circle-color':'#e08020','circle-opacity':.15,'circle-stroke-color':'#e08020','circle-stroke-width':2}});
-          S.exitLayerIds.push(lid);
-        }
-
-        // Start marker — walking man with kippah (custom SVG)
-        var startEl=document.createElement('div');
-        startEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))';
-        startEl.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42">'
-          // shtreimel brim (wide fur band)
-          +'<ellipse cx="15" cy="10" rx="10" ry="3" fill="#3a1e08"/>'
-          +'<ellipse cx="7"  cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
-          +'<ellipse cx="11" cy="8.8" rx="2"   ry="1.6" fill="#7a3d18"/>'
-          +'<ellipse cx="15" cy="8.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
-          +'<ellipse cx="19" cy="8.8" rx="2"   ry="1.6" fill="#7a3d18"/>'
-          +'<ellipse cx="23" cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
-          // shtreimel velvet crown
-          +'<ellipse cx="15" cy="7" rx="6.5" ry="5" fill="#0f0704"/>'
-          // head
-          +'<circle cx="15" cy="15" r="4.5" fill="#f5c8a0"/>'
-          // body
-          +'<line x1="15" y1="19.5" x2="15" y2="28" stroke="#1a2c4a" stroke-width="2.5" stroke-linecap="round"/>'
-          // arms
-          +'<line x1="15" y1="22" x2="10" y2="26" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
-          +'<line x1="15" y1="22" x2="20" y2="25" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
-          // legs
-          +'<line x1="15" y1="28" x2="10" y2="36" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
-          +'<line x1="15" y1="28" x2="20" y2="34" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
-          +'</svg>';
-        routeMarkers.push(new mapboxgl.Marker({element:startEl,anchor:'bottom'}).setLngLat([sc.lng,sc.lat]).addTo(map));
-
-        // End marker — destination pin
-        var endEl=document.createElement('div');
-        endEl.style.cssText='width:13px;height:13px;border-radius:50%;background:#d94040;border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)';
-        routeMarkers.push(new mapboxgl.Marker({element:endEl}).setLngLat([ec.lng,ec.lat]).addTo(map));
-
-        var dist=(route.distance/1000).toFixed(1)+' km',mins=Math.round(route.duration/60);
-        var time=mins>60?Math.floor(mins/60)+'h '+mins%60+'m':mins+' min';
-        var covText='',alerts='',zoneBar='';
-
-        if(allOut){
-          covText='❌ None';
-          alerts='<div class="route-alert ra-err">❌ This route is entirely outside any known eiruv.</div>';
-        }else if(fullyInside){
-          covText='✅ Full';
-          if(singleZone){
-            var zc={up:'#22a865',review:'#e08020',down:'#d94040'}[singleZone.status]||'#888';
-            var zl={up:'Up & Kosher ✓',review:'Under Review',down:'Down ✕'}[singleZone.status];
-            zoneBar='<div style="background:#edf8f2;border:1.5px solid #b8e8d0;border-radius:9px;padding:10px 13px;margin-top:10px;display:flex;align-items:center;gap:10px">'
-              +'<div style="width:10px;height:10px;border-radius:50%;background:'+zc+';flex-shrink:0"></div>'
-              +'<div><div style="font-size:.82rem;font-weight:700;color:var(--navy)">'+singleZone.name+'</div>'
-              +'<div style="font-size:.7rem;color:var(--muted)">'+singleZone.city+' · '+zl+' · Checked '+singleZone.lastChecked+(singleZone.checkedBy?' by '+singleZone.checkedBy:'')+'</div>'
-              +(singleZone.note?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">'+singleZone.note+'</div>':'')
-              +'</div></div>';
-          }
-          alerts='<div class="route-alert ra-ok">✅ This entire route is within the eiruv.</div>'+zoneBar;
-        }else{
-          covText=exits.length?'⚠️ Partial':'↔ Multi-zone';
-          if(exits.length){
-            alerts+='<div class="route-alert ra-warn">⚠️ You exit the eiruv at <strong>'+exits[0].label+'</strong>.'+(exits.length>1?' ('+exits.length+' exit points total.)':'')+'</div>';
-          }
-          crosses.forEach(function(c){
-            var fz=S.eruvin.find(function(x){return x.id===c.from;}),tz=S.eruvin.find(function(x){return x.id===c.to;});
-            var adj=fz&&(fz.adjacency||[]).find(function(a){return a.id===c.to;});
-            if(adj&&adj.canEnter)alerts+='<div class="route-alert ra-info">↔ Entering <strong>'+(tz?tz.name:'adjacent zone')+'</strong> — carrying permitted.</div>';
-          });
-        }
-        document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alerts+stepsHtml;
-        var bounds=coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(coords[0],coords[0]));
-        map.fitBounds(bounds,{padding:60,duration:900});
-        btn.innerHTML='Check Route';btn.disabled=false;
-      }
-      var pending=exits.length,done=0;
-      if(!pending){finish();return;}
-      exits.forEach(function(exit,i){reverseGeocode(exit.lng,exit.lat,function(label){exits[i].label=label;done++;if(done>=pending)finish();});});
-  }
-  if(sc&&ec){go(sc,ec);return;}
-  var needSc=!sc,needEc=!ec,resolved={};
-  function tryGo(){if((!needSc||resolved.sc!==undefined)&&(!needEc||resolved.ec!==undefined))go(resolved.sc||sc,resolved.ec||ec);}
-  if(needSc)geocodeOne(document.getElementById('rStart').value,function(r){resolved.sc=r;tryGo();});
-  if(needEc)geocodeOne(document.getElementById('rEnd').value,function(r){resolved.ec=r;tryGo();});
-}
 
 // MAP FS
 function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
