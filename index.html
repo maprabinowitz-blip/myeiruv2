@@ -1351,7 +1351,18 @@ function planRoute(){
     var ck=cacheKey(sc,ec);
     if(_routeCache[ck]){processRoute(_routeCache[ck],sc,ec);return;}
 
-    // Try Google Routes API first
+    // OSRM - free, unlimited, no key needed
+    fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.code==='Ok'&&d.routes&&d.routes.length){
+        var r=d.routes[0];
+        var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
+        _routeCache[ck]=result;processRoute(result,sc,ec);
+      } else { tryGoogle(); }
+    }).catch(function(){tryGoogle();});
+
+    function tryGoogle(){
+    // Google Routes via Worker
     var googleUrl='https://routes.googleapis.com/directions/v2:computeRoutes';
     var googleBody={
       origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
@@ -1378,9 +1389,9 @@ function planRoute(){
         fallbackMapbox(sc,ec,ck);
       }
     }).catch(function(err){
-      console.warn('Google Routes error, falling back:',err);
+      console.warn('Google Routes error, falling back to Mapbox',err);
       fallbackMapbox(sc,ec,ck);
-    });
+    });}  // end tryGoogle
   }
 
   function fallbackMapbox(sc,ec,ck){
@@ -1569,7 +1580,7 @@ function planRoute(){
         }
         document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alerts+stepsHtml;
         var bounds=coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(coords[0],coords[0]));
-        map.fitBounds(bounds,{padding:60,duration:900});
+        map.fitBounds(bounds,{padding:{top:80,bottom:120,left:60,right:60},duration:800,maxZoom:16});
         btn.innerHTML='Check Route';btn.disabled=false;
       }
       var pending=exits.length,done=0;
