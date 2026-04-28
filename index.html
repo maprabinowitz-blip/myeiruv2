@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MyEiruv – Community Eiruv Platform</title>
+<title>MyEiruv — Know Before You Go</title>
+<link rel="icon" type="image/svg+xml" href="logo.png">
+<link rel="shortcut icon" href="logo.png">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -509,6 +511,7 @@ header{
           </div>
         </div>
         <button class="u-drop-it" onclick="goAlerts()">&#128276; My Alerts</button>
+        <button class="u-drop-it" id="becomeContractorBtn" onclick="closeDrop();switchAuthTab('ct');openModal('vMain')" style="display:none">🔨 Become a Contractor</button>
         <div class="u-drop-sep"></div>
         <button class="u-drop-it red" onclick="doSignOut()">Sign Out</button>
       </div>
@@ -1399,14 +1402,12 @@ function planRoute(){
   }
 
   function fallbackORS(sc,ec,ck){
-    fetch('https://api.openrouteservice.org/v2/directions/foot-walking/geojson',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'5b3ce3597851110001cf6248b4e8c4c5a9f14b26b8b4b29e7c3d8f6e'},
-      body:JSON.stringify({coordinates:[[sc.lng,sc.lat],[ec.lng,ec.lat]]})
-    }).then(function(r){return r.json();}).then(function(d){
-      if(!d.features||!d.features[0]){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      var f=d.features[0];
-      var result={coords:f.geometry.coordinates,distance:f.properties.summary.distance||0,duration:f.properties.summary.duration||0,steps:[],source:'ors'};
+    // OSRM - completely free, no key, no distance limit
+    var url='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
+    fetch(url).then(function(r){return r.json();}).then(function(d){
+      if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      var r=d.routes[0];
+      var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
       _routeCache[ck]=result;processRoute(result,sc,ec);
     }).catch(function(){toast('Could not find route','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
@@ -1800,6 +1801,8 @@ function signInAs(user){
   document.getElementById('dEm').textContent=user.email;
   document.getElementById('dRole').textContent=user.role==='admin'?'Admin':user.role==='contractor'?'Contractor':user.contractorStatus==='pending'?'Pending':'Member';
   var phoneEl=document.getElementById('dPhone');if(phoneEl)phoneEl.value=user.phone||'';
+  var ctBtn=document.getElementById('becomeContractorBtn');
+  if(ctBtn)ctBtn.style.display=(user.role==='contractor'||user.contractorStatus==='pending')?'none':'block';
   var isAdmin=user.role==='admin',isCont=user.role==='contractor'||isAdmin;
   document.getElementById('adminTrigger').style.display=isAdmin?'flex':'none';
   // importMapTrigger removed — Import is only inside the zone editor
@@ -2893,7 +2896,6 @@ function _renderAllMapData(){
     var count=0;
     (SEED_SHULS||[]).forEach(function(s){addShulToMap(s);count++;});
     console.log('[MyEiruv] Loaded',count,'seed shuls on map');
-    toast(count+' shuls loaded on map','ok');
   },1500);
 }
 
