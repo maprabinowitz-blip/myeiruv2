@@ -1663,6 +1663,22 @@ function saveAlert(){
   S.alerts.push(al);
   if(window._db)window._db.saveAlert(al);
   renderAlerts();alertOpen=false;document.getElementById('alertForm').classList.remove('on');toast('Alert saved — '+eruv,'ok');
+  // Send confirmation email
+  if(viaEmail!==false&&S.user&&S.user.email){
+    fetch('https://api.myeiruv.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+      body:JSON.stringify({
+        to:S.user.email,
+        toName:S.user.name||S.user.email,
+        eruvName:eruv+' — Alert Confirmed ✅',
+        eruvCity:city,
+        status:'up',
+        note:"You're now subscribed to eruv status alerts for "+eruv+" in "+city+". You'll receive updates every time the status changes.",
+        timestamp:new Date().toLocaleDateString()
+      })
+    }).catch(function(){});
+  }
 }
 function renderAlerts(){
   var el=document.getElementById('myAlerts');
