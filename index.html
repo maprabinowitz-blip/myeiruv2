@@ -31,7 +31,7 @@ button,input,select,textarea{font-family:inherit;}
 header{
   height:var(--hh);
   background:#0f1f38;
-  display:flex;align-items:center;padding:0 16px;
+  display:flex;align-items:center;padding:0 12px;gap:0;
   position:relative;z-index:400;flex-shrink:0;
   box-shadow:0 2px 20px rgba(0,0,0,.20);
 }
@@ -1522,7 +1522,7 @@ function planRoute(){
           var exit=exits[0];
           var el=document.createElement('div');
           el.style.cssText='width:auto;height:auto;background:none;border:none;';
-          el.innerHTML='<div style="background:#e08020;color:#fff;font-size:.6rem;font-weight:700;padding:2px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4)">EXIT ▶</div>';
+          el.innerHTML='<div style="background:#e08020;color:#fff;font-size:.65rem;font-weight:800;padding:3px 7px;border-radius:4px;white-space:nowrap;box-shadow:0 2px 8px rgba(224,128,32,.6);letter-spacing:.02em">⚠ EXIT ERUV</div>';
           routeMarkers.push(new mapboxgl.Marker({element:el}).setLngLat([exit.lng,exit.lat]).addTo(map));
           var lid='exl-'+Date.now();
           map.addSource(lid,{type:'geojson',data:{type:'Feature',geometry:{type:'Point',coordinates:[exit.lng,exit.lat]}}});
@@ -1561,7 +1561,8 @@ function planRoute(){
         var ecInEruv=findEruv(ec.lng,ec.lat);
         endEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))';
         var pinColor=ecInEruv?'#22a865':'#d94040';
-        endEl.innerHTML='<svg width="22" height="30" viewBox="0 0 22 30" xmlns="http://www.w3.org/2000/svg"><path d="M11 1C6.03 1 2 5.03 2 10c0 7 9 19 9 19s9-12 9-19c0-4.97-4.03-9-9-9z" fill="'+pinColor+'"/><circle cx="11" cy="10" r="4" fill="#fff"/></svg>';
+        var eruvLabel=ecInEruv?'<div style="background:rgba(34,168,101,.9);color:#fff;font-size:.55rem;font-weight:700;padding:1px 4px;border-radius:3px;text-align:center;white-space:nowrap;margin-top:1px">IN ERUV</div>':'<div style="background:rgba(217,64,64,.9);color:#fff;font-size:.55rem;font-weight:700;padding:1px 4px;border-radius:3px;text-align:center;white-space:nowrap;margin-top:1px">OUTSIDE</div>';
+        endEl.innerHTML='<div style="display:flex;flex-direction:column;align-items:center"><svg width="22" height="30" viewBox="0 0 22 30" xmlns="http://www.w3.org/2000/svg"><path d="M11 1C6.03 1 2 5.03 2 10c0 7 9 19 9 19s9-12 9-19c0-4.97-4.03-9-9-9z" fill="'+pinColor+'"/><circle cx="11" cy="10" r="4" fill="#fff"/></svg>'+eruvLabel+'</div>';
         routeMarkers.push(new mapboxgl.Marker({element:endEl,anchor:'bottom'}).setLngLat([ec.lng,ec.lat]).addTo(map));
 
         var dist=(route.distance/1000).toFixed(1)+' km',mins=Math.round(route.duration/60);
@@ -2921,7 +2922,10 @@ function _loadShulsForView(){
     var bounds=map.getBounds();
     var center=map.getCenter();
     var zoom=map.getZoom();
-    if(zoom<10)return; // Don't load at very high zoom - too many results
+    // Show shul icons only when zoomed in enough
+    var showShuls=zoom>=12;
+    _shulMarkers.forEach(function(m){m.marker.getElement().style.display=showShuls?'block':'none';});
+    if(zoom<12)return; // Don't load at very high zoom - too many results
     var lat=center.lat,lng=center.lng;
     // Calculate radius from zoom level
     var radius=Math.min(15000,Math.round(40000/Math.pow(2,zoom-8)));
