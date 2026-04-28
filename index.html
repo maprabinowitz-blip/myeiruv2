@@ -2827,6 +2827,9 @@ function addShulToMap(shul){
   if(!shul||isNaN(shul.lat)||isNaN(shul.lng))return;
   // Don't add duplicates
   if(_shulMarkers.find(function(m){return m.id===shul.id;}))return;
+  // Add to S.shuls for search
+  if(!S.shuls)S.shuls=[];
+  if(!S.shuls.find(function(s){return s.id===shul.id;}))S.shuls.push(shul);
   var el=document.createElement('div');
   el.style.cssText='font-size:16px;line-height:1;cursor:pointer;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5));';
   el.textContent='🕍';
