@@ -2862,45 +2862,30 @@ function _loadShulsForView(){
 }
 
 function _loadShulsOSM(lat,lng,radius){
-  var query='[out:json][timeout:30];('
-    +'node["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+');'
-    +'node["building"="synagogue"](around:'+radius+','+lat+','+lng+');'
-    +'way["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+');'
-    +'way["building"="synagogue"](around:'+radius+','+lat+','+lng+');'
-    +');out center;';
-
-  var endpoints=[
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter',
-    'https://overpass.openstreetmap.ru/api/interpreter'
-  ];
-
-  function tryEndpoint(i){
-    if(i>=endpoints.length)return;
-    fetch(endpoints[i],{
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'data='+encodeURIComponent(query)
-    }).then(function(r){return r.json();}).then(function(data){
-      if(!data.elements||!data.elements.length){
-        tryEndpoint(i+1);return;
-      }
-      var added=0;
-      data.elements.forEach(function(p){
-        var plat=p.lat||(p.center&&p.center.lat);
-        var plng=p.lon||(p.center&&p.center.lon);
-        if(!plat||!plng)return;
-        var name=(p.tags&&(p.tags.name||p.tags['name:en']))||'Synagogue';
-        var id='osm-'+p.id;
-        if(!_shulMarkers.find(function(m){return m.id===id;})){
-          addShulToMap({id:id,name:name,city:(p.tags&&p.tags['addr:city'])||'',lat:plat,lng:plng});
+  // Use Nominatim search API - works from browsers without CORS issues
+  var searches=['synagogue','shul','chabad','yeshiva','beit knesset'];
+  var bbox_d=radius/111000; // rough degrees
+  var viewbox=(lng-bbox_d)+','+(lat+bbox_d)+','+(lng+bbox_d)+','+(lat-bbox_d);
+  
+  searches.forEach(function(term,i){
+    setTimeout(function(){
+      fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(term)+'&format=json&limit=50&viewbox='+viewbox+'&bounded=1&addressdetails=1',{
+        headers:{'Accept-Language':'en','User-Agent':'MyEiruv/1.0'}
+      }).then(function(r){return r.json();}).then(function(data){
+        if(!data||!data.length)return;
+        var added=0;
+        data.forEach(function(p){
+          if(!p.lat||!p.lon)return;
+          var id='nom-'+p.place_id;
+          if(_shulMarkers.find(function(m){return m.id===id;}))return;
+          var name=p.display_name.split(',')[0];
+          addShulToMap({id:id,name:name,city:p.address&&(p.address.city||p.address.town||p.address.suburb)||'',lat:parseFloat(p.lat),lng:parseFloat(p.lon)});
           added++;
-        }
-      });
-      if(added>0)console.log('[MyEiruv]',added,'new shuls loaded from OSM');
-    }).catch(function(){tryEndpoint(i+1);});
-  }
-  tryEndpoint(0);
+        });
+        if(added>0)console.log('[MyEiruv]',added,'shuls from Nominatim:',term);
+      }).catch(function(e){console.warn('[MyEiruv] Nominatim error:',e.message);});
+    },i*1000); // stagger requests to respect rate limit
+  });
 }
 
 function addShulToMap(shul){
