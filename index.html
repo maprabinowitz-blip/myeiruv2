@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="logo.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230f1f38'/%3E%3Cline x1='8' y1='4' x2='8' y2='28' stroke='%23fff' stroke-width='2.5'/%3E%3Cline x1='3' y1='10' x2='13' y2='10' stroke='%23fff' stroke-width='2'/%3E%3Cline x1='24' y1='4' x2='24' y2='28' stroke='%23fff' stroke-width='2.5'/%3E%3Cline x1='19' y1='10' x2='29' y2='10' stroke='%23fff' stroke-width='2'/%3E%3Cpath d='M8 10 Q16 4 24 10' stroke='%237ab8f0' stroke-width='1.5' fill='none'/%3E%3C/svg%3E">
 <title>MyEiruv – Community Eiruv Platform</title>
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
@@ -1399,26 +1399,11 @@ function planRoute(){
         processRoute(result,sc,ec);
       } else {
         console.warn('Google Routes failed, falling back to Mapbox',d);
-        fallbackMapbox(sc,ec,ck);
+        toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;
       }
-    }).catch(function(err){
-      console.warn('Google Routes error, falling back to Mapbox',err);
-      fallbackMapbox(sc,ec,ck);
+    }).catch(function(){
+      toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;
     });}  // end tryGoogle
-  }
-
-  function fallbackMapbox(sc,ec,ck){
-    var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
-      +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
-      +'?overview=full&geometries=geojson&steps=true&approaches=curb%3Bcurb&exclude=ferry&access_token='+TOKEN;
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.code&&d.code!=='Ok'){toast('Route error: '+d.message,'err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      if(!d.routes||!d.routes.length){toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      var r=d.routes[0];
-      var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox'};
-      _routeCache[ck]=result;
-      processRoute(result,sc,ec);
-    }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
 
   function processRoute(result,sc,ec){
@@ -3087,7 +3072,19 @@ const COL = {
 window._firebaseAuth = auth;
 window._googleSignIn = async function(role) {
   try {
-    const result = await signInWithPopup(auth, googleProvider);
+    let result;
+    try {
+      result = await signInWithPopup(auth, googleProvider);
+    } catch(popupErr) {
+      // Popup blocked - try redirect
+      if(popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user') {
+        toast('Popup blocked - trying redirect...','warn');
+        const {signInWithRedirect} = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+      throw popupErr;
+    }
     const fbUser = result.user;
     const email  = fbUser.email.toLowerCase();
     const isAdmin = email === ADMIN_EMAIL.toLowerCase();
