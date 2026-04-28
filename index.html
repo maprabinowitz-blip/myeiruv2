@@ -985,6 +985,45 @@ function loadCustomZones(){
 }
 
 // MAP
+var SEED_SHULS = [
+  // Brooklyn, NY
+  {id:'shul-young-israel-bklyn',      name:'Young Israel of Brooklyn',         city:'Brooklyn, NY',     lat:40.6501, lng:-73.9496},
+  {id:'shul-cong-beth-jacob-bklyn',   name:'Congregation Beth Jacob',          city:'Brooklyn, NY',     lat:40.6480, lng:-73.9430},
+  {id:'shul-agudath-israel-bklyn',    name:'Agudath Israel of Flatbush',       city:'Brooklyn, NY',     lat:40.6355, lng:-73.9601},
+  {id:'shul-torah-vodaath-bklyn',     name:'Yeshiva Torah Vodaath',            city:'Brooklyn, NY',     lat:40.6520, lng:-73.9410},
+  {id:'shul-bais-yaakov-bklyn',       name:'Bais Yaakov of Brooklyn',          city:'Brooklyn, NY',     lat:40.6389, lng:-73.9628},
+  {id:'shul-khal-adas-yereim-bklyn',  name:'Khal Adas Yereim',                city:'Brooklyn, NY',     lat:40.6370, lng:-73.9580},
+  // Woodmere / Five Towns, NY
+  {id:'shul-ohab-zedek-fivetowns',    name:'Ohab Zedek',                       city:'Woodmere, NY',     lat:40.6348, lng:-73.7112},
+  {id:'shul-young-israel-woodmere',   name:'Young Israel of Woodmere',         city:'Woodmere, NY',     lat:40.6367, lng:-73.7145},
+  {id:'shul-white-shul-fivetowns',    name:'The White Shul',                   city:'Woodmere, NY',     lat:40.6260, lng:-73.7210},
+  {id:'shul-bais-medrash-fivetowns',  name:'Bais Medrash of Woodmere',         city:'Woodmere, NY',     lat:40.6320, lng:-73.7180},
+  // Teaneck, NJ
+  {id:'shul-beth-abraham-teaneck',    name:'Congregation Beth Abraham',        city:'Teaneck, NJ',      lat:40.8945, lng:-74.0138},
+  {id:'shul-bnai-yeshurun-teaneck',   name:"B'nai Yeshurun",                   city:'Teaneck, NJ',      lat:40.8920, lng:-74.0090},
+  {id:'shul-beis-chana-teaneck',      name:'Beis Chana of Teaneck',            city:'Teaneck, NJ',      lat:40.8960, lng:-74.0175},
+  {id:'shul-rinat-yisrael-teaneck',   name:'Rinat Yisrael',                    city:'Teaneck, NJ',      lat:40.8978, lng:-74.0155},
+  {id:'shul-young-israel-teaneck',    name:'Young Israel of Teaneck',          city:'Teaneck, NJ',      lat:40.8900, lng:-74.0120},
+  // Monsey, NY
+  {id:'shul-bnai-jeshurun-monsey',    name:"B'nai Jeshurun",                   city:'Monsey, NY',       lat:41.1112, lng:-74.0704},
+  {id:'shul-bais-medrash-monsey',     name:'Bais Medrash Zichron Moshe',       city:'Monsey, NY',       lat:41.1080, lng:-74.0720},
+  {id:'shul-khal-vizhnitz-monsey',    name:'Khal Vizhnitz',                    city:'Monsey, NY',       lat:41.1140, lng:-74.0680},
+  {id:'shul-satmar-monsey',           name:'Satmar of Monsey',                 city:'Monsey, NY',       lat:41.1095, lng:-74.0755},
+  // Skokie, IL
+  {id:'shul-or-chadash-skokie',       name:'Or Chadash',                       city:'Skokie, IL',       lat:42.0331, lng:-87.7476},
+  {id:'shul-kins-skokie',             name:'Keser Israel - North Shore',       city:'Skokie, IL',       lat:42.0380, lng:-87.7420},
+  {id:'shul-cong-bene-sholem-skokie', name:'Congregation Bene Sholem',         city:'Skokie, IL',       lat:42.0290, lng:-87.7500},
+  {id:'shul-young-israel-skokie',     name:'Young Israel of Skokie',           city:'Skokie, IL',       lat:42.0350, lng:-87.7460},
+  // Silver Spring, MD
+  {id:'shul-kol-ami-silver-spring',   name:'Kol Ami',                          city:'Silver Spring, MD',lat:39.0040, lng:-77.0256},
+  {id:'shul-shaarei-tfila-ss',        name:'Shaarei Tfila',                    city:'Silver Spring, MD',lat:39.0020, lng:-77.0230},
+  {id:'shul-bais-yisrael-ss',         name:'Bais Yisrael',                     city:'Silver Spring, MD',lat:39.0060, lng:-77.0280},
+  // Los Angeles, CA
+  {id:'shul-bais-naftoli-la',         name:'Bais Naftoli',                     city:'Los Angeles, CA',  lat:34.0540, lng:-118.3820},
+  {id:'shul-bais-bezalel-la',         name:'Bais Bezalel',                     city:'Los Angeles, CA',  lat:34.0560, lng:-118.3790},
+  {id:'shul-young-israel-la',         name:'Young Israel of Los Angeles',      city:'Los Angeles, CA',  lat:34.0520, lng:-118.3850},
+  {id:'shul-beth-jacob-la',           name:'Beth Jacob Congregation',          city:'Los Angeles, CA',  lat:34.0580, lng:-118.3760},
+];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
 map.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-right');
@@ -3065,45 +3104,7 @@ onAuthStateChanged(auth, async function(fbUser) {
   }
 });
 
-const SEED_SHULS = [
-  // Brooklyn, NY
-  {id:'shul-young-israel-bklyn',      name:'Young Israel of Brooklyn',         city:'Brooklyn, NY',     lat:40.6501, lng:-73.9496},
-  {id:'shul-cong-beth-jacob-bklyn',   name:'Congregation Beth Jacob',          city:'Brooklyn, NY',     lat:40.6480, lng:-73.9430},
-  {id:'shul-agudath-israel-bklyn',    name:'Agudath Israel of Flatbush',       city:'Brooklyn, NY',     lat:40.6355, lng:-73.9601},
-  {id:'shul-torah-vodaath-bklyn',     name:'Yeshiva Torah Vodaath',            city:'Brooklyn, NY',     lat:40.6520, lng:-73.9410},
-  {id:'shul-bais-yaakov-bklyn',       name:'Bais Yaakov of Brooklyn',          city:'Brooklyn, NY',     lat:40.6389, lng:-73.9628},
-  {id:'shul-khal-adas-yereim-bklyn',  name:'Khal Adas Yereim',                city:'Brooklyn, NY',     lat:40.6370, lng:-73.9580},
-  // Woodmere / Five Towns, NY
-  {id:'shul-ohab-zedek-fivetowns',    name:'Ohab Zedek',                       city:'Woodmere, NY',     lat:40.6348, lng:-73.7112},
-  {id:'shul-young-israel-woodmere',   name:'Young Israel of Woodmere',         city:'Woodmere, NY',     lat:40.6367, lng:-73.7145},
-  {id:'shul-white-shul-fivetowns',    name:'The White Shul',                   city:'Woodmere, NY',     lat:40.6260, lng:-73.7210},
-  {id:'shul-bais-medrash-fivetowns',  name:'Bais Medrash of Woodmere',         city:'Woodmere, NY',     lat:40.6320, lng:-73.7180},
-  // Teaneck, NJ
-  {id:'shul-beth-abraham-teaneck',    name:'Congregation Beth Abraham',        city:'Teaneck, NJ',      lat:40.8945, lng:-74.0138},
-  {id:'shul-bnai-yeshurun-teaneck',   name:"B'nai Yeshurun",                   city:'Teaneck, NJ',      lat:40.8920, lng:-74.0090},
-  {id:'shul-beis-chana-teaneck',      name:'Beis Chana of Teaneck',            city:'Teaneck, NJ',      lat:40.8960, lng:-74.0175},
-  {id:'shul-rinat-yisrael-teaneck',   name:'Rinat Yisrael',                    city:'Teaneck, NJ',      lat:40.8978, lng:-74.0155},
-  {id:'shul-young-israel-teaneck',    name:'Young Israel of Teaneck',          city:'Teaneck, NJ',      lat:40.8900, lng:-74.0120},
-  // Monsey, NY
-  {id:'shul-bnai-jeshurun-monsey',    name:"B'nai Jeshurun",                   city:'Monsey, NY',       lat:41.1112, lng:-74.0704},
-  {id:'shul-bais-medrash-monsey',     name:'Bais Medrash Zichron Moshe',       city:'Monsey, NY',       lat:41.1080, lng:-74.0720},
-  {id:'shul-khal-vizhnitz-monsey',    name:'Khal Vizhnitz',                    city:'Monsey, NY',       lat:41.1140, lng:-74.0680},
-  {id:'shul-satmar-monsey',           name:'Satmar of Monsey',                 city:'Monsey, NY',       lat:41.1095, lng:-74.0755},
-  // Skokie, IL
-  {id:'shul-or-chadash-skokie',       name:'Or Chadash',                       city:'Skokie, IL',       lat:42.0331, lng:-87.7476},
-  {id:'shul-kins-skokie',             name:'Keser Israel - North Shore',       city:'Skokie, IL',       lat:42.0380, lng:-87.7420},
-  {id:'shul-cong-bene-sholem-skokie', name:'Congregation Bene Sholem',         city:'Skokie, IL',       lat:42.0290, lng:-87.7500},
-  {id:'shul-young-israel-skokie',     name:'Young Israel of Skokie',           city:'Skokie, IL',       lat:42.0350, lng:-87.7460},
-  // Silver Spring, MD
-  {id:'shul-kol-ami-silver-spring',   name:'Kol Ami',                          city:'Silver Spring, MD',lat:39.0040, lng:-77.0256},
-  {id:'shul-shaarei-tfila-ss',        name:'Shaarei Tfila',                    city:'Silver Spring, MD',lat:39.0020, lng:-77.0230},
-  {id:'shul-bais-yisrael-ss',         name:'Bais Yisrael',                     city:'Silver Spring, MD',lat:39.0060, lng:-77.0280},
-  // Los Angeles, CA
-  {id:'shul-bais-naftoli-la',         name:'Bais Naftoli',                     city:'Los Angeles, CA',  lat:34.0540, lng:-118.3820},
-  {id:'shul-bais-bezalel-la',         name:'Bais Bezalel',                     city:'Los Angeles, CA',  lat:34.0560, lng:-118.3790},
-  {id:'shul-young-israel-la',         name:'Young Israel of Los Angeles',      city:'Los Angeles, CA',  lat:34.0520, lng:-118.3850},
-  {id:'shul-beth-jacob-la',           name:'Beth Jacob Congregation',          city:'Los Angeles, CA',  lat:34.0580, lng:-118.3760},
-];
+
 
 window._db = {
 
