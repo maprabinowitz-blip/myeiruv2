@@ -993,10 +993,12 @@ map.on('load',()=>{
   try{map.setPaintProperty('background','background-color','#f3efe6');}catch(e){}
   try{map.setPaintProperty('water','fill-color','#c4d8e8');}catch(e){}
   window._mapLoaded=true;
-  // Direct test - add one shul immediately
-  addShulToMap({id:'test-shul-1',name:'Test Shul Brooklyn',city:'Brooklyn, NY',lat:40.6501,lng:-73.9496});
-  addShulToMap({id:'test-shul-2',name:'Test Shul Teaneck',city:'Teaneck, NJ',lat:40.8945,lng:-74.0138});
-  toast('Map loaded - shuls rendering...','ok');
+  // Load seed shuls immediately
+  (SEED_SHULS||[]).forEach(addShulToMap);
+  // Load ALL shuls from OpenStreetMap for visible map area
+  map.on('moveend', _loadShulsForView);
+  map.on('zoomend', _loadShulsForView);
+  setTimeout(_loadShulsForView, 1000);
   if(window._zonesReady){
     _renderAllMapData();
   }else{
@@ -2843,6 +2845,64 @@ function _renderAllMapData(){
 
 // Shul markers on map
 var _shulMarkers=[];
+// Load ALL shuls from OpenStreetMap for the current map view
+var _shulLoadTimer=null;
+function _loadShulsForView(){
+  clearTimeout(_shulLoadTimer);
+  _shulLoadTimer=setTimeout(function(){
+    var bounds=map.getBounds();
+    var center=map.getCenter();
+    var zoom=map.getZoom();
+    if(zoom<10)return; // Don't load at very high zoom - too many results
+    var lat=center.lat,lng=center.lng;
+    // Calculate radius from zoom level
+    var radius=Math.min(15000,Math.round(40000/Math.pow(2,zoom-8)));
+    _loadShulsOSM(lat,lng,radius);
+  },500);
+}
+
+function _loadShulsOSM(lat,lng,radius){
+  var query='[out:json][timeout:30];('
+    +'node["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+');'
+    +'node["building"="synagogue"](around:'+radius+','+lat+','+lng+');'
+    +'way["amenity"="place_of_worship"]["religion"="jewish"](around:'+radius+','+lat+','+lng+');'
+    +'way["building"="synagogue"](around:'+radius+','+lat+','+lng+');'
+    +');out center;';
+
+  var endpoints=[
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.openstreetmap.ru/api/interpreter'
+  ];
+
+  function tryEndpoint(i){
+    if(i>=endpoints.length)return;
+    fetch(endpoints[i],{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'data='+encodeURIComponent(query)
+    }).then(function(r){return r.json();}).then(function(data){
+      if(!data.elements||!data.elements.length){
+        tryEndpoint(i+1);return;
+      }
+      var added=0;
+      data.elements.forEach(function(p){
+        var plat=p.lat||(p.center&&p.center.lat);
+        var plng=p.lon||(p.center&&p.center.lon);
+        if(!plat||!plng)return;
+        var name=(p.tags&&(p.tags.name||p.tags['name:en']))||'Synagogue';
+        var id='osm-'+p.id;
+        if(!_shulMarkers.find(function(m){return m.id===id;})){
+          addShulToMap({id:id,name:name,city:(p.tags&&p.tags['addr:city'])||'',lat:plat,lng:plng});
+          added++;
+        }
+      });
+      if(added>0)console.log('[MyEiruv]',added,'new shuls loaded from OSM');
+    }).catch(function(){tryEndpoint(i+1);});
+  }
+  tryEndpoint(0);
+}
+
 function addShulToMap(shul){
   if(!shul||isNaN(shul.lat)||isNaN(shul.lng))return;
   // Don't add duplicates
