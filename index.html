@@ -1918,12 +1918,17 @@ function admDel(id){
   try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');z=z.filter(function(x){return x.id!==id;});localStorage.setItem('myeiruv_zones',JSON.stringify(z));}catch(_){}
   renderEruvList();renderStatus();renderAdmin('eruvin');
   if(window._db){
-    window._db.deleteZone(id).then(function(ok){
-      toast(ok?'Zone deleted':'Zone removed locally','ok');
-    }).catch(function(e){
-      console.error('deleteZone error:',e);
-      toast('Removed from view (Firestore error: '+e.message+')','err');
-    });
+    var isBase=BASE_ERUVIN.find(function(b){return b.id===id;});
+    if(isBase){
+      // Mark as deleted so it doesn't re-seed on reload
+      window._db.patchZone(id,{_deleted:true}).then(function(){
+        toast('Zone deleted','ok');
+      }).catch(function(e){toast('Removed locally','ok');});
+    } else {
+      window._db.deleteZone(id).then(function(ok){
+        toast(ok?'Zone deleted':'Removed locally','ok');
+      }).catch(function(e){toast('Removed locally','ok');});
+    }
   } else {
     toast('Zone deleted','ok');
   }
@@ -3280,7 +3285,7 @@ window._db = {
       };
       let snap = await getDocs(COL.zones);
       if (snap.empty) {
-        // Seed BASE_ERUVIN - convert nested arrays for Firestore
+        // First time ever — seed all BASE_ERUVIN
         const toFS = z => {
           const s={...z};
           s.coords=s.coords.map(c=>({g:c[0],a:c[1]}));
@@ -3290,7 +3295,16 @@ window._db = {
         await Promise.all(BASE_ERUVIN.map(z => setDoc(doc(db,"zones",z.id), toFS(z))));
         snap = await getDocs(COL.zones);
       }
-      return snap.docs.map(d => fromFS({...d.data(), id:d.id}));
+      // Load zones from Firestore, skip any marked as deleted
+      const fsZones = snap.docs.map(d => fromFS({...d.data(), id:d.id})).filter(z => !z._deleted);
+      // Merge: use Firestore version if exists, otherwise use BASE_ERUVIN (but only if not deleted)
+      const deletedIds = snap.docs.filter(d => d.data()._deleted).map(d => d.id);
+      BASE_ERUVIN.forEach(base => {
+        if(!deletedIds.includes(base.id) && !fsZones.find(z => z.id===base.id)){
+          fsZones.push(base);
+        }
+      });
+      return fsZones;
     } catch(e) { console.error("loadZones:",e); return null; }
   },
   async saveZone(zone) {
