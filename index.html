@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230f1f38'/%3E%3Cpath d='M4 16 Q16 6 28 16' stroke='%237ab8f0' stroke-width='2.5' fill='none'/%3E%3Cpath d='M4 20 Q16 10 28 20' stroke='%235090c0' stroke-width='1.5' fill='none'/%3E%3Cline x1='6' y1='10' x2='6' y2='28' stroke='%23ffffff' stroke-width='2.5'/%3E%3Cline x1='26' y1='10' x2='26' y2='28' stroke='%23ffffff' stroke-width='2.5'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230f1f38'/%3E%3Cpath d='M4 16 Q16 6 28 16' stroke='%23ffffff' stroke-width='2.5' fill='none'/%3E%3Cpath d='M4 20 Q16 10 28 20' stroke='%23dddddd' stroke-width='1.5' fill='none'/%3E%3Cline x1='6' y1='10' x2='6' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3Cline x1='26' y1='10' x2='26' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3C/svg%3E">
 <title>MyEiruv – Community Eiruv Platform</title>
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
@@ -972,7 +972,8 @@ const BASE_ERUVIN=[
   {id:'silver',name:'Silver Spring Eiruv',city:'Silver Spring, MD',status:'up',lastChecked:'Today 7:30am',checkedBy:'R. Shapiro',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-77.026,39.003],coords:[[-77.04,39.02],[-77.01,39.03],[-77.00,39.01],[-77.01,38.99],[-77.04,38.99],[-77.05,39.01],[-77.04,39.02]]},
   {id:'pico',name:'Pico-Robertson Eiruv',city:'Los Angeles, CA',status:'up',lastChecked:'Today 9:00am',checkedBy:'B. Feldman',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-118.378,34.055],coords:[[-118.39,34.07],[-118.36,34.07],[-118.36,34.04],[-118.39,34.04],[-118.39,34.07]]},
 ];
-S.eruvin=BASE_ERUVIN.map(e=>Object.assign({},e,{exclusions:[],adjacency:(e.adjacency||[]).slice()}));
+var _deletedIds=(function(){try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return [];}}());
+S.eruvin=BASE_ERUVIN.filter(e=>!_deletedIds.includes(e.id)).map(e=>Object.assign({},e,{exclusions:[],adjacency:(e.adjacency||[]).slice()}));
 
 function loadCustomZones(){
   // Primary source is Firestore (loaded async in the module script).
@@ -1917,21 +1918,16 @@ function admDel(id){
   try{map.removeSource('eruv-'+id);}catch(_){}
   try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');z=z.filter(function(x){return x.id!==id;});localStorage.setItem('myeiruv_zones',JSON.stringify(z));}catch(_){}
   renderEruvList();renderStatus();renderAdmin('eruvin');
+  // Save deleted ID to localStorage immediately
+  try{var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');if(!del.includes(id))del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}catch(_){}
   if(window._db){
     var isBase=BASE_ERUVIN.find(function(b){return b.id===id;});
     if(isBase){
-      // Mark as deleted so it doesn't re-seed on reload
-      window._db.patchZone(id,{_deleted:true}).then(function(){
-        toast('Zone deleted','ok');
-      }).catch(function(e){toast('Removed locally','ok');});
+      window._db.patchZone(id,{_deleted:true}).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
     } else {
-      window._db.deleteZone(id).then(function(ok){
-        toast(ok?'Zone deleted':'Removed locally','ok');
-      }).catch(function(e){toast('Removed locally','ok');});
+      window._db.deleteZone(id).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
     }
-  } else {
-    toast('Zone deleted','ok');
-  }
+  } else { toast('Zone deleted','ok'); }
 }
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
