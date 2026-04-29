@@ -1915,9 +1915,18 @@ function admDel(id){
   S.eruvin=S.eruvin.filter(function(e){return e.id!==id;});
   ['fill','line'].forEach(function(t){try{map.removeLayer('eruv-'+id+'-'+t);}catch(_){};});
   try{map.removeSource('eruv-'+id);}catch(_){}
-  if(window._db)window._db.deleteZone(id);
   try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');z=z.filter(function(x){return x.id!==id;});localStorage.setItem('myeiruv_zones',JSON.stringify(z));}catch(_){}
-  renderEruvList();renderStatus();renderAdmin('eruvin');toast('Deleted');
+  renderEruvList();renderStatus();renderAdmin('eruvin');
+  if(window._db){
+    window._db.deleteZone(id).then(function(ok){
+      toast(ok?'Zone deleted':'Zone removed locally','ok');
+    }).catch(function(e){
+      console.error('deleteZone error:',e);
+      toast('Removed from view (Firestore error: '+e.message+')','err');
+    });
+  } else {
+    toast('Zone deleted','ok');
+  }
 }
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
@@ -3072,7 +3081,7 @@ function addShulToMap(shul){
   var marker=new mapboxgl.Marker({element:el,anchor:'bottom'})
     .setLngLat([shul.lng,shul.lat])
     .setPopup(new mapboxgl.Popup({closeButton:false,offset:4})
-      .setHTML('<div class="pop-title">'+shul.name+'</div><div class="pop-status" style="font-size:.7rem;color:var(--muted)">'+shul.city+'</div>'))
+      .setHTML('<div class="pop-title">'+shul.name+'</div>'+(shul.address?'<div class="pop-status" style="font-size:.7rem;color:var(--muted)">'+shul.address+'</div>':'<div class="pop-status" style="font-size:.7rem;color:var(--muted)">'+shul.city+'</div>')))
     .addTo(map);
   _shulMarkers.push({id:shul.id,marker:marker,shul:shul});
 }
