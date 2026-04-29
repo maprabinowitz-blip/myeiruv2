@@ -3002,11 +3002,11 @@ function refreshPage(){window.location.reload();}
 
 // ── Render all Firestore data onto the map ───────────────────────────────────
 function _renderAllMapData(){
-  // Remove all existing eruv layers first
+  // Remove all existing eruv layers first (safe check)
   S.eruvin.concat(BASE_ERUVIN).forEach(function(e){
-    try{map.removeLayer('eruv-'+e.id+'-fill');}catch(_){}
-    try{map.removeLayer('eruv-'+e.id+'-line');}catch(_){}
-    try{map.removeSource('eruv-'+e.id);}catch(_){}
+    if(map.getLayer&&map.getLayer('eruv-'+e.id+'-fill'))try{map.removeLayer('eruv-'+e.id+'-fill');}catch(_){}
+    if(map.getLayer&&map.getLayer('eruv-'+e.id+'-line'))try{map.removeLayer('eruv-'+e.id+'-line');}catch(_){}
+    if(map.getSource&&map.getSource('eruv-'+e.id))try{map.removeSource('eruv-'+e.id);}catch(_){}
   });
   S.eruvin.forEach(addEruvToMap);
   // Always load seed shuls first
@@ -3447,7 +3447,8 @@ window._db = {
     ]);
 
     if (zones?.length) {
-      S.eruvin = zones.map(z => Object.assign({}, z,
+      const deletedIds = (() => { try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return[];} })();
+      S.eruvin = zones.filter(z => !z._deleted && !deletedIds.includes(z.id)).map(z => Object.assign({}, z,
         {exclusions:z.exclusions||[], adjacency:z.adjacency||[]}));
     }
     window._fsUsers       = users       || [];
