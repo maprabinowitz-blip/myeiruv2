@@ -3002,6 +3002,12 @@ function refreshPage(){window.location.reload();}
 
 // ── Render all Firestore data onto the map ───────────────────────────────────
 function _renderAllMapData(){
+  // Remove all existing eruv layers first
+  S.eruvin.concat(BASE_ERUVIN).forEach(function(e){
+    try{map.removeLayer('eruv-'+e.id+'-fill');}catch(_){}
+    try{map.removeLayer('eruv-'+e.id+'-line');}catch(_){}
+    try{map.removeSource('eruv-'+e.id);}catch(_){}
+  });
   S.eruvin.forEach(addEruvToMap);
   // Always load seed shuls first
   (SEED_SHULS||[]).forEach(addShulToMap);
