@@ -3299,13 +3299,17 @@ window._db = {
       // Load zones from Firestore, skip any marked as deleted
       const localDeleted = (() => { try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return[];} })();
       const fsIds = snap.docs.map(d => d.id);
-      const fsZones = snap.docs.map(d => fromFS({...d.data(), id:d.id})).filter(z => !z._deleted && !localDeleted.includes(z.id));
+      const fsZones = snap.docs.map(d => {
+        try{ return fromFS({...d.data(), id:d.id}); }
+        catch(e){ console.error('fromFS error:',e); return null; }
+      }).filter(z => z && z.id && !z._deleted && !localDeleted.includes(z.id));
       // Add BASE_ERUVIN zones that aren't in Firestore yet and aren't deleted
       BASE_ERUVIN.forEach(base => {
         if(!localDeleted.includes(base.id) && !fsIds.includes(base.id)){
           fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
         }
       });
+      console.log('[loadZones] Firestore:',snap.docs.length,'filtered:',fsZones.length,'deleted:',localDeleted);
       return fsZones;
     } catch(e) { console.error("loadZones:",e); return null; }
   },
