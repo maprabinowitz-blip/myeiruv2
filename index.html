@@ -611,16 +611,15 @@ header{
       </div>
     </div>
   </div>
-  <div id="map">
-    <div class="map-legend">
-      <div class="leg-row"><div class="leg-line" style="background:#22a865"></div>Up &amp; Kosher</div>
-      <div class="leg-row"><div class="leg-line" style="background:#e08020"></div>Under Review</div>
-      <div class="leg-row"><div class="leg-line" style="background:#d94040"></div>Down</div>
-      <div class="leg-row"><div class="leg-line" style="background:repeating-linear-gradient(45deg,#d94040,#d94040 2px,transparent 2px,transparent 6px)"></div>Exclusion</div>
-    </div>
-    <button class="map-fs-btn" onclick="toggleMapFs()">&#8596; Full Screen</button>
-    <button class="fs-exit" id="fsExit" onclick="toggleMapFs()">&#10005; Exit Full Screen</button>
+  <div id="map"></div>
+  <div class="map-legend">
+    <div class="leg-row"><div class="leg-line" style="background:#22a865"></div>Up &amp; Kosher</div>
+    <div class="leg-row"><div class="leg-line" style="background:#e08020"></div>Under Review</div>
+    <div class="leg-row"><div class="leg-line" style="background:#d94040"></div>Down</div>
+    <div class="leg-row"><div class="leg-line" style="background:repeating-linear-gradient(45deg,#d94040,#d94040 2px,transparent 2px,transparent 6px)"></div>Exclusion</div>
   </div>
+  <button class="map-fs-btn" onclick="toggleMapFs()">&#8596; Full Screen</button>
+  <button class="fs-exit" id="fsExit" onclick="toggleMapFs()">&#10005; Exit Full Screen</button>
 </div>
 
 <!-- ADMIN DRAWER -->
@@ -3298,12 +3297,13 @@ window._db = {
         snap = await getDocs(COL.zones);
       }
       // Load zones from Firestore, skip any marked as deleted
-      const fsZones = snap.docs.map(d => fromFS({...d.data(), id:d.id})).filter(z => !z._deleted);
-      // Merge: use Firestore version if exists, otherwise use BASE_ERUVIN (but only if not deleted)
-      const deletedIds = snap.docs.filter(d => d.data()._deleted).map(d => d.id);
+      const localDeleted = (() => { try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return[];} })();
+      const fsIds = snap.docs.map(d => d.id);
+      const fsZones = snap.docs.map(d => fromFS({...d.data(), id:d.id})).filter(z => !z._deleted && !localDeleted.includes(z.id));
+      // Add BASE_ERUVIN zones that aren't in Firestore yet and aren't deleted
       BASE_ERUVIN.forEach(base => {
-        if(!deletedIds.includes(base.id) && !fsZones.find(z => z.id===base.id)){
-          fsZones.push(base);
+        if(!localDeleted.includes(base.id) && !fsIds.includes(base.id)){
+          fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
         }
       });
       return fsZones;
@@ -3447,14 +3447,7 @@ window._db = {
     ]);
 
     if (zones?.length) {
-      const deletedIds = (() => { try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return[];} })();
-      const filtered = zones.filter(z => z && z.id && !z._deleted && !deletedIds.includes(z.id));
-      if(filtered.length > 0){
-        S.eruvin = filtered.map(z => Object.assign({}, z, {exclusions:z.exclusions||[], adjacency:z.adjacency||[]}));
-      } else {
-        // Fallback to BASE_ERUVIN if filter removed everything
-        S.eruvin = BASE_ERUVIN.filter(z => !deletedIds.includes(z.id)).map(z => Object.assign({},z,{exclusions:[],adjacency:[]}));
-      }
+      S.eruvin = zones.filter(z => z && z.id).map(z => Object.assign({}, z, {exclusions:z.exclusions||[], adjacency:z.adjacency||[]}));
     }
     window._fsUsers       = users       || [];
     window._fsContractors = contractors || [];
