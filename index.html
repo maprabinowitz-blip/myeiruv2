@@ -1094,7 +1094,16 @@ function showEruvPopup(e){
     if(ct&&ct.name)ctInfo='<div style="font-size:.68rem;color:var(--muted);margin-top:4px;border-top:1px solid #eee;padding-top:4px">📋 '+ct.name+(ct.phone?' · '+ct.phone:'')+'</div>';
   }
   var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
-  new mapboxgl.Popup({closeButton:false,offset:5}).setLngLat(e.center).setHTML('<div class="pop-title">'+e.name+'</div><div class="pop-status">'+dot+' '+lbl+'</div>'+lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj+don+ctInfo).addTo(map);
+  var html='<div style="min-width:180px">'
+    +'<div class="pop-title">'+e.name+'</div>'
+    +'<div class="pop-status">'+dot+' '+lbl+'</div>'
+    +lastUpd
+    +(e.note?'<div class="pop-note">'+e.note+'</div>':'')
+    +adj
+    +(don?'<div style="margin-top:6px">'+don+'</div>':'')
+    +(ctInfo?ctInfo:'')
+    +'</div>';
+  new mapboxgl.Popup({closeButton:true,maxWidth:'240px',offset:5}).setLngLat(e.center).setHTML(html).addTo(map);
 }
 function addExclToMap(eruvId,ex){
   const sid='excl-'+eruvId+'-'+ex.id;
@@ -3539,5 +3548,18 @@ window.addEventListener('popstate',function(e){
 })();
 window._db.bootAll();
 </script>
+<!-- Footer disclaimer -->
+<div id="site-footer" style="position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(15,31,56,.92);backdrop-filter:blur(8px);padding:5px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none;border-top:1px solid rgba(255,255,255,.08);">
+  <div style="font-size:.6rem;color:rgba(255,255,255,.5);line-height:1.4;flex:1;">
+    ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
+  </div>
+  <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
+    © 2025 MyEiruv
+  </div>
+</div>
+<style>
+  /* Make room for footer */
+  .app { padding-bottom: 28px; }
+</style>
 </body>
 </html>
