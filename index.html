@@ -465,11 +465,6 @@ header{
     <rect x="174" y="37" width="12" height="23"/>
     <rect x="188" y="42" width="8" height="18"/>
   </g>
-  <!-- Star of David on dome -->
-  <g transform="translate(130,22)">
-    <polygon points="0,-6 5.2,3 -5.2,3" fill="none" stroke="#c8a840" stroke-width="1.5" opacity="0.95"/>
-    <polygon points="0,6 5.2,-3 -5.2,-3" fill="none" stroke="#c8a840" stroke-width="1.5" opacity="0.95"/>
-  </g>
   <!-- MYEIRUV text -->
   <text x="130" y="64" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#ffffff" letter-spacing="3.5">MYEIRUV</text>
 </svg>
@@ -1641,8 +1636,8 @@ function getEruvTimestamp(){
 function renderStatus(f){
   f=f||'all';
   var list=f==='all'?S.eruvin:S.eruvin.filter(function(e){return e.status===f;});
-  var SL={up:'Up ✓',review:'Under Review',down:'Down'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
-  document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+' · '+e.lastChecked+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
+  var SL={up:'Up ✓',review:'Under Review ⚠',down:'Down ✕'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
+  document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+(e.lastChecked?' · Updated '+e.lastChecked:'')+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
 }
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Review',down:'Down'};
@@ -1909,6 +1904,7 @@ function admStatus(id,status){
   try{map.setPaintProperty('eruv-'+id+'-line','line-color',SCOL[status]);}catch(_){}
   try{map.setPaintProperty('eruv-'+id+'-fill','fill-color',SCOL[status]);}catch(_){}
   if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked});
+  // Send status update notification
   sendEruvEmailAlerts(e,status,note);
   renderEruvList();renderStatus();renderAdmin('overview');
 }
@@ -1933,15 +1929,17 @@ function admDel(id){
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
   if(u){u.role='contractor';u.contractorStatus='approved';_cacheAndSaveUser(u);}
-  if(window._db)window._db.patchContractor(email,{status:'approved'});
-  toast((u&&u.name||email)+' approved ✓','ok');renderAdmin('contractors');
+  if(window._db){window._db.patchContractor(email,{status:'approved'});window._db.patchUser(email,{role:'contractor',contractorStatus:'approved'});}
   if(S.user&&S.user.email.toLowerCase()===email.toLowerCase()){S.user.role='contractor';signInAs(S.user);}
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},body:JSON.stringify({to:email,toName:u&&u.name||email,eruvName:'Welcome to MyEiruv — Contractor Approved! 🎉',eruvCity:'',status:'up',note:'Your contractor application has been approved. Sign in at myeiruv.org and click "My Zones" to start creating and managing eruv zones.',timestamp:new Date().toLocaleDateString()})}).catch(function(){});
+  toast((u&&u.name||email)+' approved ✓','ok');renderAdmin('contractors');
 }
 function rejectC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
   if(u){u.contractorStatus='rejected';_cacheAndSaveUser(u);}
-  if(window._db)window._db.patchContractor(email,{status:'rejected'});
-  toast('Rejected');renderAdmin('contractors');
+  if(window._db){window._db.patchContractor(email,{status:'rejected'});window._db.patchUser(email,{contractorStatus:'rejected'});}
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},body:JSON.stringify({to:email,toName:u&&u.name||email,eruvName:'MyEiruv Contractor Application',eruvCity:'',status:'review',note:'Thank you for applying to be a MyEiruv contractor. After review, we are unable to approve your application at this time. Please reach out at myeiruv.org for more information.',timestamp:new Date().toLocaleDateString()})}).catch(function(){});
+  toast('Rejected','ok');renderAdmin('contractors');
 }
 function adminAddCt(){
   var email=document.getElementById('addCtEmail').value.trim().toLowerCase();
@@ -2365,7 +2363,7 @@ function showImportPreview(coords,desc,aiData){
   var statusIcon={up:'🟢',review:'🟡',down:'🔴'}[meta.status]||'🟢';
   var infoHtml='<strong>✅ Zone built — '+coords.length+' boundary points</strong>';
   if(meta.name||meta.city)infoHtml+='<br>📍 '+(meta.name||'—')+' · '+(meta.city||'—');
-  if(meta.status)infoHtml+='<br>'+statusIcon+' Suggested status: <strong>'+{up:'Up & Kosher',review:'Under Review',down:'Down'}[meta.status]+'</strong>';
+  if(meta.status)infoHtml+='<br>'+statusIcon+' Suggested status: <strong>'+{up:'Up & Kosher',review:'Under Review',down:'Down'}[meta.status]||meta.status+'</strong>';
   if(meta.note)infoHtml+='<br><em style="color:var(--muted)">'+meta.note+'</em>';
   infoHtml+='<br><span style="color:var(--muted2)">Center: '+ctr[1].toFixed(4)+', '+ctr[0].toFixed(4)+'</span>';
   document.getElementById('mi-info').innerHTML=infoHtml;
