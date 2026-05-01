@@ -443,8 +443,8 @@ header{
   <line x1="230" y1="12" x2="230" y2="58" stroke="#4a90d9" stroke-width="3.5" stroke-linecap="round"/>
   <line x1="220" y1="22" x2="240" y2="22" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
   <line x1="222" y1="27" x2="238" y2="27" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Bird sitting ON wire near left pole -->
-  <g transform="translate(55,15)">
+  <!-- Bird on wire, close to left pole -->
+  <g transform="translate(42,17)">
     <!-- Tail feathers -->
     <path d="M-7,2 L-11,5 L-9,1 L-12,-1 L-8,0Z" fill="#5a7a98"/>
     <!-- Body - rounded -->
@@ -1386,15 +1386,8 @@ function planRoute(){
     var ck=cacheKey(sc,ec);
     if(_routeCache[ck]){processRoute(_routeCache[ck],sc,ec);return;}
 
-    // OSRM - free, unlimited, no key needed
-    fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
-    .then(function(r){return r.json();}).then(function(d){
-      if(d.code==='Ok'&&d.routes&&d.routes.length){
-        var r=d.routes[0];
-        var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
-        _routeCache[ck]=result;processRoute(result,sc,ec);
-      } else { tryGoogle(); }
-    }).catch(function(){tryGoogle();});
+    // Try Google first (most accurate walking), fallback to OSRM
+    tryGoogle();
 
     function tryGoogle(){
     // Google Routes via Worker
