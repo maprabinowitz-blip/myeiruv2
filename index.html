@@ -583,9 +583,6 @@ header{
           <div class="fg"><label class="lbl">City</label>
             <select class="fi" id="alertCity" onchange="updateAlertEruv()">
               <option value="">— Select a city —</option>
-              <option>Brooklyn, NY</option><option>Woodmere, NY</option><option>Teaneck, NJ</option>
-              <option>Monsey, NY</option><option>Skokie, IL</option><option>Silver Spring, MD</option>
-              <option>Los Angeles, CA</option>
             </select>
           </div>
           <div class="fg"><label class="lbl">Eiruv</label><select class="fi" id="alertEruv"><option>Select city first</option></select></div>
@@ -597,11 +594,9 @@ header{
           </div>
           <div class="fg" id="alertPhoneWrap" style="display:none"><label class="lbl">Phone for SMS</label>
             <input class="fi" id="alertPhone" type="tel" placeholder="+1 (555) 000-0000">
-            <div style="font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;">By providing your number, you agree to receive SMS eruv status alerts. Msg &amp; data rates may apply. Reply STOP to unsubscribe.</div>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;">By providing your number, you agree to receive SMS eiruv status alerts. Msg &amp; data rates may apply. Reply STOP to unsubscribe.</div>
           </div>
-          <div class="fg"><label class="lbl">Send Time</label>
-            <select class="fi"><option>Every Friday at 9:00 AM</option><option>Every Friday at 10:00 AM</option><option>Thursday + Friday</option></select>
-          </div>
+          <div style="font-size:.72rem;color:var(--muted);padding:4px 0 8px;line-height:1.5;">📬 You'll receive an alert whenever this eiruv's status changes.</div>
           <button class="btn btn-navy btn-full" onclick="saveAlert()">Save Alert</button>
           <button class="btn btn-outline btn-full" onclick="toggleAlertForm()" style="margin-top:6px">Cancel</button>
         </div>
@@ -1330,7 +1325,6 @@ function reverseGeocode(lng,lat,cb){
   }).catch(function(){cb(lat.toFixed(4)+', '+lng.toFixed(4));});
 }
 function planRoute(){
-  var sc=S.routeStart,ec=S.routeEnd;
   var btn=document.getElementById('routeBtn');
   btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> Checking…';
   clearRouteLayer();
@@ -1338,6 +1332,19 @@ function planRoute(){
   var _routeCache={};
   function roundCoord(v){return Math.round(v*1000)/1000;}
   function cacheKey(sc,ec){return roundCoord(sc.lng)+','+roundCoord(sc.lat)+'|'+roundCoord(ec.lng)+','+roundCoord(ec.lat);}
+
+  // Always read from input fields - don't rely on S.routeStart/End being set
+  var startVal=document.getElementById('rStart').value.trim();
+  var endVal=document.getElementById('rEnd').value.trim();
+  
+  if(!startVal&&!S.routeStart){toast('Enter a start address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+  if(!endVal&&!S.routeEnd){toast('Enter an end address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+
+  var sc=S.routeStart,ec=S.routeEnd;
+  
+  // If input changed from stored value, re-geocode
+  if(startVal&&(!sc||sc.label!==startVal))sc=null;
+  if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
   // Decode Google encoded polyline to [[lng,lat],...]
   function decodePolyline(str){
@@ -1646,17 +1653,27 @@ function renderEruvList(){
 function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}
 
 // ALERTS
-var cityEruvin={'Brooklyn, NY':['Brooklyn Eiruv','Flatbush Eiruv','Borough Park Eiruv'],'Woodmere, NY':['Five Towns Eiruv','Lawrence Eiruv'],'Teaneck, NJ':['Teaneck Eiruv'],'Monsey, NY':['Monsey Eiruv - East','Monsey Eiruv - West'],'Skokie, IL':['Skokie Eiruv'],'Silver Spring, MD':['Silver Spring Eiruv'],'Los Angeles, CA':['Pico-Robertson Eiruv']};
-function updateAlertEruv(){var c=document.getElementById('alertCity').value,s=document.getElementById('alertEruv'),opts=cityEruvin[c]||[];s.innerHTML=opts.length?opts.map(function(n){return '<option>'+n+'</option>';}).join(''):'<option>Select city first</option>';}
+function populateAlertCities(){
+  var sel=document.getElementById('alertCity');
+  if(!sel)return;
+  var cities=[...new Set(S.eruvin.filter(function(e){return !e._deleted;}).map(function(e){return e.city;}))].sort();
+  sel.innerHTML='<option value="">— Select a city —</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('');
+}
+function updateAlertEruv(){
+  var c=document.getElementById('alertCity').value;
+  var s=document.getElementById('alertEruv');
+  var zones=S.eruvin.filter(function(e){return e.city===c&&!e._deleted;});
+  s.innerHTML=zones.length?zones.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join(''):'<option>No eiruvim in this city</option>';
+}
 var alertOpen=false;
 function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);}
 function saveAlert(){
-  var city=document.getElementById('alertCity').value,eruv=document.getElementById('alertEruv').value;
-  if(!city||eruv.indexOf('Select')>=0){toast('Select city and eiruv','err');return;}
+  var city=document.getElementById('alertCity').value,eruvSel=document.getElementById('alertEruv'),eruv=eruvSel.value,eruvName=eruvSel.options[eruvSel.selectedIndex]&&eruvSel.options[eruvSel.selectedIndex].text||eruv;
+  if(!city||!eruv||eruv.indexOf('Select')>=0||eruv.indexOf('No ')>=0){toast('Select city and eiruv','err');return;}
   var viaEmail=document.getElementById('alertViaEmail')&&document.getElementById('alertViaEmail').classList.contains('on');
   var viaSms=document.getElementById('alertViaSms')&&document.getElementById('alertViaSms').classList.contains('on');
   var phone=(document.getElementById('alertPhone')&&document.getElementById('alertPhone').value.trim())||S.user.phone||'';
-  var al={id:'alert-'+Date.now(),userEmail:S.user.email.toLowerCase(),userName:S.user.name||'',userPhone:phone,city:city,eruv:eruv,viaEmail:viaEmail!==false,viaSms:viaSms&&!!phone,active:true,createdAt:new Date().toISOString()};
+  var al={id:'alert-'+Date.now(),userEmail:S.user.email.toLowerCase(),userName:S.user.name||'',userPhone:phone,city:city,eruv:eruv,eruvName:eruvName,viaEmail:viaEmail!==false,viaSms:viaSms&&!!phone,active:true,createdAt:new Date().toISOString()};
   S.alerts.push(al);
   if(window._db)window._db.saveAlert(al);
   renderAlerts();alertOpen=false;document.getElementById('alertForm').classList.remove('on');toast('Alert saved — '+eruv,'ok');
@@ -1671,7 +1688,7 @@ function saveAlert(){
         eruvName:eruv+' — Alert Confirmed ✅',
         eruvCity:city,
         status:'up',
-        note:"You're now subscribed to eruv status alerts for "+eruv+" in "+city+". You'll receive updates every time the status changes.",
+        note:"You're now subscribed to eiruv status alerts for "+eruv+" in "+city+". You'll receive updates every time the status changes.",
         timestamp:new Date().toLocaleDateString()
       })
     }).catch(function(){});
@@ -1713,6 +1730,19 @@ function switchAuthTab(tab){
   document.getElementById('authSIFields').style.display=isSI?'block':'none';
   document.getElementById('authSUFields').style.display=isSU?'block':'none';
   document.getElementById('authCTFields').style.display=isCT?'block':'none';
+}
+function autoFillZoneCity(placeName){
+  if(!placeName)return;
+  // Extract city from place name (format: "Street, City, State, Country")
+  var parts=placeName.split(',');
+  if(parts.length>=2){
+    var city=parts[parts.length-3]&&parts[parts.length-3].trim();
+    var state=parts[parts.length-2]&&parts[parts.length-2].trim().split(' ').pop();
+    if(city&&state){
+      var cityField=document.getElementById('zoneCity');
+      if(cityField&&!cityField.value)cityField.value=city+', '+state;
+    }
+  }
 }
 function identifyCity(val,hintId){
   var hint=document.getElementById(hintId);if(!hint)return;
@@ -1792,7 +1822,7 @@ function doRegister(){
       eruvName:'Welcome to MyEiruv!',
       eruvCity:'',
       status:'up',
-      note:'Your account has been created. Sign in at myeiruv.org to set eruv alerts and stay informed every Shabbos.',
+      note:'Your account has been created. Sign in at myeiruv.org to set eiruv alerts and stay informed every Shabbos.',
       timestamp:new Date().toLocaleDateString()
     })
   }).catch(function(){});
