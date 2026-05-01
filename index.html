@@ -443,8 +443,8 @@ header{
   <line x1="230" y1="12" x2="230" y2="58" stroke="#4a90d9" stroke-width="3.5" stroke-linecap="round"/>
   <line x1="220" y1="22" x2="240" y2="22" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
   <line x1="222" y1="27" x2="238" y2="27" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
-  <!-- Bird sitting on TOP of left pole - nicely designed, head tilted up -->
-  <g transform="translate(30,10)">
+  <!-- Bird sitting ON wire near left pole -->
+  <g transform="translate(55,15)">
     <!-- Tail feathers -->
     <path d="M-7,2 L-11,5 L-9,1 L-12,-1 L-8,0Z" fill="#5a7a98"/>
     <!-- Body - rounded -->
@@ -458,13 +458,9 @@ header{
     <!-- Eye -->
     <circle cx="4.2" cy="-3.5" r="0.9" fill="#0a1628"/>
     <circle cx="4.5" cy="-3.7" r="0.3" fill="#fff"/>
-    <!-- Feet gripping pole top -->
-    <line x1="-1" y1="4" x2="-3" y2="7" stroke="#7aaace" stroke-width="1.1" stroke-linecap="round"/>
-    <line x1="1" y1="4.2" x2="1" y2="7" stroke="#7aaace" stroke-width="1.1" stroke-linecap="round"/>
-    <line x1="-3" y1="7" x2="-5" y2="8" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
-    <line x1="-3" y1="7" x2="-3" y2="9" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
-    <line x1="1" y1="7" x2="-1" y2="8.5" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
-    <line x1="1" y1="7" x2="2" y2="8.5" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
+    <!-- Feet on wire -->
+    <line x1="-1" y1="3.8" x2="-2" y2="5.5" stroke="#7aaace" stroke-width="1" stroke-linecap="round"/>
+    <line x1="1" y1="3.8" x2="1" y2="5.5" stroke="#7aaace" stroke-width="1" stroke-linecap="round"/>
   </g>
   <!-- Skyline silhouette -->
   <g fill="#1e3a5a" opacity="0.95">
@@ -1091,7 +1087,14 @@ function showEruvPopup(e){
   const lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status];
   const adj=(e.adjacency||[]).filter(a=>a.canEnter).map(a=>{const z=S.eruvin.find(x=>x.id===a.id);return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
   const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 10px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'';
-  new mapboxgl.Popup({closeButton:false,offset:5}).setLngLat(e.center).setHTML('<div class="pop-title">'+e.name+'</div><div class="pop-status">'+dot+' '+lbl+'</div>'+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj+don).addTo(map);
+  // Find contractor for this zone
+  var ctInfo='';
+  if(e.owner){
+    var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
+    if(ct&&ct.name)ctInfo='<div style="font-size:.68rem;color:var(--muted);margin-top:4px;border-top:1px solid #eee;padding-top:4px">📋 '+ct.name+(ct.phone?' · '+ct.phone:'')+'</div>';
+  }
+  var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
+  new mapboxgl.Popup({closeButton:false,offset:5}).setLngLat(e.center).setHTML('<div class="pop-title">'+e.name+'</div><div class="pop-status">'+dot+' '+lbl+'</div>'+lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj+don+ctInfo).addTo(map);
 }
 function addExclToMap(eruvId,ex){
   const sid='excl-'+eruvId+'-'+ex.id;
@@ -1626,16 +1629,16 @@ function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(f
 // ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
 // Returns "Shabbos Parshas X" or weekday name for a given Date
 var PARSHIOS=[
-  'Bereishis','Noach','Lech Lecha','Vayeira','Chayei Sarah','Toldos','Vayeitzei','Vayishlach','Vayeishev','Mikeitz','Vayigash','Vayechi',
-  'Shemos','Va\'eira','Bo','Beshalach','Yisro','Mishpatim','Terumah','Tetzaveh','Ki Sisa','Vayakheil','Pekudei',
-  'Vayikra','Tzav','Shemini','Tazria','Metzora','Acharei Mos','Kedoshim','Emor','Behar','Bechukosai',
-  'Bamidbar','Nasso','Behaaloscha','Shelach','Korach','Chukas','Balak','Pinchas','Matos','Masei',
-  'Devarim','Va\'eschanan','Eikev','Re\'eh','Shoftim','Ki Seitzei','Ki Savo','Nitzavim','Vayeilech','Ha\'azinu','V\'Zos HaBracha'
+  'Bereishis','Noach','Lech Lecha','Vayeira','Chayei Sarah','Toldos','Vayeitzei','Vayishlach',
+  'Vayeishev','Mikeitz','Vayigash','Vayechi','Shemos','Va'eira','Bo','Beshalach','Yisro',
+  'Mishpatim','Terumah','Tetzaveh','Ki Sisa','Vayakheil-Pekudei','Vayikra','Tzav','Shemini',
+  'Tazria-Metzora','Acharei Mos-Kedoshim','Emor','Behar-Bechukosai','Bamidbar','Nasso',
+  'Behaaloscha','Shelach','Korach','Chukas','Balak','Pinchas','Matos-Masei','Devarim',
+  'Va'eschanan','Eikev','Re'eh','Shoftim','Ki Seitzei','Ki Savo','Nitzavim-Vayeilech','Ha'azinu'
 ];
 function getParsha(date){
-  // Approximate weekly parsha cycle — Shabbos is the reference point
-  // Bereishis week 1 falls ~Oct 2024 (after Simchas Torah)
-  var BASE=new Date('2024-10-26'); // Bereishis 5785 (Shabbos)
+  // Base: Parshas Bereishis 5786 = Shabbos Oct 25 2025 (US)
+  var BASE=new Date('2025-10-25');
   var msPerWeek=7*24*60*60*1000;
   var week=Math.round((date-BASE)/msPerWeek);
   var idx=((week%PARSHIOS.length)+PARSHIOS.length)%PARSHIOS.length;
@@ -1660,7 +1663,7 @@ function renderStatus(f){
   f=f||'all';
   var list=f==='all'?S.eruvin:S.eruvin.filter(function(e){return e.status===f;});
   var SL={up:'Up ✓',review:'Under Review ⚠',down:'Down ✕'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
-  document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+(e.lastChecked?' · Updated '+e.lastChecked:' · Not yet checked')+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
+  document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+(e.lastChecked?' · '+e.lastChecked:'')+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
 }
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Review',down:'Down'};
