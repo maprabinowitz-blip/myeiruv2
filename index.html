@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230f1f38'/%3E%3Cpath d='M4 16 Q16 6 28 16' stroke='%23ffffff' stroke-width='2.5' fill='none'/%3E%3Cpath d='M4 20 Q16 10 28 20' stroke='%23dddddd' stroke-width='1.5' fill='none'/%3E%3Cline x1='6' y1='10' x2='6' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3Cline x1='26' y1='10' x2='26' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230f1f38'/%3E%3Cpath d='M5 17 Q16 9 27 17' stroke='%23ffffff' stroke-width='2' fill='none'/%3E%3Cpath d='M5 21 Q16 13 27 21' stroke='%23aaaaaa' stroke-width='1.2' fill='none'/%3E%3Cline x1='7' y1='10' x2='7' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3Cline x1='25' y1='10' x2='25' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3Cellipse cx='4' cy='8.5' rx='3.5' ry='2' fill='%237aaace'/%3E%3Ccircle cx='7' cy='6.5' r='2.2' fill='%237aaace'/%3E%3Cpolygon points='8.5,5 11,6.5 8.5,7.2' fill='%23e8c84a'/%3E%3Ccircle cx='7.8' cy='5.8' r='0.6' fill='%230a1628'/%3E%3C/svg%3E">
 <title>MyEiruv — Know Before You Go</title>
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
@@ -430,43 +430,58 @@ header{
 <header>
   <div class="hdr-logo-wrap">
     <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv" viewBox="0 0 260 68" xmlns="http://www.w3.org/2000/svg" style="height:68px;width:auto;cursor:pointer;">
-  <!-- Dark blue background -->
-  <rect width="260" height="68" rx="0" fill="#0f1f38"/>
-  <!-- Left pole - white -->
-  <line x1="30" y1="8" x2="30" y2="60" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <line x1="20" y1="18" x2="40" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-  <line x1="22" y1="24" x2="38" y2="24" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-  <!-- Right pole - white -->
-  <line x1="230" y1="8" x2="230" y2="60" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-  <line x1="220" y1="18" x2="240" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-  <line x1="222" y1="24" x2="238" y2="24" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
-  <!-- Eruv wires - light blue -->
-  <path d="M30 18 Q130 4 230 18" stroke="#7ab8f0" stroke-width="1.8" fill="none"/>
-  <path d="M30 24 Q130 10 230 24" stroke="#5a98d0" stroke-width="1" fill="none"/>
-  <!-- Bird on wire -->
-  <g transform="translate(80,15)">
-    <ellipse cx="0" cy="0" rx="4" ry="2.5" fill="#a0c8e8"/>
-    <circle cx="3.5" cy="-2.5" r="2.5" fill="#a0c8e8"/>
-    <polygon points="5,-4.5 7.5,-2.5 5,-1.8" fill="#f0c060"/>
-    <circle cx="4.5" cy="-3.2" r="0.7" fill="#0a1628"/>
-    <path d="M-4,0 L-7.5,1.5 L-6,-0.5Z" fill="#80a8c8"/>
-    <line x1="-0.5" y1="2.3" x2="-1.5" y2="4.5" stroke="#a0c8e8" stroke-width="0.8"/>
-    <line x1="1.2" y1="2.3" x2="1.2" y2="4.5" stroke="#a0c8e8" stroke-width="0.8"/>
+  <!-- Background -->
+  <rect width="260" height="68" fill="#0f1f38"/>
+  <!-- Eruv wires - white arcing across -->
+  <path d="M30 22 Q130 8 230 22" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.9"/>
+  <path d="M30 27 Q130 13 230 27" stroke="#ffffff" stroke-width="1.2" fill="none" opacity="0.55"/>
+  <!-- Left pole - blue -->
+  <line x1="30" y1="12" x2="30" y2="58" stroke="#4a90d9" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="20" y1="22" x2="40" y2="22" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="22" y1="27" x2="38" y2="27" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Right pole - blue -->
+  <line x1="230" y1="12" x2="230" y2="58" stroke="#4a90d9" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="220" y1="22" x2="240" y2="22" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="222" y1="27" x2="238" y2="27" stroke="#4a90d9" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Bird sitting on TOP of left pole - nicely designed, head tilted up -->
+  <g transform="translate(30,10)">
+    <!-- Tail feathers -->
+    <path d="M-7,2 L-11,5 L-9,1 L-12,-1 L-8,0Z" fill="#5a7a98"/>
+    <!-- Body - rounded -->
+    <ellipse cx="-2" cy="1" rx="5.5" ry="3.2" fill="#7aaace"/>
+    <!-- Wing detail -->
+    <path d="M-6,0 Q-2,-4 2,-1" stroke="#5a7a98" stroke-width="1.2" fill="none"/>
+    <!-- Head - tilted upward -->
+    <circle cx="3" cy="-2.5" r="3.2" fill="#7aaace"/>
+    <!-- Beak pointing up-right -->
+    <polygon points="5,-4.8 8,-3 5.5,-2.2" fill="#e8c84a"/>
+    <!-- Eye -->
+    <circle cx="4.2" cy="-3.5" r="0.9" fill="#0a1628"/>
+    <circle cx="4.5" cy="-3.7" r="0.3" fill="#fff"/>
+    <!-- Feet gripping pole top -->
+    <line x1="-1" y1="4" x2="-3" y2="7" stroke="#7aaace" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="1" y1="4.2" x2="1" y2="7" stroke="#7aaace" stroke-width="1.1" stroke-linecap="round"/>
+    <line x1="-3" y1="7" x2="-5" y2="8" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
+    <line x1="-3" y1="7" x2="-3" y2="9" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
+    <line x1="1" y1="7" x2="-1" y2="8.5" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
+    <line x1="1" y1="7" x2="2" y2="8.5" stroke="#7aaace" stroke-width="0.8" stroke-linecap="round"/>
   </g>
-  <!-- Skyline - lighter blue on dark bg -->
-  <g fill="#3a6090" opacity="0.9">
-    <rect x="48" y="38" width="12" height="22"/>
-    <rect x="62" y="33" width="8" height="27"/>
-    <rect x="72" y="40" width="10" height="20"/>
-    <rect x="110" y="40" width="40" height="20"/>
-    <path d="M118 40 Q130 26 142 40Z"/>
-    <rect x="152" y="35" width="10" height="25"/>
-    <rect x="164" y="40" width="8" height="20"/>
-    <rect x="174" y="37" width="12" height="23"/>
-    <rect x="188" y="42" width="8" height="18"/>
+  <!-- Skyline silhouette -->
+  <g fill="#1e3a5a" opacity="0.95">
+    <rect x="48" y="38" width="12" height="20"/>
+    <rect x="62" y="33" width="8" height="25"/>
+    <rect x="72" y="40" width="10" height="18"/>
+    <!-- Shul center with dome -->
+    <rect x="108" y="38" width="44" height="20"/>
+    <path d="M116 38 Q130 25 144 38Z"/>
+    <rect x="174" y="35" width="10" height="23"/>
+    <rect x="186" y="40" width="8" height="18"/>
+    <rect x="196" y="37" width="12" height="21"/>
+    <rect x="210" y="42" width="8" height="16"/>
   </g>
-  <!-- MYEIRUV text -->
-  <text x="130" y="64" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#ffffff" letter-spacing="3.5">MYEIRUV</text>
+  <!-- MYEIRUV banner -->
+  <rect x="70" y="58" width="120" height="10" rx="0" fill="#0f1f38"/>
+  <text x="130" y="67" text-anchor="middle" font-family="Arial,sans-serif" font-size="9.5" font-weight="700" fill="#ffffff" letter-spacing="3">MYEIRUV</text>
 </svg>
   </div>
   <div class="hdr-brand" id="hdrBrand">
