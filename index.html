@@ -505,6 +505,7 @@ header{
             <input id="dPhone" class="fi" type="tel" placeholder="+1 (555) 000-0000" style="font-size:.76rem;padding:5px 8px;flex:1;">
             <button onclick="saveUserPhone()" style="padding:5px 10px;border-radius:6px;border:none;background:var(--navy);color:#fff;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;">Save</button>
           </div>
+          <div style="font-size:.65rem;color:var(--muted);padding:0 14px 6px;line-height:1.4;">SMS alerts opt-in. Msg &amp; data rates may apply. Reply STOP to unsubscribe.</div>
         </div>
         <button class="u-drop-it" onclick="goAlerts()">&#128276; My Alerts</button>
         <button class="u-drop-it" id="becomeContractorBtn" onclick="closeDrop();switchAuthTab('ct');openModal('vMain')" style="display:none">🔨 Become a Contractor</button>
@@ -601,6 +602,7 @@ header{
           </div>
           <div class="fg" id="alertPhoneWrap" style="display:none"><label class="lbl">Phone for SMS</label>
             <input class="fi" id="alertPhone" type="tel" placeholder="+1 (555) 000-0000">
+            <div style="font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;">By providing your number, you agree to receive SMS eruv status alerts. Msg &amp; data rates may apply. Reply STOP to unsubscribe.</div>
           </div>
           <div class="fg"><label class="lbl">Send Time</label>
             <select class="fi"><option>Every Friday at 9:00 AM</option><option>Every Friday at 10:00 AM</option><option>Thursday + Friday</option></select>
