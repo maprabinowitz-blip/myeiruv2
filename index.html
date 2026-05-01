@@ -579,7 +579,7 @@ header{
       <div class="filter-row">
         <button class="chip on" onclick="fStatus(this,'all')">All</button>
         <button class="chip" onclick="fStatus(this,'up')">Up &#10003;</button>
-        <button class="chip" onclick="fStatus(this,'review')">Review</button>
+        <button class="chip" onclick="fStatus(this,'review')">Under Review</button>
         <button class="chip" onclick="fStatus(this,'down')">Down &#10007;</button>
       </div>
       <div class="pb" style="padding-top:4px" id="statusList"></div>
@@ -904,7 +904,7 @@ header{
             <label class="lbl">Current Status</label>
             <div class="status-row">
               <button class="status-pill" id="spill-up" onclick="setStatus('up')">✓ Up</button>
-              <button class="status-pill" id="spill-rv" onclick="setStatus('review')">Review</button>
+              <button class="status-pill" id="spill-rv" onclick="setStatus('review')">Under Review</button>
               <button class="status-pill" id="spill-dn" onclick="setStatus('down')">✕ Down</button>
             </div>
             <input type="hidden" id="zoneStatus" value="up">
@@ -1084,7 +1084,7 @@ function addEruvToMap(e){
 }
 function showEruvPopup(e){
   const dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
-  const lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status];
+  const lbl={up:'Up & Kosher ✓',review:'Under Review ⚠',down:'Down ✗'}[e.status]||e.status;
   const adj=(e.adjacency||[]).filter(a=>a.canEnter).map(a=>{const z=S.eruvin.find(x=>x.id===a.id);return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
   const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 10px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'';
   // Find contractor for this zone
@@ -1397,7 +1397,7 @@ function planRoute(){
 
     // Try Google first (most accurate walking), fallback to OSRM
     function tryOSRM(){
-      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
+      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true&annotations=true')
       .then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){
           var r=d.routes[0];
@@ -1660,11 +1660,11 @@ function getEruvTimestamp(){
 function renderStatus(f){
   f=f||'all';
   var list=f==='all'?S.eruvin:S.eruvin.filter(function(e){return e.status===f;});
-  var SL={up:'Up ✓',review:'Under Review ⚠',down:'Down ✕'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
+  var SL={up:'Up ✓',review:'Under Review',down:'Down'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
   document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+(e.lastChecked?' · '+e.lastChecked:'')+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
 }
 function renderEruvList(){
-  var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Review',down:'Down'};
+  var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Under Review',down:'Down'};
   document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="flyTo(['+e.center+'],\''+e.name+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
 }
 function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}
