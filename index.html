@@ -1594,11 +1594,12 @@ function planRoute(){
       if(!pending){finish();return;}
       exits.forEach(function(exit,i){reverseGeocode(exit.lng,exit.lat,function(label){exits[i].label=label;done++;if(done>=pending)finish();});});
   }
-  if(sc&&ec){go(sc,ec);return;}
-  var needSc=!sc,needEc=!ec,resolved={};
-  function tryGo(){if((!needSc||resolved.sc!==undefined)&&(!needEc||resolved.ec!==undefined))go(resolved.sc||sc,resolved.ec||ec);}
-  if(needSc)geocodeOne(document.getElementById('rStart').value,function(r){resolved.sc=r;tryGo();});
-  if(needEc)geocodeOne(document.getElementById('rEnd').value,function(r){resolved.ec=r;tryGo();});
+  // Geocode whatever is needed
+  var pending=0,resolved={sc:sc,ec:ec};
+  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
+  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
+  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
+  if(sc&&ec)go(sc,ec);
 }
 
 // MAP FS
@@ -1644,7 +1645,7 @@ function renderStatus(f){
   f=f||'all';
   var list=f==='all'?S.eruvin:S.eruvin.filter(function(e){return e.status===f;});
   var SL={up:'Up ✓',review:'Under Review ⚠',down:'Down ✕'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
-  document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+(e.lastChecked?' · Updated '+e.lastChecked:'')+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
+  document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+(e.lastChecked?' · Updated '+e.lastChecked:' · Not yet checked')+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
 }
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Review',down:'Down'};
@@ -1698,12 +1699,33 @@ function renderAlerts(){
   var el=document.getElementById('myAlerts');
   if(!S.user){el.innerHTML='<p style="font-size:.78rem;color:var(--muted);margin-bottom:9px">Sign in to manage alerts.</p>';return;}
   if(!S.alerts.length){el.innerHTML='<p style="font-size:.78rem;color:var(--muted);margin-bottom:9px">No alerts yet.</p>';return;}
-  el.innerHTML=S.alerts.map(function(a,i){return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;background:#fff"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="font-size:.82rem;font-weight:600;color:var(--navy)">'+a.eruv+'</div><div style="font-size:.7rem;color:var(--muted);margin-top:2px">'+a.city+' · SMS + Email · Fri 9am</div></div><button class="toggle '+(a.active?'on':'')+'" onclick="toggleAlert('+i+')"></button></div></div>';}).join('');
+  el.innerHTML=S.alerts.map(function(a,i){
+    var methods=[];
+    if(a.viaEmail!==false)methods.push('📧 Email');
+    if(a.viaSms)methods.push('📱 SMS');
+    var eruvName=a.eruvName||a.eruv||'Unknown';
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;background:#fff">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+      +'<div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:var(--navy)">'+eruvName+'</div>'
+      +'<div style="font-size:.7rem;color:var(--muted);margin-top:2px">'+a.city+(methods.length?' · '+methods.join(', '):'')+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<button class="toggle '+(a.active?'on':'')+'" onclick="toggleAlert('+i+')" title="'+(a.active?'Active — click to pause':'Paused — click to activate')+'"></button>'
+      +'<button onclick="deleteAlert('+i+')" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 4px;" title="Remove alert">✕</button>'
+      +'</div></div></div>';
+  }).join('');
 }
 function toggleAlert(i){
   S.alerts[i].active=!S.alerts[i].active;
   if(window._db&&S.alerts[i].id)window._db.patchAlert(S.alerts[i].id,{active:S.alerts[i].active});
   renderAlerts();
+}
+function deleteAlert(i){
+  var a=S.alerts[i];
+  if(!a)return;
+  S.alerts.splice(i,1);
+  if(window._db&&a.id)window._db.deleteAlert(a.id);
+  renderAlerts();
+  toast('Alert removed','ok');
 }
 function goAlerts(){closeDrop();document.querySelectorAll('.s-tab')[3].click();}
 
