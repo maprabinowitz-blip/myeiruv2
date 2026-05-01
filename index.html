@@ -1387,38 +1387,34 @@ function planRoute(){
     if(_routeCache[ck]){processRoute(_routeCache[ck],sc,ec);return;}
 
     // Try Google first (most accurate walking), fallback to OSRM
-    tryGoogle();
-
+    function tryOSRM(){
+      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.code==='Ok'&&d.routes&&d.routes.length){
+          var r=d.routes[0];
+          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
+          _routeCache[ck]=result;processRoute(result,sc,ec);
+        } else {toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
+      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+    }
     function tryGoogle(){
-    // Google Routes via Worker
-    var googleUrl='https://routes.googleapis.com/directions/v2:computeRoutes';
-    var googleBody={
-      origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
-      destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},
-      travelMode:'WALK',
-      computeAlternativeRoutes:false,
-      routeModifiers:{avoidFerries:true},
-      polylineQuality:'HIGH_QUALITY'
-    };
-    fetch('https://api.myeiruv.org',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Action':'google-routes'},
-      body:JSON.stringify(googleBody)
-    }).then(function(r){return r.json();}).then(function(d){
-      if(d.routes&&d.routes.length&&d.routes[0].polyline){
-        var r=d.routes[0];
-        var coords=decodePolyline(r.polyline.encodedPolyline);
-        var steps=(r.legs&&r.legs[0]&&r.legs[0].steps)||[];
-        var result={coords:coords,distance:r.distanceMeters||0,duration:parseInt(r.duration)||0,steps:steps,source:'google'};
-        _routeCache[ck]=result;
-        processRoute(result,sc,ec);
-      } else {
-        console.warn('Google Routes failed, falling back to Mapbox',d);
-        toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;
-      }
-    }).catch(function(){
-      toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;
-    });}  // end tryGoogle
+      var googleBody={
+        origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
+        destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},
+        travelMode:'WALK',computeAlternativeRoutes:false,
+        routeModifiers:{avoidFerries:true},polylineQuality:'HIGH_QUALITY'
+      };
+      fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'google-routes'},body:JSON.stringify(googleBody)})
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.routes&&d.routes.length&&d.routes[0].polyline){
+          var r=d.routes[0];
+          var coords=decodePolyline(r.polyline.encodedPolyline);
+          var result={coords:coords,distance:r.distanceMeters||0,duration:parseInt(r.duration)||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'google'};
+          _routeCache[ck]=result;processRoute(result,sc,ec);
+        } else {tryOSRM();}
+      }).catch(function(){tryOSRM();});
+    }
+    tryGoogle();
   }
 
   function processRoute(result,sc,ec){
