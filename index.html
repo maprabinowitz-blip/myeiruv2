@@ -1095,7 +1095,15 @@ function showEruvPopup(e){
   var ctInfo='';
   if(e.owner){
     var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
-    if(ct&&ct.name)ctInfo='<div style="font-size:.68rem;color:var(--muted);margin-top:4px;border-top:1px solid #eee;padding-top:4px">📋 '+ct.name+(ct.phone?' · '+ct.phone:'')+'</div>';
+    if(ct&&ct.name){
+      ctInfo='<div style="font-size:.71rem;color:var(--navy);margin-top:8px;border-top:1px solid #eee;padding-top:8px">'
+        +'<div style="font-weight:600;margin-bottom:3px">📋 Contractor</div>'
+        +'<div>'+ct.name+'</div>'
+        +(ct.phone?'<div><a href="tel:'+ct.phone+'" style="color:var(--blue);text-decoration:none">📞 '+ct.phone+'</a></div>':'')
+        +(e.rov?'<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Rov: '+e.rov+'</div>':'')
+        +(ct.email?'<div style="margin-top:5px"><button onclick="sendMsgToContractor(\x27'+ct.email+'\x27,\x27'+e.name+'\x27)" style="border:none;background:var(--navy);color:#fff;padding:4px 10px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">✉ Send Message</button></div>':'')
+        +'</div>';
+    }
   }
   var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
   var html='<div style="min-width:180px">'
@@ -2147,6 +2155,14 @@ function adminDelShul(id){
 }
 
 // CONTRACTOR DASH
+function sendMsgToContractor(email,eruvName){
+  var msg=prompt('Send a message to the '+eruvName+' contractor:');
+  if(!msg)return;
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message about '+eruvName,eruvCity:'',status:'review',
+      note:'A user sent you a message: "'+msg+'"',timestamp:new Date().toLocaleDateString()})
+  }).then(function(){toast('Message sent','ok');}).catch(function(){toast('Could not send','err');});
+}
 function saveCtDonateUrl(id,url){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
