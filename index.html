@@ -432,10 +432,6 @@ header{
     <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv" viewBox="0 0 260 68" xmlns="http://www.w3.org/2000/svg" style="height:68px;width:auto;cursor:pointer;">
   <!-- Background -->
   <rect width="260" height="68" fill="#0f1f38"/>
-  <circle cx="50" cy="8" r="0.7" fill="#fff" opacity="0.4"/>
-  <circle cx="110" cy="6" r="0.8" fill="#fff" opacity="0.5"/>
-  <circle cx="175" cy="5" r="0.7" fill="#fff" opacity="0.45"/>
-  <circle cx="220" cy="7" r="0.8" fill="#fff" opacity="0.4"/>
   <!-- Eruv wires - white arcing across -->
   <path d="M30 22 Q130 8 230 22" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.9"/>
   <path d="M30 27 Q130 13 230 27" stroke="#ffffff" stroke-width="1.2" fill="none" opacity="0.55"/>
@@ -708,7 +704,6 @@ header{
         <div class="fg"><label class="lbl">Email</label><input class="fi" id="cEmail" type="email"></div>
         <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone" type="tel"></div>
         <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea" placeholder="e.g. Brooklyn, NY"></div>
-        <div class="fg"><label class="lbl">Rov / Rabbi (optional)</label><input class="fi" id="cRov" placeholder="e.g. Rabbi Y. Goldstein"></div>
         <button class="btn btn-navy btn-full" onclick="doContractorApply()">Submit Application</button>
         <div class="modal-footer"><a onclick="showV('vMain')">&#8592; Back</a></div>
       </div>
@@ -1096,15 +1091,7 @@ function showEruvPopup(e){
   var ctInfo='';
   if(e.owner){
     var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
-    if(ct&&ct.name){
-      ctInfo='<div style="font-size:.71rem;color:var(--navy);margin-top:8px;border-top:1px solid #eee;padding-top:8px">'
-        +'<div style="font-weight:600;margin-bottom:3px">📋 Contractor</div>'
-        +'<div>'+ct.name+'</div>'
-        +(ct.phone?'<div><a href="tel:'+ct.phone+'" style="color:var(--blue);text-decoration:none">📞 '+ct.phone+'</a></div>':'')
-        +(ct.email?'<div style="margin-top:4px"><button onclick="sendMsgToContractor(''+ct.email+'',''+e.name+'')" style="border:none;background:var(--navy);color:#fff;padding:4px 10px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">✉ Send Message</button></div>':'')
-        +(e.rov?'<div style="margin-top:4px;font-size:.68rem;color:var(--muted)">Rov: '+e.rov+'</div>':'')
-        +'</div>';
-    }
+    if(ct&&ct.name)ctInfo='<div style="font-size:.68rem;color:var(--muted);margin-top:4px;border-top:1px solid #eee;padding-top:4px">📋 '+ct.name+(ct.phone?' · '+ct.phone:'')+'</div>';
   }
   var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
   var html='<div style="min-width:180px">'
@@ -1990,18 +1977,22 @@ function admStatus(id,status){
   renderEruvList();renderStatus();renderAdmin('overview');
 }
 function admDel(id){
-  if(!confirm('Delete this zone permanently?'))return;
+  if(!confirm('Delete this eiruv?'))return;
   S.eruvin=S.eruvin.filter(function(e){return e.id!==id;});
-  var bi=BASE_ERUVIN.findIndex(function(b){return b.id===id;});
-  if(bi>=0)BASE_ERUVIN.splice(bi,1);
-  if(map.getLayer&&map.getLayer('eruv-'+id+'-fill'))try{map.removeLayer('eruv-'+id+'-fill');}catch(_){}
-  if(map.getLayer&&map.getLayer('eruv-'+id+'-line'))try{map.removeLayer('eruv-'+id+'-line');}catch(_){}
-  if(map.getSource&&map.getSource('eruv-'+id))try{map.removeSource('eruv-'+id);}catch(_){}
-  try{var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');if(!del.includes(id)){del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}}catch(_){}
-  try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');localStorage.setItem('myeiruv_zones',JSON.stringify(z.filter(function(x){return x.id!==id;})));}catch(_){}
-  if(window._db){window._db.deleteZone(id).catch(function(){window._db.patchZone(id,{_deleted:true});});}
+  ['fill','line'].forEach(function(t){try{map.removeLayer('eruv-'+id+'-'+t);}catch(_){};});
+  try{map.removeSource('eruv-'+id);}catch(_){}
+  try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');z=z.filter(function(x){return x.id!==id;});localStorage.setItem('myeiruv_zones',JSON.stringify(z));}catch(_){}
   renderEruvList();renderStatus();renderAdmin('eruvin');
-  toast('Zone deleted','ok');
+  // Save deleted ID to localStorage immediately
+  try{var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');if(!del.includes(id))del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}catch(_){}
+  if(window._db){
+    var isBase=BASE_ERUVIN.find(function(b){return b.id===id;});
+    if(isBase){
+      window._db.patchZone(id,{_deleted:true}).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
+    } else {
+      window._db.deleteZone(id).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
+    }
+  } else { toast('Zone deleted','ok'); }
 }
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
@@ -2156,14 +2147,6 @@ function adminDelShul(id){
 }
 
 // CONTRACTOR DASH
-function sendMsgToContractor(email,eruvName){
-  var msg=prompt('Send a message to the '+eruvName+' contractor:');
-  if(!msg)return;
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message about '+eruvName,eruvCity:'',status:'review',
-      note:'A user sent you a message:\n\n"'+msg+'"',timestamp:new Date().toLocaleDateString()})
-  }).then(function(){toast('Message sent','ok');}).catch(function(){toast('Could not send','err');});
-}
 function saveCtDonateUrl(id,url){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
