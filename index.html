@@ -1574,7 +1574,7 @@ function planRoute(){
           +'</svg>';
         routeMarkers.push(new mapboxgl.Marker({element:startEl,anchor:'bottom'}).setLngLat([sc.lng,sc.lat]).addTo(map));
 
-        // End marker — destination pin, show eruv status
+        // End marker — destination pin, show eiruv status
         var endEl=document.createElement('div');
         var ecInEruv=findEruv(ec.lng,ec.lat);
         endEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))';
