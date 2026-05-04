@@ -806,8 +806,7 @@ header{
       <span class="draw-mode-badge" id="drawModeBadge">Draw</span>
     </div>
     <div class="draw-acts">
-      <button class="hbtn hbtn-ghost" onclick="closeDraw();openMapImport()" style="font-size:.76rem;padding:5px 12px;opacity:.8;">✦ Import</button>
-      <button class="hbtn hbtn-ghost" onclick="closeDraw()" style="font-size:.76rem;padding:5px 12px;opacity:.65;">Cancel</button>
+<button class="hbtn hbtn-ghost" onclick="closeDraw()" style="font-size:.76rem;padding:5px 12px;opacity:.65;">Cancel</button>
       <button class="hbtn hbtn-gold" onclick="saveZone()" id="saveZoneBtn" style="font-size:.76rem;padding:5px 16px;opacity:.4;pointer-events:none;">Save Zone</button>
     </div>
   </div>
@@ -975,6 +974,7 @@ const BASE_ERUVIN=[
   {id:'pico',name:'Pico-Robertson Eiruv',city:'Los Angeles, CA',status:'up',lastChecked:'Today 9:00am',checkedBy:'B. Feldman',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-118.378,34.055],coords:[[-118.39,34.07],[-118.36,34.07],[-118.36,34.04],[-118.39,34.04],[-118.39,34.07]]},
 ];
 var _deletedIds=(function(){try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return [];}}());
+// Will be overwritten by Firestore - this is just the initial state
 S.eruvin=BASE_ERUVIN.filter(e=>!_deletedIds.includes(e.id)).map(e=>Object.assign({},e,{exclusions:[],adjacency:(e.adjacency||[]).slice()}));
 
 function loadCustomZones(){
@@ -1571,7 +1571,9 @@ function planRoute(){
         routeMarkers.push(new mapboxgl.Marker({element:endEl,anchor:'bottom'}).setLngLat([ec.lng,ec.lat]).addTo(map));
 
         var dist=(route.distance/1000).toFixed(1)+' km',mins=Math.round(route.duration/60);
-        var time=mins>60?Math.floor(mins/60)+'h '+mins%60+'m':mins+' min';
+        // OSRM foot profile: ~5km/h walking speed
+        var walkMins=Math.round(route.distance/83.3); // 5km/h = 83.3m/min
+        var time=walkMins>60?Math.floor(walkMins/60)+'h '+walkMins%60+'m':walkMins+' min (walking)';
         var covText='',alerts='',zoneBar='';
 
         if(allOut){
@@ -2159,7 +2161,7 @@ function closeCtDash(){document.getElementById('ctDash').classList.remove('on');
 function renderCtDash(){
   var myZones=S.user&&S.user.role==='admin'?S.eruvin:S.eruvin.filter(function(e){return e.owner===S.user.email;});
   var up=myZones.filter(function(e){return e.status==='up';}).length,dn=myZones.filter(function(e){return e.status==='down';}).length;
-  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div style="margin:6px 0 4px"><input class="fi" id="ctDonate-'+e.id+'" type="url" value="'+(e.donateUrl||'').replace(/"/g,'&quot;')+'" placeholder="Donation link (optional)" style="font-size:.72rem;padding:4px 7px" onchange="saveCtDonateUrl(\''+e.id+'\',this.value)"></div><div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:28px;color:var(--muted);font-size:.83rem">No zones yet.<br><br><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">Create First Zone</button></div>');
+  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div style="margin:6px 0 4px"><input class="fi" id="ctDonate-'+e.id+'" type="url" value="'+(e.donateUrl||'').replace(/"/g,'&quot;')+'" placeholder="Donation link (optional)" style="font-size:.72rem;padding:4px 7px" onchange="saveCtDonateUrl(\''+e.id+'\',this.value)"></div><div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:28px;color:var(--muted);font-size:.83rem">No zones yet.<br><br><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">Create First Zone</button></div>');
 }
 
 // ZONE PICKER
@@ -3366,18 +3368,29 @@ window._db = {
       }
       // Load zones from Firestore, skip any marked as deleted
       const localDeleted = (() => { try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return[];} })();
-      const fsIds = snap.docs.map(d => d.id);
-      const fsZones = snap.docs.map(d => {
-        try{ return fromFS({...d.data(), id:d.id}); }
-        catch(e){ console.error('fromFS error:',e); return null; }
-      }).filter(z => z && z.id && !z._deleted && !localDeleted.includes(z.id));
-      // Add BASE_ERUVIN zones that aren't in Firestore yet and aren't deleted
-      BASE_ERUVIN.forEach(base => {
-        if(!localDeleted.includes(base.id) && !fsIds.includes(base.id)){
-          fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
-        }
-      });
-      console.log('[loadZones] Firestore:',snap.docs.length,'filtered:',fsZones.length,'deleted:',localDeleted);
+      const fsIds = new Set(snap.docs.map(d => d.id));
+      const fsDeletedIds = new Set(snap.docs.filter(d=>d.data()._deleted).map(d=>d.id));
+      // All deleted IDs (both Firestore and localStorage)
+      const allDeleted = new Set([...localDeleted, ...fsDeletedIds]);
+      // Get valid Firestore zones
+      const fsZones = snap.docs
+        .filter(d => !d.data()._deleted && !allDeleted.has(d.id))
+        .map(d => { try{return fromFS({...d.data(),id:d.id});}catch(e){return null;} })
+        .filter(z => z && z.id);
+      // Only add BASE_ERUVIN zones that have NEVER been in Firestore (first load)
+      // Once a zone is in Firestore, we trust Firestore
+      if(fsIds.size === 0) {
+        // First load - seed everything
+        BASE_ERUVIN.forEach(base => fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]})));
+      } else {
+        // Firestore is authoritative - only add base zones not yet seeded
+        BASE_ERUVIN.forEach(base => {
+          if(!fsIds.has(base.id) && !allDeleted.has(base.id)){
+            fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
+          }
+        });
+      }
+      console.log('[loadZones] total:',fsZones.length,'deleted:',allDeleted.size);
       return fsZones;
     } catch(e) { console.error("loadZones:",e); return null; }
   },
