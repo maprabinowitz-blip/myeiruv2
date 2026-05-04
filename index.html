@@ -3051,6 +3051,22 @@ function renderAdjList(){
 }
 function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a){a={id:id,canEnter:true,note:''};S.curAdj.push(a);}else a.canEnter=!a.canEnter;renderAdjList();var e=S.eruvin.find(function(x){return x.id===id;});toast(a.canEnter?'Carrying allowed into '+(e&&e.name):'Carrying disabled into '+(e&&e.name),a.canEnter?'ok':'warn');}
 
+function autoDetectZoneCity(coords){
+  if(!coords||coords.length<3)return;
+  var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
+  var clng=(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2;
+  var clat=(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2;
+  var cityField=document.getElementById('zoneCity');
+  if(cityField&&!cityField.value){
+    fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+clng+','+clat+'.json?types=place&access_token='+TOKEN+'&limit=1')
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.features&&d.features[0]&&cityField&&!cityField.value){
+        var parts=d.features[0].place_name.split(',');
+        cityField.value=(parts[0]+(parts[1]?','+parts[1]:'')).trim();
+      }
+    }).catch(function(){});
+  }
+}
 function saveZone(){
   if(_cd.active){if(_cd.pts.length>=3){_finishCustomDraw();}else{toast('Draw zone boundary first (need 3+ points)','err');return;}setTimeout(saveZone,200);return;}
   if(!Draw)return;
