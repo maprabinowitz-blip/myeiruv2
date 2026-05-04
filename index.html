@@ -432,6 +432,17 @@ header{
     <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv" viewBox="0 0 260 68" xmlns="http://www.w3.org/2000/svg" style="height:68px;width:auto;cursor:pointer;">
   <!-- Background -->
   <rect width="260" height="68" fill="#0f1f38"/>
+  <!-- Stars -->
+  <circle cx="50" cy="8" r="0.7" fill="#fff" opacity="0.4"/>
+  <circle cx="80" cy="14" r="0.5" fill="#fff" opacity="0.3"/>
+  <circle cx="110" cy="6" r="0.8" fill="#fff" opacity="0.5"/>
+  <circle cx="145" cy="10" r="0.6" fill="#fff" opacity="0.35"/>
+  <circle cx="175" cy="5" r="0.7" fill="#fff" opacity="0.45"/>
+  <circle cx="200" cy="13" r="0.5" fill="#fff" opacity="0.3"/>
+  <circle cx="220" cy="7" r="0.8" fill="#fff" opacity="0.4"/>
+  <circle cx="240" cy="15" r="0.6" fill="#fff" opacity="0.35"/>
+  <circle cx="65" cy="18" r="0.5" fill="#fff" opacity="0.25"/>
+  <circle cx="160" cy="17" r="0.5" fill="#fff" opacity="0.3"/>
   <!-- Eruv wires - white arcing across -->
   <path d="M30 22 Q130 8 230 22" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.9"/>
   <path d="M30 27 Q130 13 230 27" stroke="#ffffff" stroke-width="1.2" fill="none" opacity="0.55"/>
@@ -1087,11 +1098,18 @@ function showEruvPopup(e){
   const lbl={up:'Up & Kosher ✓',review:'Under Review ⚠',down:'Down ✗'}[e.status]||e.status;
   const adj=(e.adjacency||[]).filter(a=>a.canEnter).map(a=>{const z=S.eruvin.find(x=>x.id===a.id);return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
   const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 10px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'';
-  // Find contractor for this zone
   var ctInfo='';
   if(e.owner){
     var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
-    if(ct&&ct.name)ctInfo='<div style="font-size:.68rem;color:var(--muted);margin-top:4px;border-top:1px solid #eee;padding-top:4px">📋 '+ct.name+(ct.phone?' · '+ct.phone:'')+'</div>';
+    if(ct&&ct.name){
+      ctInfo='<div style="font-size:.71rem;color:var(--navy);margin-top:8px;border-top:1px solid #eee;padding-top:8px">'
+        +'<div style="font-weight:600;margin-bottom:3px">📋 Contractor</div>'
+        +'<div>'+ct.name+'</div>'
+        +(ct.phone?'<div><a href="tel:'+ct.phone+'" style="color:var(--blue);text-decoration:none">📞 '+ct.phone+'</a></div>':'')
+        +(ct.email?'<div style="margin-top:4px"><button onclick="sendMsgToContractor(\''+ct.email+'\',\''+e.name+'\')" style="border:none;background:var(--navy);color:#fff;padding:4px 10px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">✉ Send Message</button></div>':'')
+        +(e.rov?'<div style="margin-top:4px;font-size:.68rem;color:var(--muted)">Rov: '+e.rov+'</div>':'')
+        +'</div>';
+    }
   }
   var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
   var html='<div style="min-width:180px">'
@@ -1872,7 +1890,7 @@ function doContractorApply(){
   if(!name||!email){toast('Name and email required','err');return;}
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,role:'contractor-pending',avatar:name[0].toUpperCase(),contractorStatus:'none'};
   user.contractorStatus='pending';user.role='contractor-pending';
-  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;
+  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;user.rov=document.getElementById('cRov')&&document.getElementById('cRov').value||'';
   _cacheAndSaveUser(user);
   // Also write to contractors collection
   var ct={email:email,name:name,phone:user.phone,area:user.area,status:'pending',appliedAt:new Date().toISOString()};
@@ -1880,6 +1898,16 @@ function doContractorApply(){
   if(cidx>=0)window._fsContractors[cidx]=ct;else window._fsContractors.push(ct);
   if(window._db)window._db.saveContractor(ct);
   closeModal();toast('Application submitted! Pending admin approval.','ok');
+  // Email contractor confirmation
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({to:email,toName:name,eruvName:'MyEiruv — Application Received',eruvCity:'',status:'review',
+      note:'Thank you for applying to become a MyEiruv contractor! Your application is under review. You will be notified once a decision is made.',
+      timestamp:new Date().toLocaleDateString()})}).catch(function(){});
+  // Email admin
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({to:ADMIN_EMAIL,toName:'Admin',eruvName:'New Contractor Application',eruvCity:'',status:'review',
+      note:'New contractor application from '+name+' ('+email+'). Service area: '+(document.getElementById('cArea')&&document.getElementById('cArea').value||'N/A')+'. Review at myeiruv.org.',
+      timestamp:new Date().toLocaleDateString()})}).catch(function(){});
 }
 function signInAs(user){
   S.user=user;S.alerts=[];
@@ -2157,6 +2185,16 @@ function adminDelShul(id){
 }
 
 // CONTRACTOR DASH
+function sendMsgToContractor(email,eruvName){
+  var msg=prompt('Send a message to the '+eruvName+' contractor:');
+  if(!msg)return;
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message about '+eruvName,eruvCity:'',status:'review',
+      note:'A user sent you a message:
+
+"'+msg+'"',timestamp:new Date().toLocaleDateString()})
+  }).then(function(){toast('Message sent to contractor','ok');}).catch(function(){toast('Could not send message','err');});
+}
 function saveCtDonateUrl(id,url){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
