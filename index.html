@@ -1979,22 +1979,30 @@ function admStatus(id,status){
   renderEruvList();renderStatus();renderAdmin('overview');
 }
 function admDel(id){
-  if(!confirm('Delete this eiruv?'))return;
+  if(!confirm('Delete this zone permanently?'))return;
+  // Remove from memory AND from BASE_ERUVIN so it never comes back
   S.eruvin=S.eruvin.filter(function(e){return e.id!==id;});
-  ['fill','line'].forEach(function(t){try{map.removeLayer('eruv-'+id+'-'+t);}catch(_){};});
-  try{map.removeSource('eruv-'+id);}catch(_){}
-  try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');z=z.filter(function(x){return x.id!==id;});localStorage.setItem('myeiruv_zones',JSON.stringify(z));}catch(_){}
-  renderEruvList();renderStatus();renderAdmin('eruvin');
-  // Save deleted ID to localStorage immediately
-  try{var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');if(!del.includes(id))del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}catch(_){}
+  var bi=BASE_ERUVIN.findIndex(function(b){return b.id===id;});
+  if(bi>=0)BASE_ERUVIN.splice(bi,1);
+  // Remove from map safely
+  if(map.getLayer&&map.getLayer('eruv-'+id+'-fill'))try{map.removeLayer('eruv-'+id+'-fill');}catch(_){}
+  if(map.getLayer&&map.getLayer('eruv-'+id+'-line'))try{map.removeLayer('eruv-'+id+'-line');}catch(_){}
+  if(map.getSource&&map.getSource('eruv-'+id))try{map.removeSource('eruv-'+id);}catch(_){}
+  // Save to localStorage
+  try{
+    var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');
+    if(!del.includes(id)){del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}
+    var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');
+    localStorage.setItem('myeiruv_zones',JSON.stringify(z.filter(function(x){return x.id!==id;})));
+  }catch(_){}
+  // Delete from Firestore (try delete first, fallback to marking deleted)
   if(window._db){
-    var isBase=BASE_ERUVIN.find(function(b){return b.id===id;});
-    if(isBase){
-      window._db.patchZone(id,{_deleted:true}).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
-    } else {
-      window._db.deleteZone(id).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
-    }
-  } else { toast('Zone deleted','ok'); }
+    window._db.deleteZone(id).catch(function(){
+      window._db.patchZone(id,{_deleted:true,_deletedAt:new Date().toISOString()});
+    });
+  }
+  renderEruvList();renderStatus();renderAdmin('eruvin');
+  toast('Zone deleted','ok');
 }
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
