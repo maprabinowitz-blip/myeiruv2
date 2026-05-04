@@ -974,8 +974,8 @@ const BASE_ERUVIN=[
   {id:'pico',name:'Pico-Robertson Eiruv',city:'Los Angeles, CA',status:'up',lastChecked:'Today 9:00am',checkedBy:'B. Feldman',note:'',donateUrl:'',exclusions:[],adjacency:[],center:[-118.378,34.055],coords:[[-118.39,34.07],[-118.36,34.07],[-118.36,34.04],[-118.39,34.04],[-118.39,34.07]]},
 ];
 var _deletedIds=(function(){try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return [];}}());
-// Will be overwritten by Firestore - this is just the initial state
-S.eruvin=BASE_ERUVIN.filter(e=>!_deletedIds.includes(e.id)).map(e=>Object.assign({},e,{exclusions:[],adjacency:(e.adjacency||[]).slice()}));
+// Start empty - Firestore will populate. Don't show BASE_ERUVIN to avoid showing deleted zones.
+S.eruvin=[];
 
 function loadCustomZones(){
   // Primary source is Firestore (loaded async in the module script).
