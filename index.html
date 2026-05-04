@@ -708,6 +708,7 @@ header{
         <div class="fg"><label class="lbl">Email</label><input class="fi" id="cEmail" type="email"></div>
         <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone" type="tel"></div>
         <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea" placeholder="e.g. Brooklyn, NY"></div>
+        <div class="fg"><label class="lbl">Rov / Rabbi (optional)</label><input class="fi" id="cRov" placeholder="e.g. Rabbi Y. Goldstein"></div>
         <button class="btn btn-navy btn-full" onclick="doContractorApply()">Submit Application</button>
         <div class="modal-footer"><a onclick="showV('vMain')">&#8592; Back</a></div>
       </div>
@@ -1882,7 +1883,7 @@ function doContractorApply(){
   if(!name||!email){toast('Name and email required','err');return;}
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,role:'contractor-pending',avatar:name[0].toUpperCase(),contractorStatus:'none'};
   user.contractorStatus='pending';user.role='contractor-pending';
-  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;
+  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;user.rov=(document.getElementById('cRov')&&document.getElementById('cRov').value)||'';
   _cacheAndSaveUser(user);
   // Also write to contractors collection
   var ct={email:email,name:name,phone:user.phone,area:user.area,status:'pending',appliedAt:new Date().toISOString()};
@@ -1890,6 +1891,8 @@ function doContractorApply(){
   if(cidx>=0)window._fsContractors[cidx]=ct;else window._fsContractors.push(ct);
   if(window._db)window._db.saveContractor(ct);
   closeModal();toast('Application submitted! Pending admin approval.','ok');
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},body:JSON.stringify({to:email,toName:name,eruvName:'MyEiruv — Application Received',eruvCity:'',status:'review',note:'Thank you for applying! Your application is under review. You will be notified once a decision is made.',timestamp:new Date().toLocaleDateString()})}).catch(function(){});
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},body:JSON.stringify({to:ADMIN_EMAIL,toName:'Admin',eruvName:'New Contractor Application',eruvCity:'',status:'review',note:'New application from '+name+' ('+email+'). Area: '+((document.getElementById('cArea')&&document.getElementById('cArea').value)||'N/A'),timestamp:new Date().toLocaleDateString()})}).catch(function(){});
 }
 function signInAs(user){
   S.user=user;S.alerts=[];
