@@ -1995,18 +1995,29 @@ function admStatus(id,status){
 }
 function admDel(id){
   if(!confirm('Delete this zone permanently?'))return;
-  S.eruvin=S.eruvin.filter(function(e){return e.id!==id;});
-  var bi=BASE_ERUVIN.findIndex(function(b){return b.id===id;});
-  if(bi>=0)BASE_ERUVIN.splice(bi,1);
+  // Remove from memory immediately
+  S.eruvin = S.eruvin.filter(function(e){return e.id!==id;});
+  var bi = BASE_ERUVIN.findIndex(function(b){return b.id===id;});
+  if(bi>=0) BASE_ERUVIN.splice(bi,1);
+  // Remove from map
   if(map.getLayer&&map.getLayer('eruv-'+id+'-fill'))try{map.removeLayer('eruv-'+id+'-fill');}catch(_){}
   if(map.getLayer&&map.getLayer('eruv-'+id+'-line'))try{map.removeLayer('eruv-'+id+'-line');}catch(_){}
   if(map.getSource&&map.getSource('eruv-'+id))try{map.removeSource('eruv-'+id);}catch(_){}
-  try{var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');if(!del.includes(id)){del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}}catch(_){}
-  try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');localStorage.setItem('myeiruv_zones',JSON.stringify(z.filter(function(x){return x.id!==id;})));}catch(_){}
-  if(window._db){window._db.deleteZone(id).catch(function(){window._db.patchZone(id,{_deleted:true});});}
+  // Soft delete in Firestore - mark _deleted:true (NEVER physically delete)
+  // This prevents BASE_ERUVIN from resurrecting the zone
+  if(window._db){
+    window._db.patchZone(id,{_deleted:true,_deletedAt:new Date().toISOString()})
+      .then(function(ok){
+        console.log('[admDel] soft-deleted',id,'ok:',ok);
+      }).catch(function(e){
+        console.error('[admDel] patch failed:',e);
+        toast('Could not delete from cloud','err');
+      });
+  }
   renderEruvList();renderStatus();renderAdmin('eruvin');
   toast('Zone deleted','ok');
 }
+
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
   if(u){u.role='contractor';u.contractorStatus='approved';_cacheAndSaveUser(u);}
@@ -3379,19 +3390,19 @@ window._db = {
 
   /* ── ZONES ────────────────────────────────────────────────── */
   async loadZones() {
+    const fromFS = z => {
+      if(z.coords&&z.coords[0]&&z.coords[0].g!==undefined)
+        z.coords = z.coords.map(c => [c.g,c.a]);
+      if(z.exclusions) z.exclusions = z.exclusions.map(ex => ({
+        ...ex, coords: ex.coords&&ex.coords[0]&&ex.coords[0].g!==undefined
+          ? ex.coords.map(c=>[c.g,c.a]) : (ex.coords||[])
+      }));
+      return z;
+    };
     try {
-      const fromFS = z => {
-        if(z.coords&&z.coords[0]&&z.coords[0].g!==undefined)
-          z.coords = z.coords.map(c => [c.g,c.a]);
-        if(z.exclusions) z.exclusions = z.exclusions.map(ex => ({
-          ...ex, coords: ex.coords&&ex.coords[0]&&ex.coords[0].g!==undefined
-            ? ex.coords.map(c=>[c.g,c.a]) : (ex.coords||[])
-        }));
-        return z;
-      };
       let snap = await getDocs(COL.zones);
       if (snap.empty) {
-        // First time ever — seed all BASE_ERUVIN
+        // First ever load - seed all BASE_ERUVIN to Firestore
         const toFS = z => {
           const s={...z};
           s.coords=s.coords.map(c=>({g:c[0],a:c[1]}));
@@ -3401,34 +3412,12 @@ window._db = {
         await Promise.all(BASE_ERUVIN.map(z => setDoc(doc(db,"zones",z.id), toFS(z))));
         snap = await getDocs(COL.zones);
       }
-      // Load zones from Firestore, skip any marked as deleted
-      const localDeleted = (() => { try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return[];} })();
-      const fsIds = snap.docs.map(d => d.id);
-      const fsDeletedIds = snap.docs.filter(d => d.data()._deleted).map(d => d.id);
-      const allDeleted = [...new Set([...localDeleted, ...fsDeletedIds])];
-      try{localStorage.setItem('myeiruv_deleted',JSON.stringify(allDeleted));}catch(_){}
-      const fsZones = snap.docs.map(d => {
-        try{ return fromFS({...d.data(), id:d.id}); }
-        catch(e){ return null; }
-      }).filter(z => z && z.id && !z._deleted && !allDeleted.includes(z.id));
-      // Track all IDs that have ever been in Firestore
-      const everInFS = new Set([...fsIds, ...allDeleted]);
-      // Only add BASE_ERUVIN zones on very first load (Firestore completely empty)
-      // OR if the zone was never seeded to Firestore at all
-      if(fsIds.length === 0){
-        BASE_ERUVIN.forEach(base => {
-          if(!allDeleted.includes(base.id))
-            fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
-        });
-      } else {
-        // Firestore has zones - only add BASE zones never seen in Firestore before
-        BASE_ERUVIN.forEach(base => {
-          if(!everInFS.has(base.id))
-            fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
-        });
-      }
-      console.log('[loadZones] total:',fsZones.length,'deleted:',allDeleted.length);
-      return fsZones;
+      // ONLY return non-deleted zones from Firestore - never use BASE_ERUVIN again
+      const zones = snap.docs
+        .map(d => { try{ return fromFS({...d.data(),id:d.id}); }catch(e){ return null; } })
+        .filter(z => z && z.id && !z._deleted);
+      console.log("[loadZones] loaded:", zones.length, "from Firestore");
+      return zones;
     } catch(e) { console.error("loadZones:",e); return null; }
   },
   async saveZone(zone) {
