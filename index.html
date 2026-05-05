@@ -1672,7 +1672,11 @@ function renderStatus(f){
 }
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Under Review',down:'Down'};
-  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="flyTo(['+e.center+'],\''+e.name+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
+  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){
+    var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
+    var ctBtn=ct&&ct.email?'<button onclick="event.stopPropagation();sendMsgToContractor(this.dataset.email,this.dataset.eruv)" data-email="'+ct.email+'" data-eruv="'+e.name+'" style="border:none;background:none;color:var(--blue);font-size:.7rem;cursor:pointer;padding:2px 0;font-family:inherit;text-decoration:underline;">✉ Contact</button>':'';
+    return '<div class="eruv-row" onclick="flyTo(['+e.center+'],\''+e.name+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+(e.lastChecked?' · '+e.lastChecked:'')+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+ctBtn+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';
+  }).join('');
 }
 function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}
 
@@ -2164,12 +2168,17 @@ function adminDelShul(id){
 
 // CONTRACTOR DASH
 function sendMsgToContractor(email,eruvName){
-  var msg=prompt('Send a message to the '+eruvName+' contractor:');
+  if(!S.user){toast('Please sign in to contact the contractor','err');return;}
+  var confirmed=confirm('Your name and email ('+S.user.email+') will be shared with the contractor so they can respond to you. Continue?');
+  if(!confirmed)return;
+  var msg=prompt('Your message to the '+eruvName+' contractor:');
   if(!msg)return;
+  var note='Message from: '+S.user.name+' <'+S.user.email+'>'+(S.user.phone?' · '+S.user.phone:'')+'\n\n"'+msg+'"';
   fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message about '+eruvName,eruvCity:'',status:'review',
-      note:'A user sent you a message: "'+msg+'"',timestamp:new Date().toLocaleDateString()})
-  }).then(function(){toast('Message sent','ok');}).catch(function(){toast('Could not send','err');});
+    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message about '+eruvName+' from '+S.user.name,eruvCity:'',status:'review',
+      note:note,timestamp:new Date().toLocaleDateString()})
+  }).then(function(){toast('Message sent! The contractor can reply to you directly.','ok');})
+   .catch(function(){toast('Could not send message','err');});
 }
 function saveCtDonateUrl(id,url){
   var e=S.eruvin.find(function(x){return x.id===id;});
