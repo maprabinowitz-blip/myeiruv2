@@ -432,10 +432,6 @@ header{
     <svg class="hdr-logo" onclick="refreshPage()" title="MyEiruv" viewBox="0 0 260 68" xmlns="http://www.w3.org/2000/svg" style="height:68px;width:auto;cursor:pointer;">
   <!-- Background -->
   <rect width="260" height="68" fill="#0f1f38"/>
-  <circle cx="50" cy="8" r="0.7" fill="#fff" opacity="0.4"/>
-  <circle cx="110" cy="6" r="0.8" fill="#fff" opacity="0.5"/>
-  <circle cx="175" cy="5" r="0.7" fill="#fff" opacity="0.45"/>
-  <circle cx="220" cy="7" r="0.8" fill="#fff" opacity="0.4"/>
   <!-- Eruv wires - white arcing across -->
   <path d="M30 22 Q130 8 230 22" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.9"/>
   <path d="M30 27 Q130 13 230 27" stroke="#ffffff" stroke-width="1.2" fill="none" opacity="0.55"/>
@@ -708,7 +704,6 @@ header{
         <div class="fg"><label class="lbl">Email</label><input class="fi" id="cEmail" type="email"></div>
         <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone" type="tel"></div>
         <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea" placeholder="e.g. Brooklyn, NY"></div>
-        <div class="fg"><label class="lbl">Rov / Rabbi (optional)</label><input class="fi" id="cRov" placeholder="e.g. Rabbi Y. Goldstein"></div>
         <button class="btn btn-navy btn-full" onclick="doContractorApply()">Submit Application</button>
         <div class="modal-footer"><a onclick="showV('vMain')">&#8592; Back</a></div>
       </div>
@@ -1088,38 +1083,27 @@ function addEruvToMap(e){
   (e.exclusions||[]).forEach(ex=>addExclToMap(e.id,ex));
 }
 function showEruvPopup(e){
-  if(!e)return;
   const dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
   const lbl={up:'Up & Kosher ✓',review:'Under Review ⚠',down:'Down ✗'}[e.status]||e.status;
   const adj=(e.adjacency||[]).filter(a=>a.canEnter).map(a=>{const z=S.eruvin.find(x=>x.id===a.id);return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
   const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 10px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'';
+  // Find contractor for this zone
   var ctInfo='';
   if(e.owner){
     var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
-    if(ct&&ct.name){
-      var se=(ct.email||'').replace(/'/g,"\'"),sn=(e.name||'').replace(/'/g,"\'");
-      ctInfo='<div style="font-size:.71rem;color:var(--navy);margin-top:8px;border-top:1px solid #eee;padding-top:8px">'
-        +'<div style="font-weight:600;margin-bottom:3px">📋 Contractor</div>'
-        +'<div>'+ct.name+'</div>'
-        +(ct.phone?'<div><a href="tel:'+ct.phone+'" style="color:var(--blue);text-decoration:none">📞 '+ct.phone+'</a></div>':'')
-        +(e.rov?'<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Rov: '+e.rov+'</div>':'')
-        +(ct.email?'<div style="margin-top:5px"><button onclick="sendMsgToContractor(''+se+'',''+sn+'')" style="border:none;background:var(--navy);color:#fff;padding:4px 10px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">✉ Send Message</button></div>':'')
-        +'</div>';
-    }
+    if(ct&&ct.name)ctInfo='<div style="font-size:.68rem;color:var(--muted);margin-top:4px;border-top:1px solid #eee;padding-top:4px">📋 '+ct.name+(ct.phone?' · '+ct.phone:'')+'</div>';
   }
   var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
-  var html='<div style="min-width:200px">'
+  var html='<div style="min-width:180px">'
     +'<div class="pop-title">'+e.name+'</div>'
     +'<div class="pop-status">'+dot+' '+lbl+'</div>'
-    +lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj
-    +(don?'<div style="margin-top:6px">'+don+'</div>':'')+ctInfo+'</div>';
-  var lngLat=e.center;
-  if(!lngLat&&e.coords&&e.coords.length){
-    var lngs=e.coords.map(function(c){return c[0];}),lats=e.coords.map(function(c){return c[1];});
-    lngLat=[(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2,(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2];
-  }
-  if(!lngLat)return;
-  new mapboxgl.Popup({closeButton:true,maxWidth:'260px',offset:5}).setLngLat(lngLat).setHTML(html).addTo(map);
+    +lastUpd
+    +(e.note?'<div class="pop-note">'+e.note+'</div>':'')
+    +adj
+    +(don?'<div style="margin-top:6px">'+don+'</div>':'')
+    +(ctInfo?ctInfo:'')
+    +'</div>';
+  new mapboxgl.Popup({closeButton:true,maxWidth:'240px',offset:5}).setLngLat(e.center).setHTML(html).addTo(map);
 }
 function addExclToMap(eruvId,ex){
   const sid='excl-'+eruvId+'-'+ex.id;
@@ -1577,7 +1561,7 @@ function planRoute(){
           +'</svg>';
         routeMarkers.push(new mapboxgl.Marker({element:startEl,anchor:'bottom'}).setLngLat([sc.lng,sc.lat]).addTo(map));
 
-        // End marker — destination pin, show eiruv status
+        // End marker — destination pin, show eruv status
         var endEl=document.createElement('div');
         var ecInEruv=findEruv(ec.lng,ec.lat);
         endEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))';
@@ -1886,7 +1870,7 @@ function doContractorApply(){
   if(!name||!email){toast('Name and email required','err');return;}
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,role:'contractor-pending',avatar:name[0].toUpperCase(),contractorStatus:'none'};
   user.contractorStatus='pending';user.role='contractor-pending';
-  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;user.rov=(document.getElementById('cRov')&&document.getElementById('cRov').value)||'';
+  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;
   _cacheAndSaveUser(user);
   // Also write to contractors collection
   var ct={email:email,name:name,phone:user.phone,area:user.area,status:'pending',appliedAt:new Date().toISOString()};
@@ -1894,8 +1878,6 @@ function doContractorApply(){
   if(cidx>=0)window._fsContractors[cidx]=ct;else window._fsContractors.push(ct);
   if(window._db)window._db.saveContractor(ct);
   closeModal();toast('Application submitted! Pending admin approval.','ok');
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},body:JSON.stringify({to:email,toName:name,eruvName:'MyEiruv — Application Received',eruvCity:'',status:'review',note:'Thank you for applying! Your application is under review. You will be notified once a decision is made.',timestamp:new Date().toLocaleDateString()})}).catch(function(){});
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},body:JSON.stringify({to:ADMIN_EMAIL,toName:'Admin',eruvName:'New Contractor Application',eruvCity:'',status:'review',note:'New application from '+name+' ('+email+'). Area: '+((document.getElementById('cArea')&&document.getElementById('cArea').value)||'N/A'),timestamp:new Date().toLocaleDateString()})}).catch(function(){});
 }
 function signInAs(user){
   S.user=user;S.alerts=[];
@@ -1995,18 +1977,22 @@ function admStatus(id,status){
   renderEruvList();renderStatus();renderAdmin('overview');
 }
 function admDel(id){
-  if(!confirm('Delete this zone permanently?'))return;
+  if(!confirm('Delete this eiruv?'))return;
   S.eruvin=S.eruvin.filter(function(e){return e.id!==id;});
-  var bi=BASE_ERUVIN.findIndex(function(b){return b.id===id;});
-  if(bi>=0)BASE_ERUVIN.splice(bi,1);
-  if(map.getLayer&&map.getLayer('eruv-'+id+'-fill'))try{map.removeLayer('eruv-'+id+'-fill');}catch(_){}
-  if(map.getLayer&&map.getLayer('eruv-'+id+'-line'))try{map.removeLayer('eruv-'+id+'-line');}catch(_){}
-  if(map.getSource&&map.getSource('eruv-'+id))try{map.removeSource('eruv-'+id);}catch(_){}
-  try{var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');if(!del.includes(id)){del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}}catch(_){}
-  try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');localStorage.setItem('myeiruv_zones',JSON.stringify(z.filter(function(x){return x.id!==id;})));}catch(_){}
-  if(window._db){window._db.deleteZone(id).catch(function(){window._db.patchZone(id,{_deleted:true});});}
+  ['fill','line'].forEach(function(t){try{map.removeLayer('eruv-'+id+'-'+t);}catch(_){};});
+  try{map.removeSource('eruv-'+id);}catch(_){}
+  try{var z=JSON.parse(localStorage.getItem('myeiruv_zones')||'[]');z=z.filter(function(x){return x.id!==id;});localStorage.setItem('myeiruv_zones',JSON.stringify(z));}catch(_){}
   renderEruvList();renderStatus();renderAdmin('eruvin');
-  toast('Zone deleted','ok');
+  // Save deleted ID to localStorage immediately
+  try{var del=JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');if(!del.includes(id))del.push(id);localStorage.setItem('myeiruv_deleted',JSON.stringify(del));}catch(_){}
+  if(window._db){
+    var isBase=BASE_ERUVIN.find(function(b){return b.id===id;});
+    if(isBase){
+      window._db.patchZone(id,{_deleted:true}).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
+    } else {
+      window._db.deleteZone(id).then(function(){toast('Zone deleted','ok');}).catch(function(){toast('Zone deleted','ok');});
+    }
+  } else { toast('Zone deleted','ok'); }
 }
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
@@ -2161,14 +2147,6 @@ function adminDelShul(id){
 }
 
 // CONTRACTOR DASH
-function sendMsgToContractor(email,eruvName){
-  var msg=prompt('Send a message to the '+eruvName+' contractor:');
-  if(!msg)return;
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message about '+eruvName,eruvCity:'',status:'review',
-      note:'A user sent you a message: "'+msg+'"',timestamp:new Date().toLocaleDateString()})
-  }).then(function(){toast('Message sent','ok');}).catch(function(){toast('Could not send','err');});
-}
 function saveCtDonateUrl(id,url){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
@@ -3054,22 +3032,6 @@ function renderAdjList(){
 }
 function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a){a={id:id,canEnter:true,note:''};S.curAdj.push(a);}else a.canEnter=!a.canEnter;renderAdjList();var e=S.eruvin.find(function(x){return x.id===id;});toast(a.canEnter?'Carrying allowed into '+(e&&e.name):'Carrying disabled into '+(e&&e.name),a.canEnter?'ok':'warn');}
 
-function autoDetectZoneCity(coords){
-  if(!coords||coords.length<3)return;
-  var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
-  var clng=(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2;
-  var clat=(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2;
-  var cityField=document.getElementById('zoneCity');
-  if(cityField&&!cityField.value){
-    fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+clng+','+clat+'.json?types=place&access_token='+TOKEN+'&limit=1')
-    .then(function(r){return r.json();}).then(function(d){
-      if(d.features&&d.features[0]&&cityField&&!cityField.value){
-        var parts=d.features[0].place_name.split(',');
-        cityField.value=(parts[0]+(parts[1]?','+parts[1]:'')).trim();
-      }
-    }).catch(function(){});
-  }
-}
 function saveZone(){
   if(_cd.active){if(_cd.pts.length>=3){_finishCustomDraw();}else{toast('Draw zone boundary first (need 3+ points)','err');return;}setTimeout(saveZone,200);return;}
   if(!Draw)return;
@@ -3405,22 +3367,17 @@ window._db = {
       // Load zones from Firestore, skip any marked as deleted
       const localDeleted = (() => { try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return[];} })();
       const fsIds = snap.docs.map(d => d.id);
-      const fsDeletedIds = snap.docs.filter(d => d.data()._deleted).map(d => d.id);
-      const allDeleted = [...new Set([...localDeleted, ...fsDeletedIds])];
-      try{localStorage.setItem('myeiruv_deleted',JSON.stringify(allDeleted));}catch(_){}
       const fsZones = snap.docs.map(d => {
         try{ return fromFS({...d.data(), id:d.id}); }
-        catch(e){ return null; }
-      }).filter(z => z && z.id && !z._deleted && !allDeleted.includes(z.id));
-      // Only add BASE_ERUVIN zones on very first load (when Firestore is empty)
-      // Once ANY zone exists in Firestore, Firestore is the ONLY source of truth
-      if(fsIds.length === 0){
-        BASE_ERUVIN.forEach(base => {
-          if(!allDeleted.includes(base.id))
-            fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
-        });
-      }
-      console.log('[loadZones] total:',fsZones.length,'deleted:',allDeleted.length);
+        catch(e){ console.error('fromFS error:',e); return null; }
+      }).filter(z => z && z.id && !z._deleted && !localDeleted.includes(z.id));
+      // Add BASE_ERUVIN zones that aren't in Firestore yet and aren't deleted
+      BASE_ERUVIN.forEach(base => {
+        if(!localDeleted.includes(base.id) && !fsIds.includes(base.id)){
+          fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
+        }
+      });
+      console.log('[loadZones] Firestore:',snap.docs.length,'filtered:',fsZones.length,'deleted:',localDeleted);
       return fsZones;
     } catch(e) { console.error("loadZones:",e); return null; }
   },
@@ -3604,9 +3561,5 @@ window._db.bootAll();
   /* Make room for footer */
   .app { padding-bottom: 28px; }
 </style>
-<div style="position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(15,31,56,.92);backdrop-filter:blur(8px);padding:5px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none;border-top:1px solid rgba(255,255,255,.08);">
-  <div style="font-size:.6rem;color:rgba(255,255,255,.5);line-height:1.4;flex:1;">⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi before carrying on Shabbos. MyEiruv assumes no halachic responsibility.</div>
-  <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;">© 2025 MyEiruv</div>
-</div>
 </body>
 </html>
