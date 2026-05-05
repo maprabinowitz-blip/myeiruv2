@@ -3404,18 +3404,19 @@ window._db = {
       const fsIds = snap.docs.map(d => d.id);
       const fsDeletedIds = snap.docs.filter(d => d.data()._deleted).map(d => d.id);
       const allDeleted = [...new Set([...localDeleted, ...fsDeletedIds])];
-      // Save combined deleted list back to localStorage
       try{localStorage.setItem('myeiruv_deleted',JSON.stringify(allDeleted));}catch(_){}
       const fsZones = snap.docs.map(d => {
         try{ return fromFS({...d.data(), id:d.id}); }
-        catch(e){ console.error('fromFS error:',e); return null; }
+        catch(e){ return null; }
       }).filter(z => z && z.id && !z._deleted && !allDeleted.includes(z.id));
-      // Only add BASE_ERUVIN zones that are NOT deleted and NOT already in Firestore
-      BASE_ERUVIN.forEach(base => {
-        if(!allDeleted.includes(base.id) && !fsIds.includes(base.id)){
-          fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
-        }
-      });
+      // Only add BASE_ERUVIN zones on very first load (when Firestore is empty)
+      // Once ANY zone exists in Firestore, Firestore is the ONLY source of truth
+      if(fsIds.length === 0){
+        BASE_ERUVIN.forEach(base => {
+          if(!allDeleted.includes(base.id))
+            fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
+        });
+      }
       console.log('[loadZones] total:',fsZones.length,'deleted:',allDeleted.length);
       return fsZones;
     } catch(e) { console.error("loadZones:",e); return null; }
