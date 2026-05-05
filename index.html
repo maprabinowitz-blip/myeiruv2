@@ -1088,35 +1088,38 @@ function addEruvToMap(e){
   (e.exclusions||[]).forEach(ex=>addExclToMap(e.id,ex));
 }
 function showEruvPopup(e){
+  if(!e)return;
   const dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
   const lbl={up:'Up & Kosher ✓',review:'Under Review ⚠',down:'Down ✗'}[e.status]||e.status;
   const adj=(e.adjacency||[]).filter(a=>a.canEnter).map(a=>{const z=S.eruvin.find(x=>x.id===a.id);return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
   const don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 10px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'';
-  // Find contractor for this zone
   var ctInfo='';
   if(e.owner){
     var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
     if(ct&&ct.name){
+      var se=(ct.email||'').replace(/'/g,"\'"),sn=(e.name||'').replace(/'/g,"\'");
       ctInfo='<div style="font-size:.71rem;color:var(--navy);margin-top:8px;border-top:1px solid #eee;padding-top:8px">'
         +'<div style="font-weight:600;margin-bottom:3px">📋 Contractor</div>'
         +'<div>'+ct.name+'</div>'
         +(ct.phone?'<div><a href="tel:'+ct.phone+'" style="color:var(--blue);text-decoration:none">📞 '+ct.phone+'</a></div>':'')
         +(e.rov?'<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Rov: '+e.rov+'</div>':'')
-        +(ct.email?'<div style="margin-top:5px"><button onclick="sendMsgToContractor(\x27'+ct.email+'\x27,\x27'+e.name+'\x27)" style="border:none;background:var(--navy);color:#fff;padding:4px 10px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">✉ Send Message</button></div>':'')
+        +(ct.email?'<div style="margin-top:5px"><button onclick="sendMsgToContractor(''+se+'',''+sn+'')" style="border:none;background:var(--navy);color:#fff;padding:4px 10px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">✉ Send Message</button></div>':'')
         +'</div>';
     }
   }
   var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
-  var html='<div style="min-width:180px">'
+  var html='<div style="min-width:200px">'
     +'<div class="pop-title">'+e.name+'</div>'
     +'<div class="pop-status">'+dot+' '+lbl+'</div>'
-    +lastUpd
-    +(e.note?'<div class="pop-note">'+e.note+'</div>':'')
-    +adj
-    +(don?'<div style="margin-top:6px">'+don+'</div>':'')
-    +(ctInfo?ctInfo:'')
-    +'</div>';
-  new mapboxgl.Popup({closeButton:true,maxWidth:'240px',offset:5}).setLngLat(e.center).setHTML(html).addTo(map);
+    +lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj
+    +(don?'<div style="margin-top:6px">'+don+'</div>':'')+ctInfo+'</div>';
+  var lngLat=e.center;
+  if(!lngLat&&e.coords&&e.coords.length){
+    var lngs=e.coords.map(function(c){return c[0];}),lats=e.coords.map(function(c){return c[1];});
+    lngLat=[(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2,(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2];
+  }
+  if(!lngLat)return;
+  new mapboxgl.Popup({closeButton:true,maxWidth:'260px',offset:5}).setLngLat(lngLat).setHTML(html).addTo(map);
 }
 function addExclToMap(eruvId,ex){
   const sid='excl-'+eruvId+'-'+ex.id;
