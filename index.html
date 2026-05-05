@@ -3411,11 +3411,19 @@ window._db = {
         try{ return fromFS({...d.data(), id:d.id}); }
         catch(e){ return null; }
       }).filter(z => z && z.id && !z._deleted && !allDeleted.includes(z.id));
-      // Only add BASE_ERUVIN zones on very first load (when Firestore is empty)
-      // Once ANY zone exists in Firestore, Firestore is the ONLY source of truth
+      // Track all IDs that have ever been in Firestore
+      const everInFS = new Set([...fsIds, ...allDeleted]);
+      // Only add BASE_ERUVIN zones on very first load (Firestore completely empty)
+      // OR if the zone was never seeded to Firestore at all
       if(fsIds.length === 0){
         BASE_ERUVIN.forEach(base => {
           if(!allDeleted.includes(base.id))
+            fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
+        });
+      } else {
+        // Firestore has zones - only add BASE zones never seen in Firestore before
+        BASE_ERUVIN.forEach(base => {
+          if(!everInFS.has(base.id))
             fsZones.push(Object.assign({},base,{exclusions:[],adjacency:[]}));
         });
       }
