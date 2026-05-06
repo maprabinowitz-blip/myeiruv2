@@ -1690,7 +1690,7 @@ function showEruvDetail(id){
       +'<div style="font-size:.85rem;font-weight:600;">'+ct.name+'</div>'
       +(e.rov?'<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">Rov: '+e.rov+'</div>':'')
       +(ct.phone?'<div style="margin-top:5px;"><a href="tel:'+ct.phone+'" style="color:var(--blue);font-size:.8rem;">📞 '+ct.phone+'</a></div>':'')
-      +(ct.email?'<button onclick="sendMsgToContractor(\''+ct.email+'\',\''+e.name+'\')" style="margin-top:8px;border:none;background:var(--navy);color:#fff;padding:6px 0;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;width:100%;">✉ Send Message</button>':'')
+      +(ct.email?'<div style="font-size:.72rem;color:var(--muted);margin-top:6px;line-height:1.4;">📋 The contractor will receive your name, email and phone to contact you back.</div><button onclick="sendMsgToContractor(\''+ct.email+'\',\''+e.name+'\')" style="margin-top:6px;border:none;background:var(--navy);color:#fff;padding:6px 0;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;width:100%;">✉ Send Message</button>':'')
       +'</div>';
   }
   var html='<div style="font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:4px;">'+e.name+'</div>'
