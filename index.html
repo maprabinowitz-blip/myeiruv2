@@ -658,7 +658,6 @@ header{
       <div id="vMain">
         <div class="modal-title">Welcome to MyEiruv</div>
         <div class="modal-sub">Sign in or create an account to set alerts, manage zones, and more.</div>
-<button class="goog-btn apply" onclick="showV('vContractor')">&#128296; Apply as Contractor</button>
         <!-- Sign In / Sign Up tabs -->
         <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;">
           <button id="authTabSI" onclick="switchAuthTab('si')" style="flex:1;padding:7px;border:none;background:var(--navy);color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign In</button>
@@ -1705,7 +1704,7 @@ function showEruvDetail(id){
 }
 function sendMsgToContractor(email,eruvName){
   if(!S.user){toast('Please sign in first','err');openModal('vMain');return;}
-  var msg=prompt('Message to '+eruvName+' contractor:\n\n(Your name and email will be shared so they can reply to you)');
+  var msg=prompt('Message to the '+eruvName+' contractor:\n\n⚠️ The contractor will see your name, email, and phone number in order to contact you back.');
   if(!msg)return;
   fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
     body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message re: '+eruvName,eruvCity:'',status:'review',
