@@ -527,7 +527,7 @@ header{
 </header>
 
 <div class="app">
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="s-tabs">
       <button class="s-tab on" onclick="sTab(this,'check')">Check</button>
       <button class="s-tab" onclick="sTab(this,'route')">Route</button>
@@ -2197,7 +2197,7 @@ function showEruvDetail(id){
   }
   html+='</div>';
   var panel=document.getElementById('eruvDetail');
-  if(!panel){panel=document.createElement('div');panel.id='eruvDetail';panel.style.cssText='position:absolute;top:0;left:0;right:0;bottom:0;background:#fff;z-index:10;overflow-y:auto;';document.getElementById('sidebar').appendChild(panel);}
+  if(!panel){panel=document.createElement('div');panel.id='eruvDetail';panel.style.cssText='position:absolute;top:0;left:0;right:0;bottom:0;background:#fff;z-index:10;overflow-y:auto;';document.querySelector('.sidebar').appendChild(panel);}
   panel.innerHTML=html;
   panel.style.display='block';
 }
