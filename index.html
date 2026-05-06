@@ -646,7 +646,7 @@ header{
 
 <!-- CONTRACTOR DASHBOARD -->
 <div class="ct-dash" id="ctDash">
-  <div class="ct-hdr"><div class="ct-title">&#128205; My Zones</div><button class="adm-cls" onclick="closeCtDash()">&#10005;</button></div>
+  <div class="ct-hdr"><div class="ct-title">&#128205; My Zones</div><button onclick="renderCtMsgs()" style="border:none;background:rgba(74,144,217,.12);color:var(--blue);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;margin-right:8px;">✉ Messages</button><button class="adm-cls" onclick="closeCtDash()">&#10005;</button></div>
   <div class="ct-body" id="ctBody"></div>
 </div>
 
@@ -1710,11 +1710,25 @@ function sendMsgToContractor(email,eruvName){
   if(!S.user){toast('Please sign in first','err');openModal('vMain');return;}
   var msg=prompt('Message to the '+eruvName+' contractor:\n\n⚠️ The contractor will see your name, email, and phone number in order to contact you back.');
   if(!msg)return;
+  // Save to Firestore so contractor sees it in their dashboard
+  var msgDoc={
+    id:'msg-'+Date.now(),
+    toEmail:email,
+    eruvName:eruvName,
+    fromName:S.user.name,
+    fromEmail:S.user.email,
+    fromPhone:S.user.phone||'',
+    message:msg,
+    read:false,
+    createdAt:new Date().toISOString()
+  };
+  if(window._db)window._db.saveMessage(msgDoc);
+  // Also send email notification
+  var noteText='From: '+S.user.name+'\nEmail: '+S.user.email+(S.user.phone?'\nPhone: '+S.user.phone:'')+' \n\n'+msg;
   fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'User Message: '+S.user.name+' re '+eruvName,eruvCity:'',status:'review',
-      note:'👤 Name: '+S.user.name+'\n📧 Email: '+S.user.email+(S.user.phone?'\n📱 Phone: '+S.user.phone:'')+'\n\n💬 Message:\n'+msg,
-      timestamp:new Date().toLocaleDateString()})
-  }).then(function(){toast('Message sent!','ok');}).catch(function(){toast('Could not send','err');});
+    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'New message from '+S.user.name+' about '+eruvName,eruvCity:'',status:'review',
+      note:noteText,timestamp:new Date().toLocaleDateString()})
+  }).then(function(){toast('Message sent!','ok');}).catch(function(){toast('Message sent!','ok');});
 }
 function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}
 
@@ -2221,6 +2235,31 @@ function saveCtDonateUrl(id,url){
   e.donateUrl=url.trim();
   if(window._db)window._db.saveZone(e).then(function(){toast(url?'Donation link saved ❤':'Donation link removed','ok');});
   renderEruvList();renderStatus();
+}
+function renderCtMsgs(){
+  var body=document.getElementById('ctBody');
+  body.innerHTML='<div style="font-size:.85rem;font-weight:700;color:var(--navy);margin-bottom:12px;">✉ Messages</div><div id="ctMsgList" style="color:var(--muted);font-size:.8rem;">Loading...</div>';
+  if(window._db&&window._db.loadMessages){
+    window._db.loadMessages(S.user.email).then(function(msgs){
+      msgs=msgs||[];
+      var el=document.getElementById('ctMsgList');
+      if(!el)return;
+      if(!msgs.length){el.innerHTML='No messages yet.';return;}
+      el.innerHTML=msgs.sort(function(a,b){return b.createdAt>a.createdAt?1:-1;}).map(function(m){
+        return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:'+(m.read?'#fff':'#f0f6ff')+';">'
+          +'<div style="font-size:.8rem;font-weight:600;color:var(--navy);">'+m.fromName+'</div>'
+          +'<div style="font-size:.72rem;color:var(--blue);margin-top:1px;"><a href="mailto:'+m.fromEmail+'" style="color:var(--blue);">'+m.fromEmail+'</a>'+(m.fromPhone?' · '+m.fromPhone:'')+'</div>'
+          +'<div style="font-size:.72rem;color:var(--muted);margin-top:1px;">Re: '+m.eruvName+'</div>'
+          +'<div style="font-size:.82rem;margin-top:6px;padding:8px;background:var(--bg);border-radius:6px;line-height:1.5;">'+m.message+'</div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">'
+          +'<span style="font-size:.68rem;color:var(--muted2);">'+new Date(m.createdAt).toLocaleString()+'</span>'
+          +'<a href="mailto:'+m.fromEmail+'?subject=Re: '+encodeURIComponent(m.eruvName)+'" style="padding:3px 10px;background:var(--navy);color:#fff;border-radius:5px;font-size:.72rem;text-decoration:none;">↩ Reply</a>'
+          +'</div></div>';
+      }).join('');
+    });
+  } else {
+    document.getElementById('ctMsgList').innerHTML='Messages unavailable.';
+  }
 }
 function openCtDash(){document.getElementById('ctDash').classList.add('on');renderCtDash();}
 function closeCtDash(){document.getElementById('ctDash').classList.remove('on');}
@@ -3580,6 +3619,17 @@ window._db = {
   async patchAlert(id, fields) {
     try { await updateDoc(doc(db,"alerts",id), fields); return true; }
     catch(e) { return false; }
+  },
+  async saveMessage(msg) {
+    try { await setDoc(doc(db,"messages",msg.id), msg); return true; }
+    catch(e) { console.error("saveMessage:",e); return false; }
+  },
+  async loadMessages(toEmail) {
+    try {
+      const q = query(collection(db,"messages"), where("toEmail","==",toEmail));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({...d.data(), id:d.id}));
+    } catch(e) { console.error("loadMessages:",e); return []; }
   },
   async deleteAlert(id) {
     try { await deleteDoc(doc(db,"alerts",id)); return true; }
