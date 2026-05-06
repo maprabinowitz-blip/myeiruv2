@@ -687,6 +687,8 @@ header{
           <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone2" type="tel"></div>
           <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea2" placeholder="e.g. Brooklyn, NY" oninput="identifyCity(this.value,'cArea2Hint')"></div>
           <div id="cArea2Hint" style="font-size:.71rem;color:var(--blue);margin-top:-6px;margin-bottom:8px;min-height:16px;"></div>
+          <div class="fg"><label class="lbl">Rabbinic Oversight</label><input class="fi" id="cRov2" placeholder="e.g. Rabbi Y. Goldstein, Beth Din of..."></div>
+          <div class="fg"><label class="lbl">Donation Link <span style="font-size:.7rem;color:var(--muted)">(optional)</span></label><input class="fi" id="cDonate2" type="url" placeholder="https://..."></div>
           <div class="e-msg" id="cErr2"></div>
           <button class="btn btn-navy btn-full" onclick="doContractorApply2()">Submit Application</button>
         </div>
@@ -710,7 +712,8 @@ header{
         <div class="fg"><label class="lbl">Email</label><input class="fi" id="cEmail" type="email"></div>
         <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone" type="tel"></div>
         <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea" placeholder="e.g. Brooklyn, NY"></div>
-        <div class="fg"><label class="lbl">Rov / Rabbi (optional)</label><input class="fi" id="cRov" placeholder="e.g. Rabbi Y. Goldstein"></div>
+        <div class="fg"><label class="lbl">Rabbinic Oversight</label><input class="fi" id="cRov" placeholder="e.g. Rabbi Y. Goldstein, Beth Din of..."></div>
+        <div class="fg"><label class="lbl">Donation Link <span style="font-size:.7rem;color:var(--muted)">(optional)</span></label><input class="fi" id="cDonate" type="url" placeholder="https://..."></div>
         <button class="btn btn-navy btn-full" onclick="doContractorApply()">Submit Application</button>
         <div class="modal-footer"><a onclick="showV('vMain')">&#8592; Back</a></div>
       </div>
@@ -1850,7 +1853,9 @@ function doContractorApply2(){
   var area=(document.getElementById('cArea2')&&document.getElementById('cArea2').value.trim())||'';
   var err=document.getElementById('cErr2');err.style.display='none';
   if(!name||!email){err.textContent='Name and email required.';err.style.display='block';return;}
-  var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,phone:phone,area:area,avatar:name[0].toUpperCase(),contractorStatus:'pending'};
+  var rov2=(document.getElementById('cRov2')&&document.getElementById('cRov2').value)||'';
+  var donate2=(document.getElementById('cDonate2')&&document.getElementById('cDonate2').value)||'';
+  var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,phone:phone,area:area,rov:rov2,donateUrl:donate2,avatar:name[0].toUpperCase(),contractorStatus:'pending'};
   user.contractorStatus='pending';user.role='user';
   _cacheAndSaveUser(user);
   var ct={email:email,name:name,phone:phone,area:area,status:'pending',appliedAt:new Date().toISOString()};
@@ -1916,7 +1921,7 @@ function doContractorApply(){
   if(!name||!email){toast('Name and email required','err');return;}
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,role:'contractor-pending',avatar:name[0].toUpperCase(),contractorStatus:'none'};
   user.contractorStatus='pending';user.role='contractor-pending';
-  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;user.rov=(document.getElementById('cRov')&&document.getElementById('cRov').value)||'';
+  user.phone=document.getElementById('cPhone').value;user.area=document.getElementById('cArea').value;user.rov=(document.getElementById('cRov')&&document.getElementById('cRov').value)||'';user.donateUrl=(document.getElementById('cDonate')&&document.getElementById('cDonate').value)||'';
   _cacheAndSaveUser(user);
   // Also write to contractors collection
   var ct={email:email,name:name,phone:user.phone,area:user.area,status:'pending',appliedAt:new Date().toISOString()};
