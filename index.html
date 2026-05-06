@@ -1723,11 +1723,9 @@ function sendMsgToContractor(email,eruvName){
     createdAt:new Date().toISOString()
   };
   if(window._db)window._db.saveMessage(msgDoc);
-  // Also send email notification
-  var noteText='From: '+S.user.name+'\nEmail: '+S.user.email+(S.user.phone?'\nPhone: '+S.user.phone:'')+' \n\n'+msg;
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'New message from '+S.user.name+' about '+eruvName,eruvCity:'',status:'review',
-      note:noteText,timestamp:new Date().toLocaleDateString()})
+  // Send email with dedicated template that clearly shows sender
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'user-message'},
+    body:JSON.stringify({to:email,fromName:S.user.name,fromEmail:S.user.email,fromPhone:S.user.phone||'',eruvName:eruvName,message:msg})
   }).then(function(){toast('Message sent!','ok');}).catch(function(){toast('Message sent!','ok');});
 }
 function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}

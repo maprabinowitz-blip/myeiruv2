@@ -52,6 +52,42 @@ export default {
       return cors(await res.text(), res.status, allow);
     }
 
+    if (action === 'user-message') {
+      const {to, fromName, fromEmail, fromPhone, eruvName, message} = body;
+      const html = `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;background:#f4f6fb;margin:0">
+<div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden">
+<div style="background:linear-gradient(135deg,#0a1628,#1a3055);padding:24px 32px">
+  <div style="color:#fff;font-size:20px;font-weight:700">MyEiruv</div>
+  <div style="color:rgba(255,255,255,.6);font-size:12px;letter-spacing:2px;margin-top:4px">NEW MESSAGE FROM USER</div>
+</div>
+<div style="padding:28px 32px">
+  <div style="background:#e8f4fd;border-radius:10px;padding:16px 20px;margin-bottom:20px;border-left:4px solid #2563b0">
+    <div style="font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:10px;">👤 Sender Details</div>
+    <div style="font-size:14px;color:#1e3a5f;margin-bottom:4px;"><strong>Name:</strong> ${fromName}</div>
+    <div style="font-size:14px;color:#1e3a5f;margin-bottom:4px;"><strong>Email:</strong> <a href="mailto:${fromEmail}" style="color:#2563b0;">${fromEmail}</a></div>
+    ${fromPhone ? `<div style="font-size:14px;color:#1e3a5f;"><strong>Phone:</strong> ${fromPhone}</div>` : ''}
+  </div>
+  <div style="font-size:13px;color:#6b7a99;margin-bottom:8px;">Re: <strong>${eruvName}</strong></div>
+  <div style="background:#f4f6fb;border-radius:10px;padding:16px 20px;">
+    <div style="font-size:13px;font-weight:700;color:#1e3a5f;margin-bottom:8px;">💬 Message</div>
+    <div style="font-size:14px;color:#333;line-height:1.6;">${message}</div>
+  </div>
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e2e7f0">
+    <a href="mailto:${fromEmail}?subject=Re: ${encodeURIComponent(eruvName)}" style="display:inline-block;background:#1a3055;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;">↩ Reply to ${fromName}</a>
+  </div>
+</div></div></body></html>`;
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method:'POST', headers:{'Content-Type':'application/json','api-key':env.BREVO_KEY},
+        body:JSON.stringify({
+          sender:{name:'MyEiruv',email:'noreply@myeiruv.org'},
+          to:[{email:to}],
+          subject:`New message from ${fromName} re: ${eruvName}`,
+          htmlContent:html
+        })
+      });
+      return cors(await res.text(), res.status, allow);
+    }
+
     if (action === 'twilio-sms') {
       const {to,message} = body;
       let phone = to.replace(/\D/g,'');
