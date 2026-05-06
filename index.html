@@ -667,7 +667,7 @@ header{
         <!-- Sign In fields -->
         <div id="authSIFields">
           <div class="fg"><label class="lbl">Email</label><input class="fi" id="siEmail" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doEmail()"></div>
-          <div class="fg"><label class="lbl">Password</label><input class="fi" id="siPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doEmail()"></div>
+          <div class="fg"><label class="lbl">Password</label><div style="position:relative"><input class="fi" id="siPass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doEmail()" style="padding-right:38px"><button type="button" onclick="var i=document.getElementById('siPass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;font-size:.85rem;padding:2px;">👁</button></div></div>
           <div style="text-align:right;margin-top:-6px;margin-bottom:10px;"><a onclick="showV('vForgot')" style="font-size:.74rem;color:var(--blue);cursor:pointer;font-weight:600;">Forgot password?</a></div>
           <div class="e-msg" id="siErr"></div>
           <button class="btn btn-navy btn-full" onclick="doEmail()">Sign In</button>
@@ -676,7 +676,7 @@ header{
         <div id="authSUFields" style="display:none">
           <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="rName" type="text"></div>
           <div class="fg"><label class="lbl">Email</label><input class="fi" id="rEmail" type="email"></div>
-          <div class="fg"><label class="lbl">Password</label><input class="fi" id="rPass" type="password" placeholder="Min 6 chars"></div>
+          <div class="fg"><label class="lbl">Password</label><div style="position:relative"><input class="fi" id="rPass" type="password" placeholder="Min 6 chars" style="padding-right:38px"><button type="button" onclick="var i=document.getElementById('rPass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;font-size:.85rem;padding:2px;">👁</button></div></div>
           <div class="e-msg" id="rErr"></div>
           <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
         </div>
