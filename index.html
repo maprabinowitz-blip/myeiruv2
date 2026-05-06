@@ -701,7 +701,9 @@ header{
         <button class="btn btn-navy btn-full" onclick="doForgotPassword()">Send Reset Link</button>
         <div class="modal-footer"><a onclick="showV('vMain')">&#8592; Back to Sign In</a></div>
       </div>
-      <div id="vContractor" style="display:none">
+      <div id="vEruvDetail" style="display:none">
+        <div id="eruvDetailBody"></div>
+      </div>
         <div class="modal-title">Contractor Application</div>
         <div class="modal-sub">Admin will review your application before you can create zones.</div>
         <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="cName"></div>
@@ -1672,7 +1674,44 @@ function renderStatus(f){
 }
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Under Review',down:'Down'};
-  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="flyTo(['+e.center+'],\''+e.name+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
+  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="showEruvDetail(\''+e.id+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+(e.lastChecked?' · '+e.lastChecked:'')+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
+}
+function showEruvDetail(id){
+  var e=S.eruvin.find(function(x){return x.id===id;});
+  if(!e)return;
+  if(e.center)flyTo(e.center,e.name);
+  var dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
+  var lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status]||e.status;
+  var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
+  var ctHtml='';
+  if(ct&&ct.name){
+    ctHtml='<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">'
+      +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Contractor</div>'
+      +'<div style="font-size:.85rem;font-weight:600;">'+ct.name+'</div>'
+      +(e.rov?'<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">Rov: '+e.rov+'</div>':'')
+      +(ct.phone?'<div style="margin-top:5px;"><a href="tel:'+ct.phone+'" style="color:var(--blue);font-size:.8rem;">📞 '+ct.phone+'</a></div>':'')
+      +(ct.email?'<button onclick="sendMsgToContractor(\''+ct.email+'\',\''+e.name+'\')" style="margin-top:8px;border:none;background:var(--navy);color:#fff;padding:6px 0;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;width:100%;">✉ Send Message</button>':'')
+      +'</div>';
+  }
+  var html='<div style="font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:4px;">'+e.name+'</div>'
+    +'<div style="font-size:.85rem;color:var(--muted);margin-bottom:8px;">'+e.city+'</div>'
+    +'<div style="font-size:1.05rem;font-weight:600;margin-bottom:4px;">'+dot+' '+lbl+'</div>'
+    +(e.lastChecked?'<div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">Updated: '+e.lastChecked+'</div>':'')
+    +(e.note?'<div style="font-size:.8rem;padding:8px;background:var(--bg);border-radius:6px;margin-bottom:8px;">'+e.note+'</div>':'')
+    +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none;margin-bottom:8px;">❤️ Support This Eiruv</a>':'')
+    +ctHtml;
+  openModal('vEruvDetail');
+  document.getElementById('eruvDetailBody').innerHTML=html;
+}
+function sendMsgToContractor(email,eruvName){
+  if(!S.user){toast('Please sign in first','err');openModal('vMain');return;}
+  var msg=prompt('Message to '+eruvName+' contractor:\n\n(Your name and email will be shared so they can reply to you)');
+  if(!msg)return;
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message re: '+eruvName,eruvCity:'',status:'review',
+      note:'From: '+S.user.name+' <'+S.user.email+'>'+(S.user.phone?' | '+S.user.phone:'')+'\n\n"'+msg+'"',
+      timestamp:new Date().toLocaleDateString()})
+  }).then(function(){toast('Message sent!','ok');}).catch(function(){toast('Could not send','err');});
 }
 function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toast(name);}
 
@@ -1763,7 +1802,7 @@ function _cacheAndSaveUser(user){
 }
 function openModal(v){document.getElementById('authBd').classList.add('on');showV(v);}
 function closeModal(){document.getElementById('authBd').classList.remove('on');}
-function showV(id){['vMain','vRegister','vContractor','vForgot'].forEach(function(v){var el=document.getElementById(v);if(el)el.style.display=v===id?'block':'none';});}
+function showV(id){['vMain','vRegister','vContractor','vForgot','vEruvDetail'].forEach(function(v){var el=document.getElementById(v);if(el)el.style.display=v===id?'block':'none';});}
 function switchAuthTab(tab){
   var isSI=tab==='si',isSU=tab==='su',isCT=tab==='ct';
   document.getElementById('authTabSI').style.background=isSI?'var(--navy)':'#fff';
