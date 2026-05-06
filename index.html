@@ -1693,7 +1693,7 @@ function showEruvDetail(id){
       +'<div style="font-size:.85rem;font-weight:600;">'+ct.name+'</div>'
       +(e.rov?'<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">Rov: '+e.rov+'</div>':'')
       +(ct.phone?'<div style="margin-top:5px;"><a href="tel:'+ct.phone+'" style="color:var(--blue);font-size:.8rem;">📞 '+ct.phone+'</a></div>':'')
-      +(ct.email?'<div style="font-size:.72rem;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:7px 10px;margin-top:6px;line-height:1.5;">⚠️ The contractor will see your name, email and phone number in order to contact you back.</div><button onclick="sendMsgToContractor(\''+ct.email+'\',\''+e.name+'\')" style="margin-top:8px;border:none;background:var(--navy);color:#fff;padding:7px 0;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;width:100%;font-weight:600;">✉ Send Message</button>':'')
+      +(ct.email?'<div style="font-size:.72rem;color:var(--muted);margin-top:6px;">Your contact details will be shared with the contractor.</div><button onclick="sendMsgToContractor(\''+ct.email+'\',\''+e.name+'\')" style="margin-top:8px;border:none;background:var(--navy);color:#fff;padding:7px 0;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;width:100%;font-weight:600;">✉ Send Message</button>':'')
       +'</div>';
   }
   var html='<div style="font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:4px;">'+e.name+'</div>'
@@ -1712,7 +1712,7 @@ function sendMsgToContractor(email,eruvName){
   if(!msg)return;
   fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
     body:JSON.stringify({to:email,toName:'Contractor',eruvName:'User Message: '+S.user.name+' re '+eruvName,eruvCity:'',status:'review',
-      note:'From: '+S.user.name+'\nEmail: '+S.user.email+(S.user.phone?'\nPhone: '+S.user.phone:'')+'\n\nMessage:\n"'+msg+'"',
+      note:'👤 Name: '+S.user.name+'\n📧 Email: '+S.user.email+(S.user.phone?'\n📱 Phone: '+S.user.phone:'')+'\n\n💬 Message:\n'+msg,
       timestamp:new Date().toLocaleDateString()})
   }).then(function(){toast('Message sent!','ok');}).catch(function(){toast('Could not send','err');});
 }
