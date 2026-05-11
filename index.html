@@ -2177,7 +2177,37 @@ function renderAdmin(sec){
     });
     body.innerHTML='<span class="adm-sec">Users ('+users.length+')</span><input class="fi" placeholder="Search…" oninput="filterUsers(this.value)" style="margin-bottom:9px;padding:7px 11px;font-size:.79rem"><div id="userListEl">'+mkUserList(users,'')+'</div>';
   }else if(sec==='contractors'){
-    body.innerHTML='<span class="adm-sec">Add Contractor</span><div class="acard" style="margin-bottom:12px"><div class="fg"><label class="lbl">Email</label><input class="fi" id="addCtEmail" placeholder="email@example.com" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Name</label><input class="fi" id="addCtName" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Area</label><input class="fi" id="addCtArea" style="padding:7px 10px;font-size:.8rem"></div><button class="act-btn ap" onclick="adminAddCt()" style="width:100%;padding:7px">Add as Contractor</button></div><span class="adm-sec">Active & Pending</span>'+(conts.length?conts.map(function(u){return '<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge '+(u.status==='approved'?'b-up':'b-rv')+'">'+(u.status==='approved'?'Active':'Pending')+'</span></div>'+'<div class="act-row">'+(u.status==='pending'?'<button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button>':'<button class="act-btn ar" onclick="removeContractor(\''+u.email+'\')">Remove</button>')+'</div></div>';}).join(''):'<div style="font-size:.8rem;color:var(--muted)">No contractors yet.</div>');
+    if(window._db)window._db.loadContractors().then(function(fresh){if(fresh)window._fsContractors=fresh;renderAdmin('contractors');});
+    var pending=conts.filter(function(c){return c.status==='pending';});
+    var active=conts.filter(function(c){return c.status==='approved';});
+    var html='<span class="adm-sec">Pending Applications ('+pending.length+')</span>';
+    if(!pending.length)html+='<div style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">No pending applications.</div>';
+    pending.forEach(function(c){
+      html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+c.name+'</div>'
+        +'<div class="acard-mt">'+c.email+(c.phone?' · '+c.phone:'')+'</div>'
+        +(c.area?'<div class="acard-mt">📍 '+c.area+'</div>':'')
+        +(c.rov?'<div class="acard-mt">Rov: '+c.rov+'</div>':'')
+        +'</div><span class="badge b-rv">Pending</span></div>'
+        +'<div class="act-row">'
+        +'<button class="act-btn ap" onclick="approveC(''+c.email+'')">Approve</button>'
+        +'<button class="act-btn ar" onclick="rejectC(''+c.email+'')">Reject</button>'
+        +'</div></div>';
+    });
+    html+='<span class="adm-sec" style="margin-top:10px">Active Contractors ('+active.length+')</span>';
+    if(!active.length)html+='<div style="font-size:.8rem;color:var(--muted);">No active contractors.</div>';
+    active.forEach(function(c){
+      var zones=S.eruvin.filter(function(e){return e.owner===c.email;});
+      html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+c.name+'</div>'
+        +'<div class="acard-mt"><a href="mailto:'+c.email+'" style="color:var(--blue)">'+c.email+'</a>'+(c.phone?' · <a href="tel:'+c.phone+'" style="color:var(--blue)">'+c.phone+'</a>':'')+'</div>'
+        +(c.area?'<div class="acard-mt">📍 '+c.area+'</div>':'')
+        +(c.rov?'<div class="acard-mt">Rov: '+c.rov+'</div>':'')
+        +(c.donateUrl?'<div class="acard-mt"><a href="'+c.donateUrl+'" target="_blank" style="color:var(--blue)">Donation link</a></div>':'')
+        +'<div class="acard-mt" style="color:var(--muted)">'+zones.length+' zone(s)</div>'
+        +'</div><span class="badge b-up">Active</span></div>'
+        +'<div class="act-row"><button class="act-btn ar" onclick="removeContractor(''+c.email+'')">Remove</button></div>'
+        +'</div>';
+    });
+    body.innerHTML=html;
   }else if(sec==='shuls'){
     var shuls=S.shuls||[];
     var html='<span class="adm-sec">Shuls ('+shuls.length+')</span>';
