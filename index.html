@@ -518,7 +518,7 @@ header{
           <div style="font-size:.65rem;color:var(--muted);padding:0 14px 6px;line-height:1.4;">SMS alerts opt-in. Msg &amp; data rates may apply. Reply STOP to unsubscribe.</div>
         </div>
         <button class="u-drop-it" onclick="goAlerts()">&#128276; My Alerts</button>
-        <button class="u-drop-it" id="becomeContractorBtn" onclick="closeDrop();switchAuthTab('ct');openModal('vMain')" style="display:none">🔨 Become a Contractor</button>
+        <button class="u-drop-it" id="becomeContractorBtn" onclick="closeDrop();openContractorApply()" style="display:none">🔨 Become a Contractor</button>
         <div class="u-drop-sep"></div>
         <button class="u-drop-it red" onclick="doSignOut()">Sign Out</button>
       </div>
@@ -662,7 +662,7 @@ header{
         <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px;">
           <button id="authTabSI" onclick="switchAuthTab('si')" style="flex:1;padding:7px;border:none;background:var(--navy);color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign In</button>
           <button id="authTabSU" onclick="switchAuthTab('su')" style="flex:1;padding:7px;border:none;background:#fff;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;">Sign Up</button>
-          <button id="authTabCT" onclick="switchAuthTab('ct')" style="flex:1;padding:7px;border:none;background:#fff;color:var(--muted);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;border-left:1px solid var(--border);">🔨 Contractor</button>
+
         </div>
         <!-- Sign In fields -->
         <div id="authSIFields">
@@ -680,18 +680,7 @@ header{
           <div class="e-msg" id="rErr"></div>
           <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
         </div>
-        <!-- Contractor tab -->
-        <div id="authCTFields" style="display:none">
-          <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="cName2" type="text"></div>
-          <div class="fg"><label class="lbl">Email</label><input class="fi" id="cEmail2" type="email"></div>
-          <div class="fg"><label class="lbl">Phone</label><input class="fi" id="cPhone2" type="tel"></div>
-          <div class="fg"><label class="lbl">Service Area</label><input class="fi" id="cArea2" placeholder="e.g. Brooklyn, NY" oninput="identifyCity(this.value,'cArea2Hint')"></div>
-          <div id="cArea2Hint" style="font-size:.71rem;color:var(--blue);margin-top:-6px;margin-bottom:8px;min-height:16px;"></div>
-          <div class="fg"><label class="lbl">Rabbinic Oversight</label><input class="fi" id="cRov2" placeholder="e.g. Rabbi Y. Goldstein, Beth Din of..."></div>
-          <div class="fg"><label class="lbl">Donation Link</label><input class="fi" id="cDonate2" type="url" placeholder="https://..."></div>
-          <div class="e-msg" id="cErr2"></div>
-          <button class="btn btn-navy btn-full" onclick="doContractorApply2()">Submit Application</button>
-        </div>
+
       </div>
 
       <div id="vForgot" style="display:none">
@@ -1824,11 +1813,8 @@ function switchAuthTab(tab){
   document.getElementById('authTabSI').style.color=isSI?'#fff':'var(--muted)';
   document.getElementById('authTabSU').style.background=isSU?'var(--navy)':'#fff';
   document.getElementById('authTabSU').style.color=isSU?'#fff':'var(--muted)';
-  document.getElementById('authTabCT').style.background=isCT?'var(--navy)':'#fff';
-  document.getElementById('authTabCT').style.color=isCT?'#fff':'var(--muted)';
   document.getElementById('authSIFields').style.display=isSI?'block':'none';
   document.getElementById('authSUFields').style.display=isSU?'block':'none';
-  document.getElementById('authCTFields').style.display=isCT?'block':'none';
 }
 function autoFillZoneCity(placeName){
   if(!placeName)return;
@@ -1857,6 +1843,16 @@ function identifyCity(val,hintId){
         }else{hint.textContent='';}
       }).catch(function(){hint.textContent='';});
   },600);
+}
+function openContractorApply(){
+  if(!S.user){toast('Please sign in first','err');return;}
+  showV('vContractor');
+  openModal('vMain');
+  // Pre-fill name if shown
+  var nameEl=document.getElementById('cName');
+  var emailEl=document.getElementById('cEmail');
+  if(nameEl)nameEl.value=S.user.name||'';
+  if(emailEl)emailEl.value=S.user.email||'';
 }
 function doContractorApply2(){
   var name=(document.getElementById('cName2')&&document.getElementById('cName2').value.trim())||'';
@@ -2062,6 +2058,13 @@ function admDel(id){
   toast('Zone deleted','ok');
 }
 
+function removeContractor(email){
+  if(!confirm('Remove '+email+' as contractor?'))return;
+  var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
+  if(u){u.role='user';u.contractorStatus='';_cacheAndSaveUser(u);}
+  if(window._db){window._db.patchContractor(email,{status:'removed'});window._db.patchUser(email,{role:'user',contractorStatus:''});}
+  renderAdmin('contractors');toast('Contractor removed','ok');
+}
 function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
   if(u){u.role='contractor';u.contractorStatus='approved';_cacheAndSaveUser(u);}
@@ -2174,7 +2177,7 @@ function renderAdmin(sec){
     });
     body.innerHTML='<span class="adm-sec">Users ('+users.length+')</span><input class="fi" placeholder="Search…" oninput="filterUsers(this.value)" style="margin-bottom:9px;padding:7px 11px;font-size:.79rem"><div id="userListEl">'+mkUserList(users,'')+'</div>';
   }else if(sec==='contractors'){
-    body.innerHTML='<span class="adm-sec">Add Contractor</span><div class="acard" style="margin-bottom:12px"><div class="fg"><label class="lbl">Email</label><input class="fi" id="addCtEmail" placeholder="email@example.com" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Name</label><input class="fi" id="addCtName" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Area</label><input class="fi" id="addCtArea" style="padding:7px 10px;font-size:.8rem"></div><button class="act-btn ap" onclick="adminAddCt()" style="width:100%;padding:7px">Add as Contractor</button></div><span class="adm-sec">Active & Pending</span>'+(conts.length?conts.map(function(u){return '<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge '+(u.status==='approved'?'b-up':'b-rv')+'">'+(u.status==='approved'?'Active':'Pending')+'</span></div>'+(u.status==='pending'?'<div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div>':'')+'</div>';}).join(''):'<div style="font-size:.8rem;color:var(--muted)">No contractors yet.</div>');
+    body.innerHTML='<span class="adm-sec">Add Contractor</span><div class="acard" style="margin-bottom:12px"><div class="fg"><label class="lbl">Email</label><input class="fi" id="addCtEmail" placeholder="email@example.com" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Name</label><input class="fi" id="addCtName" style="padding:7px 10px;font-size:.8rem"></div><div class="fg"><label class="lbl">Area</label><input class="fi" id="addCtArea" style="padding:7px 10px;font-size:.8rem"></div><button class="act-btn ap" onclick="adminAddCt()" style="width:100%;padding:7px">Add as Contractor</button></div><span class="adm-sec">Active & Pending</span>'+(conts.length?conts.map(function(u){return '<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge '+(u.status==='approved'?'b-up':'b-rv')+'">'+(u.status==='approved'?'Active':'Pending')+'</span></div>'+'<div class="act-row">'+(u.status==='pending'?'<button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button>':'<button class="act-btn ar" onclick="removeContractor(\''+u.email+'\')">Remove</button>')+'</div></div>';}).join(''):'<div style="font-size:.8rem;color:var(--muted)">No contractors yet.</div>');
   }else if(sec==='shuls'){
     var shuls=S.shuls||[];
     var html='<span class="adm-sec">Shuls ('+shuls.length+')</span>';
@@ -3385,7 +3388,7 @@ const COL = {
 // ── Expose Google Auth to non-module scripts ─────────────────────────────────
 window._firebaseAuth = auth;
 window._auth = auth;
-window._sendPasswordReset = (email) => sendPasswordResetEmail(auth, email);
+window._sendPasswordReset = (email) => sendPasswordResetEmail(auth, email).then(() => true);
 window._googleSignIn = async function(role) {
   try {
     let result;
