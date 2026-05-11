@@ -1879,15 +1879,12 @@ function doForgotPassword(){
   var err=document.getElementById('forgotErr');
   err.style.display='none';
   if(!email){err.textContent='Please enter your email.';err.style.display='block';return;}
-  var auth=window._firebaseAuth||window._auth;
-  if(!auth){err.textContent='Auth not ready. Please refresh and try again.';err.style.display='block';return;}
-  import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js').then(function(m){
-    m.sendPasswordResetEmail(auth,email).then(function(){
-      err.style.cssText='display:block;color:green;';
-      err.textContent='✅ Reset link sent! Check your inbox (and spam folder).';
-    }).catch(function(e){
-      err.textContent=e.message||'Error sending reset email.';err.style.display='block';
-    });
+  if(!window._sendPasswordReset){err.textContent='Auth not ready. Please refresh.';err.style.display='block';return;}
+  window._sendPasswordReset(email).then(function(){
+    err.style.cssText='display:block;color:green;';
+    err.textContent='✅ Reset link sent! Check your inbox.';
+  }).catch(function(e){
+    err.textContent=e.message||'Error sending reset email.';err.style.display='block';
   });
 }
 function doGoogle(role){
@@ -3388,6 +3385,7 @@ const COL = {
 // ── Expose Google Auth to non-module scripts ─────────────────────────────────
 window._firebaseAuth = auth;
 window._auth = auth;
+window._sendPasswordReset = (email) => sendPasswordResetEmail(auth, email);
 window._googleSignIn = async function(role) {
   try {
     let result;
