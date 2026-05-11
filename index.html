@@ -975,7 +975,15 @@ mapboxgl.accessToken=TOKEN;
 const PROX='-74.006,40.712';
 const SCOL={up:'#22a865',review:'#e08020',down:'#d94040'};
 let S={user:null,eruvin:[],shuls:[],resultEruv:null,mapFs:false,alerts:[],acData:{},acFocused:{},routeStart:null,routeEnd:null,exclMode:false,editTargetId:null,curExcl:[],curAdj:[],routeLayerId:null,exitLayerIds:[],lastCoords:null};
-const BASE_ERUVIN=[];
+const BASE_ERUVIN=[
+  {id:'brooklyn',name:'Brooklyn Eiruv',city:'Brooklyn, NY',status:'up',note:'',center:[-73.9496,40.6501],coords:[[-74.016,40.577],[-73.973,40.575],[-73.917,40.614],[-73.930,40.651],[-73.971,40.677],[-74.016,40.650],[-74.021,40.617]],exclusions:[],adjacency:[]},
+  {id:'teaneck',name:'Teaneck Eiruv',city:'Teaneck, NJ',status:'up',note:'',center:[-74.0138,40.8945],coords:[[-74.051,40.878],[-74.018,40.875],[-73.989,40.892],[-73.990,40.915],[-74.020,40.927],[-74.051,40.910]],exclusions:[],adjacency:[]},
+  {id:'monsey',name:'Monsey Eiruv',city:'Monsey, NY',status:'up',note:'',center:[-74.0704,41.1112],coords:[[-74.100,41.090],[-74.055,41.088],[-74.040,41.108],[-74.055,41.135],[-74.100,41.135]],exclusions:[],adjacency:[]},
+  {id:'fivetowns',name:'Five Towns Eiruv',city:'Woodmere, NY',status:'up',note:'',center:[-73.7112,40.6348],coords:[[-73.748,40.615],[-73.700,40.613],[-73.685,40.638],[-73.700,40.660],[-73.748,40.658]],exclusions:[],adjacency:[]},
+  {id:'skokie',name:'Skokie Eiruv',city:'Skokie, IL',status:'up',note:'',center:[-87.7476,42.0331],coords:[[-87.780,42.015],[-87.725,42.015],[-87.725,42.050],[-87.780,42.050]],exclusions:[],adjacency:[]},
+  {id:'silverspring',name:'Silver Spring Eiruv',city:'Silver Spring, MD',status:'up',note:'',center:[-77.0256,39.0040],coords:[[-77.055,38.988],[-77.005,38.988],[-77.005,39.020],[-77.055,39.020]],exclusions:[],adjacency:[]},
+  {id:'pico',name:'Pico-Robertson Eiruv',city:'Los Angeles, CA',status:'up',note:'',center:[-118.3820,34.0540],coords:[[-118.410,34.038],[-118.360,34.038],[-118.360,34.068],[-118.410,34.068]],exclusions:[],adjacency:[]}
+];
 var _deletedIds=(function(){try{return JSON.parse(localStorage.getItem('myeiruv_deleted')||'[]');}catch(_){return [];}}());
 S.eruvin=BASE_ERUVIN.filter(e=>!_deletedIds.includes(e.id)).map(e=>Object.assign({},e,{exclusions:[],adjacency:(e.adjacency||[]).slice()}));
 
