@@ -3762,9 +3762,13 @@ window._db = {
 
 // Back button support
 window.addEventListener('popstate',function(e){
-  var tab=(e.state&&e.state.tab)||'status';
-  var btn=document.querySelector('.s-tab[onclick*="sTab(this,\'"+tab+"\')"]')||document.querySelector('.s-tab');
-  if(btn)btn.click();
+  var tab=(e.state&&e.state.tab)||new URLSearchParams(location.search).get('tab')||'status';
+  var tabs=document.querySelectorAll('.s-tab');
+  for(var i=0;i<tabs.length;i++){
+    var oc=tabs[i].getAttribute('onclick')||'';
+    if(oc.indexOf("'"+tab+"'")>=0){tabs[i].click();return;}
+  }
+  if(tabs[0])tabs[0].click();
 });
 // Restore session immediately from localStorage (cross-tab persistence)
 (function(){
