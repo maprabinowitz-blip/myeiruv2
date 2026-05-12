@@ -1398,11 +1398,14 @@ function planRoute(){
 
     // Try Google first (most accurate walking), fallback to OSRM
     function tryOSRM(){
-      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true&annotations=true')
-      .then(function(r){return r.json();}).then(function(d){
+      // Use Mapbox walking directions - reliable, true pedestrian routing
+      var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
+        +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
+        +'?overview=full&geometries=geojson&steps=true&access_token='+TOKEN;
+      fetch(url).then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){
           var r=d.routes[0];
-          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
+          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox-walk'};
           _routeCache[ck]=result;processRoute(result,sc,ec);
         } else {toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
