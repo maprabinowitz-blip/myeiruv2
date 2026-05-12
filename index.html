@@ -2207,7 +2207,7 @@ function renderAdmin(sec){
         +(c.donateUrl?'<div class="acard-mt"><a href="'+c.donateUrl+'" target="_blank" style="color:var(--blue)">Donation link</a></div>':'')
         +'<div class="acard-mt" style="color:var(--muted)">'+zones.length+' zone(s)</div>'
         +'</div><span class="badge b-up">Active</span></div>'
-        +'<div class="act-row"><button class="act-btn ar" onclick="removeContractor(''+c.email+'')">Remove</button></div>'
+        +'<div class="act-row"><button class="act-btn ar" onclick="removeContractor(this.getAttribute('data-e'))" data-e="'+c.email+'">' +'Remove</button></div>'
         +'</div>';
     });
     body.innerHTML=html;
