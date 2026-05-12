@@ -320,7 +320,7 @@ header{
 .draw-search-wrap .ac-box{border-radius:0 0 14px 14px;}
 
 /* ── Zone Panel ── */
-.zone-panel{position:absolute;top:14px;right:14px;background:rgba(8,15,26,.92);border:1px solid rgba(255,255,255,.09);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.55);width:250px;z-index:20;max-height:calc(100vh - 52px - 52px - 36px);overflow-y:auto;backdrop-filter:blur(20px);display:flex;flex-direction:column;}
+.zone-panel{position:absolute;top:14px;right:14px;background:rgba(8,15,26,.92);border:1px solid rgba(255,255,255,.09);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.55);width:250px;z-index:20;max-height:calc(100vh - 52px - 52px - 36px);overflow-y:auto;backdrop-filter:blur(20px);display:flex;flex-direction:column;transition:all .2s;}
 .zone-panel::-webkit-scrollbar{width:3px;}.zone-panel::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px;}
 
 /* Phase: drawing (step 1) */
@@ -897,13 +897,17 @@ header{
 
 
 
+    <!-- Zone panel toggle -->
+    <button id="zonePanelToggle" onclick="toggleZonePanel()" style="position:absolute;top:14px;right:14px;z-index:21;background:rgba(8,15,26,.92);border:1px solid rgba(255,255,255,.09);border-radius:8px;color:rgba(255,255,255,.6);padding:6px 10px;cursor:pointer;font-size:.75rem;display:none;backdrop-filter:blur(10px);">☰ Details</button>
     <!-- Zone panel -->
     <div class="zone-panel" id="zonePanel">
+      <!-- Minimize zone panel button -->
+      <button onclick="toggleZonePanel()" style="position:absolute;top:8px;right:8px;z-index:5;border:none;background:none;color:rgba(255,255,255,.3);font-size:.9rem;cursor:pointer;padding:2px 6px;border-radius:4px;" title="Minimize panel">×</button>
       <!-- Step 1: drawing guidance -->
       <div class="zp-draw-guide" id="zpDrawGuide" style="position:relative">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div class="zp-phase-label">Drawing boundary</div>
-          <button onclick="document.getElementById('zpDrawGuide').style.display='none'" style="border:none;background:none;color:rgba(255,255,255,.4);font-size:1.1rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;" title="Hide guide">✕</button>
+          <button onclick="var g=document.getElementById('zpDrawGuide');g.style.display='none'" style="border:none;background:none;color:rgba(255,255,255,.4);font-size:1.1rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0;" title="Hide guide">✕</button>
         </div>
         <div class="zp-steps-list" style="margin-top:10px;">
           <div class="zp-step"><div class="zp-step-n">1</div><div><strong>Click the map</strong> to place boundary points — a line connects each one as you go</div></div>
@@ -2883,6 +2887,15 @@ function setStatus(val,silent){
   if(!silent)checkSaveReady();
 }
 
+function toggleZonePanel(){
+  var panel=document.getElementById('zonePanel');
+  var btn=document.getElementById('zonePanelToggle');
+  if(!panel||!btn)return;
+  var hidden=panel.style.display==='none';
+  panel.style.display=hidden?'flex':'none';
+  btn.style.display=hidden?'none':'block';
+  btn.style.right=hidden?'14px':'14px';
+}
 function clearAllPoints(){
   if(!confirm('Clear all points and start over?'))return;
   if(typeof Draw!=='undefined'&&Draw)Draw.deleteAll();
