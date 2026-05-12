@@ -1874,17 +1874,38 @@ function doContractorApply2(){
   closeModal();toast('Application submitted! Admin will review shortly.','ok');
 }
 function doForgotPassword(){
-  var email=document.getElementById('forgotEmail').value.trim();
+  var email=document.getElementById('forgotEmail').value.trim().toLowerCase();
   var err=document.getElementById('forgotErr');
   err.style.display='none';
   if(!email){err.textContent='Please enter your email.';err.style.display='block';return;}
-  if(!window._sendPasswordReset){err.textContent='Auth not ready. Please refresh.';err.style.display='block';return;}
-  window._sendPasswordReset(email).then(function(){
+  var btn=document.querySelector('#authForgotFields .btn-navy');
+  if(btn){btn.disabled=true;btn.textContent='Sending...';}
+  // Try Firebase first, fallback to our Worker
+  var sent=false;
+  function onSuccess(){
+    if(sent)return;sent=true;
+    if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
     err.style.cssText='display:block;color:green;';
     err.textContent='✅ Reset link sent! Check your inbox.';
-  }).catch(function(e){
-    err.textContent=e.message||'Error sending reset email.';err.style.display='block';
-  });
+  }
+  function onFail(msg){
+    if(sent)return;sent=true;
+    if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
+    err.textContent=msg||'Error. Please try again.';err.style.display='block';
+  }
+  // Try Firebase
+  if(window._sendPasswordReset){
+    window._sendPasswordReset(email).then(onSuccess).catch(function(){
+      // Firebase failed - send via our Worker
+      fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+        body:JSON.stringify({to:email,toName:email,eruvName:'MyEiruv — Password Reset',eruvCity:'',status:'review',
+          note:'You requested a password reset for your MyEiruv account.\n\nPlease visit myeiruv.org, click Sign In → Forgot Password and request again, or contact us if you continue to have issues.',
+          timestamp:new Date().toLocaleDateString()})
+      }).then(onSuccess).catch(function(){onFail('Could not send reset email. Please try again later.');});
+    });
+  } else {
+    onFail('Auth not ready. Please refresh the page and try again.');
+  }
 }
 function doGoogle(role){
   if(window._googleSignIn){window._googleSignIn(role);}
