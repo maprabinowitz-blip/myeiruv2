@@ -115,3 +115,70 @@ function cors(body,status,origin){
     'Vary':'Origin'
   }});
 }
+
+// ── CRON: Friday eiruv status alerts ─────────────────────────────────────────
+// Runs every Friday - check wrangler.toml for schedule
+export const scheduled = {
+  async scheduled(event, env, ctx) {
+    // Get current hour in ET (UTC-4 in summer, UTC-5 in winter)
+    const now = new Date();
+    const hour = now.getUTCHours() - 4; // rough EST
+    
+    // Load all active alerts from Firestore via REST API
+    const fsUrl = `https://firestore.googleapis.com/v1/projects/myeiruv-a9b88/databases/(default)/documents/alerts?pageSize=200&key=${env.FIREBASE_KEY}`;
+    const alertsRes = await fetch(fsUrl);
+    const alertsData = await alertsRes.json();
+    const alerts = (alertsData.documents||[]).map(d => {
+      const f = d.fields||{};
+      return {
+        userEmail: f.userEmail?.stringValue,
+        userName: f.userName?.stringValue||'',
+        userPhone: f.userPhone?.stringValue||'',
+        eruvName: f.eruvName?.stringValue||f.eruv?.stringValue||'',
+        city: f.city?.stringValue||'',
+        fridayTime: f.fridayTime?.stringValue||'09:00',
+        viaEmail: f.viaEmail?.booleanValue!==false,
+        viaSms: f.viaSms?.booleanValue===true,
+        active: f.active?.booleanValue!==false,
+      };
+    }).filter(a => a.active && a.userEmail);
+
+    // Load zones to get current status
+    const zonesRes = await fetch(`https://firestore.googleapis.com/v1/projects/myeiruv-a9b88/databases/(default)/documents/zones?pageSize=100&key=${env.FIREBASE_KEY}`);
+    const zonesData = await zonesRes.json();
+    const zones = {};
+    (zonesData.documents||[]).forEach(d => {
+      const f = d.fields||{};
+      const id = d.name.split('/').pop();
+      zones[id] = {
+        name: f.name?.stringValue||id,
+        status: f.status?.stringValue||'up',
+        note: f.note?.stringValue||'',
+        city: f.city?.stringValue||'',
+      };
+    });
+
+    // Send to alerts where fridayTime matches current hour
+    const currentHour = String(hour).padStart(2,'0')+':00';
+    const toSend = alerts.filter(a => a.fridayTime === currentHour || (!a.fridayTime && currentHour === '09:00'));
+    
+    for (const alert of toSend) {
+      const zone = Object.values(zones).find(z => z.name === alert.eruvName);
+      if (!zone) continue;
+      const sl = {up:'✅ Up & Kosher',review:'⚠️ Under Review',down:'❌ Down'};
+      const sc = {up:'#16a05a',review:'#d97706',down:'#d03030'};
+      if (alert.viaEmail && alert.userEmail) {
+        await fetch('https://api.brevo.com/v3/smtp/email', {
+          method:'POST', headers:{'Content-Type':'application/json','api-key':env.BREVO_KEY},
+          body: JSON.stringify({
+            sender:{name:'MyEiruv',email:'noreply@myeiruv.org'},
+            to:[{email:alert.userEmail,name:alert.userName||alert.userEmail}],
+            subject:`${alert.eruvName} — Shabbos Status Update`,
+            htmlContent:`<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto"><div style="background:linear-gradient(135deg,#0a1628,#1a3055);padding:24px 32px"><h1 style="color:#fff;margin:0;font-size:20px">MyEiruv</h1><p style="color:rgba(255,255,255,.6);margin:4px 0 0;font-size:12px;letter-spacing:2px">SHABBOS STATUS UPDATE</p></div><div style="padding:28px 32px"><h2 style="margin:0 0 4px;color:#0f1f38">${alert.eruvName}</h2><p style="color:#6b7a99;margin:0 0 16px">${alert.city}</p><div style="border-left:4px solid ${sc[zone.status]||'#666'};padding:12px 16px;background:#f4f6fb;border-radius:0 8px 8px 0"><p style="margin:0;font-size:18px;font-weight:700;color:${sc[zone.status]||'#666'}">${sl[zone.status]||zone.status}</p>${zone.note?`<p style="margin:8px 0 0;color:#444;font-size:14px">${zone.note}</p>`:''}</div><p style="margin-top:16px"><a href="https://myeiruv.org" style="color:#2563b0">View on MyEiruv →</a></p><p style="font-size:11px;color:#999">Reply STOP to unsubscribe from Friday reminders.</p></div></div>`
+          })
+        });
+      }
+    }
+    console.log(`[Cron] Sent ${toSend.length} Friday alerts for hour ${currentHour}`);
+  }
+};
