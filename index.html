@@ -705,6 +705,14 @@ header{
       <div id="vEruvDetail" style="display:none">
         <div id="eruvDetailBody"></div>
       </div>
+      <div id="vResetPwd" style="display:none">
+        <div class="modal-title">Set New Password</div>
+        <input type="hidden" id="resetTokenVal">
+        <input type="hidden" id="resetEmailVal">
+        <div class="fg"><label class="lbl">New Password</label><input class="fi" id="resetNewPass" type="password" placeholder="Min 6 characters"></div>
+        <div class="e-msg" id="resetPwdErr"></div>
+        <button class="btn btn-navy btn-full" onclick="doResetPassword()">Set Password</button>
+      </div>
       <div id="vContractor" style="display:none">
         <div class="modal-title">Contractor Application</div>
         <div class="modal-sub">Admin will review your application before you can create zones.</div>
@@ -1822,7 +1830,7 @@ function _cacheAndSaveUser(user){
 }
 function openModal(v){document.getElementById('authBd').classList.add('on');showV(v);}
 function closeModal(){document.getElementById('authBd').classList.remove('on');}
-function showV(id){['vMain','vRegister','vContractor','vForgot','vEruvDetail'].forEach(function(v){var el=document.getElementById(v);if(el)el.style.display=v===id?'block':'none';});}
+function showV(id){['vMain','vRegister','vContractor','vForgot','vEruvDetail','vResetPwd'].forEach(function(v){var el=document.getElementById(v);if(el)el.style.display=v===id?'block':'none';});}
 function switchAuthTab(tab){
   var isSI=tab==='si',isSU=tab==='su',isCT=tab==='ct';
   document.getElementById('authTabSI').style.background=isSI?'var(--navy)':'#fff';
@@ -1893,40 +1901,56 @@ function doForgotPassword(){
   if(!email){err.textContent='Please enter your email.';err.style.display='block';return;}
   var btn=document.querySelector('#authForgotFields .btn-navy');
   if(btn){btn.disabled=true;btn.textContent='Sending...';}
-  // Try Firebase first, fallback to our Worker
-  var sent=false;
-  function onSuccess(){
-    if(sent)return;sent=true;
-    if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
-    err.style.cssText='display:block;color:green;';
-    err.textContent='✅ Reset link sent! Check your inbox.';
-  }
-  function onFail(msg){
-    if(sent)return;sent=true;
-    if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
-    err.textContent=msg||'Error. Please try again.';err.style.display='block';
-  }
-  // Try Firebase
-  if(window._sendPasswordReset){
-    window._sendPasswordReset(email).then(onSuccess).catch(function(){
-      // Firebase failed - send helpful email via Worker
-      fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'user-message'},
-        body:JSON.stringify({
-          to:'maprabinowitz@gmail.com',
-          fromName:'Password Reset Request',
-          fromEmail:email,
-          fromPhone:'',
-          eruvName:'Password Reset Request',
-          message:'User '+email+' requested a password reset but Firebase failed. Please assist them manually.'
-        })
-      }).then(function(){
-        err.style.cssText='display:block;color:green;';
-        err.textContent='✅ Request sent! Admin will contact you shortly to reset your password.';
-      }).catch(function(){onFail('Network error. Please try again or contact support.');});
+  // Generate reset token and save to Firestore
+  var token=Math.random().toString(36).slice(2)+Date.now().toString(36);
+  var resetDoc={email:email,token:token,createdAt:new Date().toISOString(),used:false};
+  var saved=false;
+  function sendResetEmail(){
+    var resetUrl='https://myeiruv.org?reset='+token+'&email='+encodeURIComponent(email);
+    fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+      body:JSON.stringify({
+        to:email,toName:email,
+        eruvName:'Reset Your MyEiruv Password',
+        eruvCity:'',status:'review',
+        note:'Click the link below to reset your password:\n\n'+resetUrl+'\n\nThis link expires in 1 hour. If you did not request this, ignore this email.',
+        timestamp:new Date().toLocaleDateString()
+      })
+    }).then(function(){
+      if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
+      err.style.cssText='display:block;color:green;';
+      err.textContent='✅ Reset link sent! Check your inbox.';
+    }).catch(function(){
+      if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
+      err.textContent='Could not send email. Please try again.';err.style.display='block';
     });
-  } else {
-    onFail('Auth not ready. Please refresh the page and try again.');
   }
+  if(window._db){
+    window._db.saveResetToken(resetDoc).then(sendResetEmail).catch(sendResetEmail);
+  } else { sendResetEmail(); }
+}
+function checkResetToken(){
+  var params=new URLSearchParams(location.search);
+  var token=params.get('reset'),email=params.get('email');
+  if(!token||!email)return;
+  // Show reset password form
+  document.getElementById('resetTokenVal').value=token;
+  document.getElementById('resetEmailVal').value=email;
+  openModal('vMain');showV('vResetPwd');
+}
+function doResetPassword(){
+  var token=document.getElementById('resetTokenVal').value;
+  var email=document.getElementById('resetEmailVal').value;
+  var pass=document.getElementById('resetNewPass').value;
+  var err=document.getElementById('resetPwdErr');
+  if(!pass||pass.length<6){err.textContent='Password must be at least 6 characters.';err.style.display='block';return;}
+  // Update user password in Firestore
+  if(window._db)window._db.patchUser(email,{password:btoa(pass)});
+  // Sign user in
+  var user=getUsers().find(function(u){return u.email===email;});
+  if(user){user.password=btoa(pass);_cacheAndSaveUser(user);signInAs(user);}
+  closeModal();
+  toast('Password updated! You are now signed in.','ok');
+  history.replaceState({},'','/');
 }
 function doGoogle(role){
   if(window._googleSignIn){window._googleSignIn(role);}
@@ -3694,6 +3718,10 @@ window._db = {
     try { await updateDoc(doc(db,"alerts",id), fields); return true; }
     catch(e) { return false; }
   },
+  async saveResetToken(doc) {
+    try { await setDoc(doc(db,"resets",doc.token), doc); return true; }
+    catch(e) { console.error("saveResetToken:",e); return false; }
+  },
   async saveMessage(msg) {
     try { await setDoc(doc(db,"messages",msg.id), msg); return true; }
     catch(e) { console.error("saveMessage:",e); return false; }
@@ -3746,6 +3774,7 @@ window.addEventListener('popstate',function(e){
   }catch(e){}
 })();
 window._db.bootAll();
+checkResetToken();
 </script>
 <!-- Footer disclaimer -->
 <div id="site-footer" style="position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(15,31,56,.92);backdrop-filter:blur(8px);padding:5px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none;border-top:1px solid rgba(255,255,255,.08);">
