@@ -2847,15 +2847,22 @@ function _setDrawStep(step){
   }else if(step===2){
     if(guide)guide.style.display='none';
     if(details)details.style.display='flex';
-    if(hint){hint.innerHTML='<strong>Boundary complete — now fine-tune if needed</strong>Use Move Points to drag any vertex, or go straight to Step 3 in the panel →';}
+    // Always show zone panel when boundary is completed
+    var panel=document.getElementById('zonePanel');
+    var toggle=document.getElementById('zonePanelToggle');
+    if(panel){panel.style.display='flex';}
+    if(toggle){toggle.style.display='none';}
+    if(hint){hint.innerHTML='<strong>Boundary complete — now fill in the details</strong>Name and city are required to save.';}
     document.getElementById('drawModeBadge').textContent='Edit';
     if(saveBtn){saveBtn.style.opacity='.4';saveBtn.style.pointerEvents='none';}
-    // Unlock Move Points now that boundary exists
     var editBtn=document.getElementById('dBtn-edit');
     if(editBtn){editBtn.style.opacity='';editBtn.style.pointerEvents='';editBtn.title='';}
     updateVtxCount();
     // Auto-focus zone name
-    setTimeout(function(){var el=document.getElementById('zoneName');if(el)el.focus();},300);
+    setTimeout(function(){
+      var el=document.getElementById('zoneName');
+      if(el){el.focus();el.scrollIntoView({behavior:'smooth',block:'center'});}
+    },300);
   }else if(step===3){
     if(hint){hint.innerHTML='<strong>Almost done — fill in the zone details and save</strong>Name and city are required. Status shows members whether they can carry today.';}
     if(saveBtn){saveBtn.style.opacity='1';saveBtn.style.pointerEvents='auto';}
