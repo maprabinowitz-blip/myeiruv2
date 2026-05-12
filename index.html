@@ -878,6 +878,12 @@ header{
         <div class="dp-btn-label">Exclusion zone<span>Draw area to exclude</span></div>
       </button>
       <div class="dp-div"></div>
+      <div class="dp-div"></div>
+      <button class="dp-btn" onclick="clearAllPoints()" title="Clear all" style="color:#d94040">
+        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        <div class="dp-btn-label">Clear all<span>Remove all points</span></div>
+      </button>
+      <div class="dp-div"></div>
       <button class="dp-btn dp-undo-btn" id="undoPill" onclick="undoDraw()">
         <svg viewBox="0 0 24 24"><path d="M3 9h13a4 4 0 0 1 0 8h-2"/><polyline points="3 5 3 9 7 9"/></svg>
         <div class="dp-btn-label">Undo<span>Remove last action</span></div>
@@ -2870,6 +2876,14 @@ function setStatus(val,silent){
   if(!silent)checkSaveReady();
 }
 
+function clearAllPoints(){
+  if(!confirm('Clear all points and start over?'))return;
+  if(typeof Draw!=='undefined'&&Draw)Draw.deleteAll();
+  S.curExcl=[];importedCoords=null;
+  _drawHistory=[];_undoStack=[];
+  _setDrawStep(1);updateVtxCount();checkSaveReady();renderExclList();
+  toast('Cleared — start drawing','ok');
+}
 function redrawBoundary(){
   if(!Draw)return;
   // Remove main boundary only, keep exclusions
