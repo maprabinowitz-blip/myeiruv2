@@ -1909,12 +1909,20 @@ function doForgotPassword(){
   // Try Firebase
   if(window._sendPasswordReset){
     window._sendPasswordReset(email).then(onSuccess).catch(function(){
-      // Firebase failed - send via our Worker
-      fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-        body:JSON.stringify({to:email,toName:email,eruvName:'MyEiruv — Password Reset',eruvCity:'',status:'review',
-          note:'You requested a password reset for your MyEiruv account.\n\nPlease visit myeiruv.org, click Sign In → Forgot Password and request again, or contact us if you continue to have issues.',
-          timestamp:new Date().toLocaleDateString()})
-      }).then(onSuccess).catch(function(){onFail('Could not send reset email. Please try again later.');});
+      // Firebase failed - send helpful email via Worker
+      fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'user-message'},
+        body:JSON.stringify({
+          to:'maprabinowitz@gmail.com',
+          fromName:'Password Reset Request',
+          fromEmail:email,
+          fromPhone:'',
+          eruvName:'Password Reset Request',
+          message:'User '+email+' requested a password reset but Firebase failed. Please assist them manually.'
+        })
+      }).then(function(){
+        err.style.cssText='display:block;color:green;';
+        err.textContent='✅ Request sent! Admin will contact you shortly to reset your password.';
+      }).catch(function(){onFail('Network error. Please try again or contact support.');});
     });
   } else {
     onFail('Auth not ready. Please refresh the page and try again.');
