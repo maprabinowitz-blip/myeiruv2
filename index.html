@@ -612,6 +612,17 @@ header{
             <div style="font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;">By providing your number, you agree to receive SMS eiruv status alerts. Msg &amp; data rates may apply. Reply STOP to unsubscribe.</div>
           </div>
           <div style="font-size:.72rem;color:var(--muted);padding:4px 0 8px;line-height:1.5;">📬 You'll receive an alert whenever this eiruv's status changes.</div>
+          <div class="fg"><label class="lbl">Friday Reminder</label>
+            <select class="fi" id="alertFridayTime">
+              <option value="">No Friday reminder</option>
+              <option value="07:00" >7:00 AM</option>
+              <option value="08:00">8:00 AM</option>
+              <option value="09:00" selected>9:00 AM ⭐</option>
+              <option value="10:00">10:00 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="12:00">12:00 PM</option>
+            </select>
+          </div>
           <button class="btn btn-navy btn-full" onclick="saveAlert()">Save Alert</button>
           <button class="btn btn-outline btn-full" onclick="toggleAlertForm()" style="margin-top:6px">Cancel</button>
         </div>
@@ -1743,7 +1754,8 @@ function saveAlert(){
   var viaEmail=document.getElementById('alertViaEmail')&&document.getElementById('alertViaEmail').classList.contains('on');
   var viaSms=document.getElementById('alertViaSms')&&document.getElementById('alertViaSms').classList.contains('on');
   var phone=(document.getElementById('alertPhone')&&document.getElementById('alertPhone').value.trim())||S.user.phone||'';
-  var al={id:'alert-'+Date.now(),userEmail:S.user.email.toLowerCase(),userName:S.user.name||'',userPhone:phone,city:city,eruv:eruv,eruvName:eruvName,viaEmail:viaEmail!==false,viaSms:viaSms&&!!phone,active:true,createdAt:new Date().toISOString()};
+  var fridayTime=(document.getElementById('alertFridayTime')&&document.getElementById('alertFridayTime').value)||'09:00';
+  var al={id:'alert-'+Date.now(),userEmail:S.user.email.toLowerCase(),userName:S.user.name||'',userPhone:phone,city:city,eruv:eruv,eruvName:eruvName,viaEmail:viaEmail!==false,viaSms:viaSms&&!!phone,fridayTime:fridayTime,active:true,createdAt:new Date().toISOString()};
   S.alerts.push(al);
   if(window._db)window._db.saveAlert(al);
   renderAlerts();alertOpen=false;document.getElementById('alertForm').classList.remove('on');toast('Alert saved — '+eruv,'ok');
@@ -1772,6 +1784,7 @@ function renderAlerts(){
     var methods=[];
     if(a.viaEmail!==false)methods.push('📧 Email');
     if(a.viaSms)methods.push('📱 SMS');
+    var fridayStr=a.fridayTime?'📅 Friday '+a.fridayTime:'';
     var eruvName=a.eruvName||a.eruv||'Unknown';
     return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:6px;background:#fff">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
