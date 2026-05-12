@@ -2192,8 +2192,8 @@ function renderAdmin(sec){
         +(c.rov?'<div class="acard-mt">Rov: '+c.rov+'</div>':'')
         +'</div><span class="badge b-rv">Pending</span></div>'
         +'<div class="act-row">'
-        +'<button class="act-btn ap" onclick="approveC(''+c.email+'')">Approve</button>'
-        +'<button class="act-btn ar" onclick="rejectC(''+c.email+'')">Reject</button>'
+        +'<button class="act-btn ap" onclick="approveC(\''+c.email+'\')">Approve</button>'
+        +'<button class="act-btn ar" onclick="rejectC(\''+c.email+'\')">Reject</button>'
         +'</div></div>';
     });
     html+='<span class="adm-sec" style="margin-top:10px">Active Contractors ('+active.length+')</span>';
