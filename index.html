@@ -3855,6 +3855,7 @@ checkResetToken();
 // Show install banner once
 (function(){
   if(localStorage.getItem('installBannerDismissed'))return;
+  if(!('ontouchstart' in window)||window.innerWidth>900)return;
   var isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
   var isAndroid=/android/i.test(navigator.userAgent);
   var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
