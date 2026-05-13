@@ -540,7 +540,7 @@ header{
   <div style="font-size:1.4rem;flex-shrink:0;">📲</div>
   <div style="flex:1">
     <div style="font-size:.8rem;font-weight:700;color:#fff;">Add MyEiruv to your home screen</div>
-    <div style="font-size:.7rem;color:rgba(255,255,255,.6);">Tap Share → Add to Home Screen for app-like experience</div>
+    <div id="installBannerText" style="font-size:.7rem;color:rgba(255,255,255,.6);">Tap Share → Add to Home Screen for app-like experience</div>
   </div>
   <button onclick="dismissInstallBanner()" style="border:none;background:rgba(255,255,255,.15);color:#fff;padding:5px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;white-space:nowrap;">Got it</button>
 </div>
@@ -3859,12 +3859,17 @@ checkResetToken();
   var isAndroid=/android/i.test(navigator.userAgent);
   var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
   if(isStandalone)return; // already installed
-  if(isIOS||isAndroid){
-    setTimeout(function(){
-      var b=document.getElementById('installBanner');
-      if(b)b.style.display='flex';
-    },3000);
+  if(isIOS){
+    // iOS instructions
+    var b=document.getElementById('installBannerText');
+    if(b)b.textContent='Tap Share ↑ then "Add to Home Screen"';
+    setTimeout(function(){var el=document.getElementById('installBanner');if(el)el.style.display='flex';},3000);
+  } else if(isAndroid){
+    var b=document.getElementById('installBannerText');
+    if(b)b.textContent='Tap ⋮ menu then "Add to Home Screen"';
+    setTimeout(function(){var el=document.getElementById('installBanner');if(el)el.style.display='flex';},3000);
   }
+  // Desktop: do NOT show
 })();
 function dismissInstallBanner(){
   var b=document.getElementById('installBanner');
