@@ -2164,8 +2164,17 @@ function adminAddContractor(){
   var ct={email:email,name:u.name||email,status:'approved',approvedAt:new Date().toISOString()};
   if(window._db){window._db.patchContractor(email,ct);window._db.patchUser(email,{role:'contractor',contractorStatus:'approved'});}
   if(window._fsContractors){window._fsContractors=window._fsContractors.filter(function(c){return c.email!==email;});window._fsContractors.push(ct);}
+  // Send welcome email
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({to:email,toName:u.name||email,
+      eruvName:'Welcome to MyEiruv — You have been added as a Contractor!',
+      eruvCity:'',status:'up',
+      note:'You have been added as a contractor on MyEiruv.\n\n1. Go to myeiruv.org\n2. Click Sign In and create an account with this email address\n3. You will have access to your contractor portal to create and manage eiruv zones.\n\nIf you already have an account, simply sign in and your contractor portal will be available.',
+      timestamp:new Date().toLocaleDateString()})
+  }).catch(function(){});
   renderAdmin('contractors');
-  toast(email+' added as contractor','ok');
+  document.getElementById('adminAddCtEmail').value='';
+  toast(email+' added as contractor — welcome email sent','ok');
 }
 function removeContractor(email){
   if(!confirm('Remove '+email+' as contractor?'))return;
