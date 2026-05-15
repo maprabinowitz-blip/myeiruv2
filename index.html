@@ -2393,39 +2393,29 @@ function saveCtDonateUrl(id,url){
 }
 function _mkCtZoneCard(e){
   var id=e.id;
-  var div=document.createElement('div');
-  div.className='ct-zone';
   var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status]||'b-up';
-  div.innerHTML='<div style="flex:1">'
+  var sl={up:'Up',review:'Under Review',down:'Down'};
+  return '<div class="ct-zone">'
+    +'<div style="flex:1">'
     +'<div class="ct-zone-nm">'+e.name+'</div>'
     +'<div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'
     +((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')
     +'<div style="margin:6px 0 4px">'
-    +'<input class="fi ctZoneInput" type="url" value="'+(e.donateUrl||'')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px" data-id="'+id+'" data-field="donateUrl">'
-    +'<input class="fi ctZoneInput" type="text" value="'+(e.rov||'')+'" placeholder="Rov / Rabbi" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px" data-id="'+id+'" data-field="rov">'
-    +'<input class="fi ctZoneInput" type="text" value="'+(e.note||'')+'" placeholder="Status note" style="font-size:.72rem;padding:4px 7px" data-id="'+id+'" data-field="note">'
+    +'<input class="fi" type="url" value="'+(e.donateUrl||'')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px" data-id="'+id+'" data-field="donateUrl" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
+    +'<input class="fi" type="text" value="'+(e.rov||'')+'" placeholder="Rov / Rabbi" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px;margin-top:2px" data-id="'+id+'" data-field="rov" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
+    +'<input class="fi" type="text" value="'+(e.note||'')+'" placeholder="Status note" style="font-size:.72rem;padding:4px 7px;margin-top:2px" data-id="'+id+'" data-field="note" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
     +'</div>'
     +'<div class="ct-acts">'
-    +'<button class="ct-act" style="background:var(--navy);color:#fff" data-id="'+id+'">✏️ Edit</button>'
-    +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" data-st="up">✓ Up</button>'
-    +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" data-st="review">Under Review</button>'
-    +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" data-st="down">Down</button>'
+    +'<button class="ct-act" style="background:var(--navy);color:#fff" data-id="'+id+'" onclick="closeCtDash();openDraw(\x27edit\x27,this.dataset.id)">✏️ Edit</button>'
+    +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" onclick="admStatus(this.dataset.id,'up')">✓ Up</button>'
+    +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" onclick="admStatus(this.dataset.id,'review')">Under Review</button>'
+    +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" onclick="admStatus(this.dataset.id,'down')">Down</button>'
     +'</div>'
-    +'</div><span class="badge '+bc+'" style="margin-left:10px">'+({up:'Up',review:'Under Review',down:'Down'}[e.status]||e.status)+'</span>';
-  // Bind events
-  div.querySelectorAll('.ctZoneInput').forEach(function(inp){
-    inp.addEventListener('change',function(){
-      saveCtField(this.dataset.id,this.dataset.field,this.value);
-    });
-  });
-  div.querySelectorAll('.ct-act').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var bid=this.dataset.id,st=this.dataset.st;
-      if(st){admStatus(bid,st);}else{closeCtDash();openDraw('edit',bid);}
-    });
-  });
-  return div.outerHTML;
+    +'</div>'
+    +'<span class="badge '+bc+'" style="margin-left:10px">'+(sl[e.status]||e.status)+'</span>'
+    +'</div>';
 }
+
 function renderCtMsgs(){
   var body=document.getElementById('ctBody');
   body.innerHTML='<div style="font-size:.85rem;font-weight:700;color:var(--navy);margin-bottom:12px;">✉ Messages</div><div id="ctMsgList" style="color:var(--muted);font-size:.8rem;">Loading...</div>';
