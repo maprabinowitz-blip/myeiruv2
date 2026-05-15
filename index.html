@@ -2398,14 +2398,7 @@ function adminDelShul(id){
 }
 
 // CONTRACTOR DASH
-function sendMsgToContractor(email,eruvName){
-  var msg=prompt('Send a message to the '+eruvName+' contractor:');
-  if(!msg)return;
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-    body:JSON.stringify({to:email,toName:'Contractor',eruvName:'Message about '+eruvName,eruvCity:'',status:'review',
-      note:'A user sent you a message: "'+msg+'"',timestamp:new Date().toLocaleDateString()})
-  }).then(function(){toast('Message sent','ok');}).catch(function(){toast('Could not send','err');});
-}
+
 function saveCtField(id,field,val){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(e){e[field]=val;}
