@@ -2272,33 +2272,33 @@ function renderAdmin(sec){
     if(window._db)window._db.loadContractors().then(function(fresh){if(fresh)window._fsContractors=fresh;renderAdmin('contractors');});
     var pending=conts.filter(function(c){return c.status==='pending';});
     var active=conts.filter(function(c){return c.status==='approved';});
+    function ctCard(c,isPending){
+      var zones=S.eruvin.filter(function(e){return e.owner===c.email;}).length;
+      var html='<div class="acard">'
+        +'<div class="acard-row"><div>'
+        +'<div class="acard-nm">'+c.name+'</div>'
+        +'<div class="acard-mt">'+c.email+(c.phone?' &nbsp;·&nbsp; '+c.phone:'')+'</div>'
+        +(c.area?'<div class="acard-mt">📍 '+c.area+'</div>':'')
+        +(c.rov?'<div class="acard-mt">Rov: '+c.rov+'</div>':'')
+        +(c.donateUrl?'<div class="acard-mt"><a href="'+c.donateUrl+'" target="_blank" style="color:var(--blue)">Donation link ↗</a></div>':'')
+        +(!isPending?'<div class="acard-mt" style="color:var(--muted)">'+zones+' zone(s)</div>':'')
+        +'</div>'
+        +'<span class="badge '+(isPending?'b-rv':'b-up')+'">'+(isPending?'Pending':'Active')+'</span>'
+        +'</div>'
+        +'<div class="act-row">';
+      if(isPending){
+        html+='<button class="act-btn ap" data-e="'+c.email+'" onclick="approveC(this.dataset.e)">Approve</button>'
+          +'<button class="act-btn ar" data-e="'+c.email+'" onclick="rejectC(this.dataset.e)">Reject</button>';
+      } else {
+        html+='<button class="act-btn ar" data-e="'+c.email+'" onclick="removeContractor(this.dataset.e)">Remove</button>';
+      }
+      html+='</div></div>';
+      return html;
+    }
     var html='<span class="adm-sec">Pending Applications ('+pending.length+')</span>';
-    if(!pending.length)html+='<div style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">No pending applications.</div>';
-    pending.forEach(function(c){
-      html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+c.name+'</div>'
-        +'<div class="acard-mt">'+c.email+(c.phone?' · '+c.phone:'')+'</div>'
-        +(c.area?'<div class="acard-mt">📍 '+c.area+'</div>':'')
-        +(c.rov?'<div class="acard-mt">Rov: '+c.rov+'</div>':'')
-        +'</div><span class="badge b-rv">Pending</span></div>'
-        +'<div class="act-row">'
-        +'<button class="act-btn ap" onclick="approveC(\''+c.email+'\')">Approve</button>'
-        +'<button class="act-btn ar" onclick="rejectC(\''+c.email+'\')">Reject</button>'
-        +'</div></div>';
-    });
+    html+=pending.length?pending.map(function(c){return ctCard(c,true);}).join(''):'<div style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">No pending applications.</div>';
     html+='<span class="adm-sec" style="margin-top:10px">Active Contractors ('+active.length+')</span>';
-    if(!active.length)html+='<div style="font-size:.8rem;color:var(--muted);">No active contractors.</div>';
-    active.forEach(function(c){
-      var zones=S.eruvin.filter(function(e){return e.owner===c.email;});
-      html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+c.name+'</div>'
-        +'<div class="acard-mt"><a href="mailto:'+c.email+'" style="color:var(--blue)">'+c.email+'</a>'+(c.phone?' · <a href="tel:'+c.phone+'" style="color:var(--blue)">'+c.phone+'</a>':'')+'</div>'
-        +(c.area?'<div class="acard-mt">📍 '+c.area+'</div>':'')
-        +(c.rov?'<div class="acard-mt">Rov: '+c.rov+'</div>':'')
-        +(c.donateUrl?'<div class="acard-mt"><a href="'+c.donateUrl+'" target="_blank" style="color:var(--blue)">Donation link</a></div>':'')
-        +'<div class="acard-mt" style="color:var(--muted)">'+zones.length+' zone(s)</div>'
-        +'</div><span class="badge b-up">Active</span></div>'
-        +'<div class="act-row"><button class="act-btn ar" onclick="removeContractor(this.dataset.e)" data-e="'+c.email+'">' +'Remove</button></div>'
-        +'</div>';
-    });
+    html+=active.length?active.map(function(c){return ctCard(c,false);}).join(''):'<div style="font-size:.8rem;color:var(--muted);">No active contractors.</div>';
     body.innerHTML=html;
   }else if(sec==='shuls'){
     var shuls=S.shuls||[];
