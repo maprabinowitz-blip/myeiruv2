@@ -3784,8 +3784,11 @@ window._db = {
     }
   },
   async patchUser(email, fields) {
-    try { await updateDoc(doc(db,"users",email.toLowerCase()), fields); return true; }
-    catch(e) { return false; }
+    try {
+      const ref = doc(db,"users",email.toLowerCase());
+      await setDoc(ref, {...fields, email:email.toLowerCase()}, {merge:true});
+      return true;
+    } catch(e) { console.error("patchUser:",e); return false; }
   },
 
   /* ── CONTRACTORS ──────────────────────────────────────────── */
@@ -3804,8 +3807,11 @@ window._db = {
     } catch(e) { console.error("saveContractor:",e); return false; }
   },
   async patchContractor(email, fields) {
-    try { await updateDoc(doc(db,"contractors",email.toLowerCase()), fields); return true; }
-    catch(e) { return false; }
+    try {
+      const ref = doc(db,"contractors",email.toLowerCase());
+      await setDoc(ref, {...fields, email:email.toLowerCase()}, {merge:true});
+      return true;
+    } catch(e) { console.error("patchContractor:",e); return false; }
   },
   async deleteContractor(email) {
     try { await deleteDoc(doc(db,"contractors",email.toLowerCase())); return true; }
