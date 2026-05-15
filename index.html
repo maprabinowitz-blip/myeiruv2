@@ -1892,14 +1892,15 @@ function identifyCity(val,hintId){
   },600);
 }
 function openContractorApply(){
-  if(!S.user){toast('Please sign in first','err');return;}
-  showV('vContractor');
+  if(!S.user){toast('Please sign in first','err');openModal('vMain');return;}
   openModal('vMain');
-  // Pre-fill name if shown
-  var nameEl=document.getElementById('cName');
-  var emailEl=document.getElementById('cEmail');
-  if(nameEl)nameEl.value=S.user.name||'';
-  if(emailEl)emailEl.value=S.user.email||'';
+  setTimeout(function(){
+    showV('vContractor');
+    var nameEl=document.getElementById('cName');
+    var emailEl=document.getElementById('cEmail');
+    if(nameEl)nameEl.value=S.user.name||'';
+    if(emailEl)emailEl.value=S.user.email||'';
+  },50);
 }
 function doContractorApply2(){
   var name=(document.getElementById('cName2')&&document.getElementById('cName2').value.trim())||'';
@@ -2154,6 +2155,18 @@ function admDel(id){
   toast('Zone deleted','ok');
 }
 
+function adminAddContractor(){
+  var email=(document.getElementById('adminAddCtEmail')&&document.getElementById('adminAddCtEmail').value.trim().toLowerCase())||'';
+  if(!email){toast('Enter an email','err');return;}
+  var u=getUsers().find(function(x){return x.email===email;})||{email:email,name:email.split('@')[0],role:'contractor',contractorStatus:'approved',avatar:email[0].toUpperCase()};
+  u.role='contractor';u.contractorStatus='approved';
+  _cacheAndSaveUser(u);
+  var ct={email:email,name:u.name||email,status:'approved',approvedAt:new Date().toISOString()};
+  if(window._db){window._db.patchContractor(email,ct);window._db.patchUser(email,{role:'contractor',contractorStatus:'approved'});}
+  if(window._fsContractors){window._fsContractors=window._fsContractors.filter(function(c){return c.email!==email;});window._fsContractors.push(ct);}
+  renderAdmin('contractors');
+  toast(email+' added as contractor','ok');
+}
 function removeContractor(email){
   if(!confirm('Remove '+email+' as contractor?'))return;
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
@@ -2307,7 +2320,12 @@ function renderAdmin(sec){
       html+='</div></div>';
       return html;
     }
-    var html='<span class="adm-sec">Pending Applications ('+pending.length+')</span>';
+    var html='<span class="adm-sec">Add Contractor Directly</span>'
+      +'<div class="acard" style="margin-bottom:14px">'
+      +'<div class="fg"><label class="lbl">Email</label><input class="fi" id="adminAddCtEmail" placeholder="contractor@email.com" style="padding:6px 10px;font-size:.8rem"></div>'
+      +'<button class="act-btn ap" style="width:100%;padding:7px;margin-top:4px" onclick="adminAddContractor()">+ Add as Contractor</button>'
+      +'</div>'
+      +'<span class="adm-sec">Pending Applications ('+pending.length+')</span>';
     html+=pending.length?pending.map(function(c){return ctCard(c,true);}).join(''):'<div style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">No pending applications.</div>';
     html+='<span class="adm-sec" style="margin-top:10px">Active Contractors ('+active.length+')</span>';
     html+=active.length?active.map(function(c){return ctCard(c,false);}).join(''):'<div style="font-size:.8rem;color:var(--muted);">No active contractors.</div>';
@@ -2360,6 +2378,12 @@ function sendMsgToContractor(email,eruvName){
       note:'A user sent you a message: "'+msg+'"',timestamp:new Date().toLocaleDateString()})
   }).then(function(){toast('Message sent','ok');}).catch(function(){toast('Could not send','err');});
 }
+function saveCtField(id,field,val){
+  var e=S.eruvin.find(function(x){return x.id===id;});
+  if(e){e[field]=val;}
+  var patch={};patch[field]=val;
+  if(window._db)window._db.patchZone(id,patch);
+}
 function saveCtDonateUrl(id,url){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
@@ -2397,7 +2421,7 @@ function closeCtDash(){document.getElementById('ctDash').classList.remove('on');
 function renderCtDash(){
   var myZones=S.user&&S.user.role==='admin'?S.eruvin:S.eruvin.filter(function(e){return e.owner===S.user.email;});
   var up=myZones.filter(function(e){return e.status==='up';}).length,dn=myZones.filter(function(e){return e.status==='down';}).length;
-  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div style="margin:6px 0 4px"><input class="fi" id="ctDonate-'+e.id+'" type="url" value="'+(e.donateUrl||'').replace(/"/g,'&quot;')+'" placeholder="Donation link (optional)" style="font-size:.72rem;padding:4px 7px" onchange="saveCtDonateUrl(\''+e.id+'\',this.value)"></div><div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:32px 16px"><div style="font-size:2rem;margin-bottom:8px">🗺️</div><div style="color:var(--muted);font-size:.83rem;margin-bottom:16px">No zones yet.</div><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">+ Create First Zone</button></div>');
+  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div style="margin:6px 0 2px"><input class="fi" id="ctDonate-'+e.id+'" type="url" value="'+(e.donateUrl||'').replace(/"/g,\'&quot;\')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:4px" onchange="saveCtDonateUrl(this.dataset.id,this.value)" data-id="'+e.id+'"></div><div style="margin-bottom:4px"><input class="fi" id="ctRov-'+e.id+'" type="text" value="'+(e.rov||'')+'" placeholder="Rov / Rabbi" style="font-size:.72rem;padding:4px 7px" onchange="saveCtField(this.dataset.id,\'rov\',this.value)" data-id="'+e.id+'"></div><div style="margin-bottom:6px"><input class="fi" id="ctNote-'+e.id+'" type="text" value="'+(e.note||'')+'" placeholder="Status note (optional)" style="font-size:.72rem;padding:4px 7px" onchange="saveCtField(this.dataset.id,\'note\',this.value)" data-id="'+e.id+'"></div><div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:32px 16px"><div style="font-size:2rem;margin-bottom:8px">🗺️</div><div style="color:var(--muted);font-size:.83rem;margin-bottom:16px">No zones yet.</div><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">+ Create First Zone</button></div>');
 }
 
 // ZONE PICKER
