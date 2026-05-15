@@ -1911,7 +1911,7 @@ function doContractorApply2(){
   var rov2=(document.getElementById('cRov2')&&document.getElementById('cRov2').value)||'';
   var donate2=(document.getElementById('cDonate2')&&document.getElementById('cDonate2').value)||'';
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;})||{name:name,email:email,phone:phone,area:area,rov:rov2,donateUrl:donate2,avatar:name[0].toUpperCase(),contractorStatus:'pending'};
-  user.contractorStatus='pending';user.role='user';
+  user.contractorStatus='pending';user.role='contractor-pending';
   _cacheAndSaveUser(user);
   var ct={email:email,name:name,phone:phone,area:area,status:'pending',appliedAt:new Date().toISOString()};
   if(window._db)window._db.saveContractor(ct);
@@ -2040,11 +2040,15 @@ function signInAs(user){
   document.getElementById('uNm').textContent=user.name.split(' ')[0];
   document.getElementById('dNm').textContent=user.name;
   document.getElementById('dEm').textContent=user.email;
-  document.getElementById('dRole').textContent=user.role==='admin'?'Admin':user.role==='contractor'?'Contractor':user.contractorStatus==='pending'?'Pending':'Member';
+  document.getElementById('dRole').textContent=user.role==='admin'?'Admin':(user.role==='contractor'||user.contractorStatus==='approved')?'Contractor':(user.contractorStatus==='pending'||user.role==='contractor-pending')?'Application Pending':'Member';
   var phoneEl=document.getElementById('dPhone');if(phoneEl)phoneEl.value=user.phone||'';
+  var isApprovedCt=user.role==='contractor'||user.contractorStatus==='approved';
+  var isPendingCt=user.contractorStatus==='pending'||user.role==='contractor-pending';
+  var isAdmin=user.role==='admin';
+  var isCont=isApprovedCt||isAdmin;
+  // Show "Become a Contractor" only for regular users (not pending or approved)
   var ctBtn=document.getElementById('becomeContractorBtn');
-  if(ctBtn)ctBtn.style.display=(user.role==='contractor'||user.contractorStatus==='pending')?'none':'block';
-  var isAdmin=user.role==='admin',isCont=user.role==='contractor'||isAdmin;
+  if(ctBtn)ctBtn.style.display=(isCont||isPendingCt)?'none':'block';
   document.getElementById('adminTrigger').style.display=isAdmin?'flex':'none';
   // importMapTrigger removed — Import is only inside the zone editor
   document.getElementById('ctDashTrigger').style.display=isCont?'flex':'none';
@@ -2161,6 +2165,8 @@ function approveC(email){
   var u=getUsers().find(function(x){return x.email.toLowerCase()===email.toLowerCase();});
   if(u){u.role='contractor';u.contractorStatus='approved';_cacheAndSaveUser(u);}
   if(window._db){window._db.patchContractor(email,{status:'approved'});window._db.patchUser(email,{role:'contractor',contractorStatus:'approved'});}
+  // If currently signed in user was just approved, refresh their portal
+  if(S.user&&S.user.email.toLowerCase()===email.toLowerCase()){S.user.role='contractor';S.user.contractorStatus='approved';signInAs(S.user);}
   if(S.user&&S.user.email.toLowerCase()===email.toLowerCase()){S.user.role='contractor';signInAs(S.user);}
   fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},body:JSON.stringify({to:email,toName:u&&u.name||email,eruvName:'Welcome to MyEiruv — Contractor Approved! 🎉',eruvCity:'',status:'up',note:'Your contractor application has been approved. Sign in at myeiruv.org and click "My Zones" to start creating and managing eruv zones.',timestamp:new Date().toLocaleDateString()})}).catch(function(){});
   toast((u&&u.name||email)+' approved ✓','ok');renderAdmin('contractors');
