@@ -1262,6 +1262,42 @@ function selectAC(id,i){
 
 // PIP / CHECK
 function pip(lng,lat,coords){
+function findAllEiruvim(lng,lat){
+  return S.eruvin.filter(function(e){return e.coords&&pip(lng,lat,e.coords)&&!inExcl(lng,lat,e);});
+}
+function showLocationStatus(lng,lat){
+  var all=findAllEiruvim(lng,lat);
+  if(!all.length){toast('You are not inside any known eiruv','err');return;}
+  if(all.length===1){
+    var e=all[0];
+    var lbl={up:'✅ Up & Kosher',review:'⚠️ Under Review',down:'❌ Down'}[e.status]||e.status;
+    toast(e.name+': '+lbl,'ok');
+    return;
+  }
+  // Multiple eiruvim - show which are up
+  var up=all.filter(function(e){return e.status==='up';});
+  var msg='You are in '+all.length+' eiruvim:\n'+all.map(function(e){
+    var icon={up:'✅',review:'⚠️',down:'❌'}[e.status]||'•';
+    return icon+' '+e.name;
+  }).join('\n');
+  if(up.length===all.length){toast('You are in '+all.length+' eiruvim — all up ✅','ok');}
+  else if(up.length){toast('Mixed: '+up.length+' up, '+(all.length-up.length)+' not up','warn');}
+  else{toast('You are in '+all.length+' eiruvim — none up ❌','err');}
+  // Show detail panel
+  var detail='<div style="padding:14px 16px;font-size:.82rem;">'
+    +'<div style="font-weight:700;color:var(--navy);margin-bottom:10px;">📍 Your Location — '+all.length+' Eiruvim</div>'
+    +all.map(function(e){
+      var dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
+      var lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status]||e.status;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">'
+        +'<div style="font-weight:600;">'+e.name+'</div>'
+        +'<div>'+dot+' '+lbl+'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>';
+  document.getElementById('eruvDetailBody').innerHTML=detail;
+  openModal('vMain');showV('vEruvDetail');
+}
   var inside=false;
   for(var i=0,j=coords.length-1;i<coords.length;j=i++){
     var xi=coords[i][0],yi=coords[i][1],xj=coords[j][0],yj=coords[j][1];
@@ -1274,7 +1310,9 @@ function findEruv(lng,lat){for(var i=0;i<S.eruvin.length;i++){var e=S.eruvin[i];
 function checkPoint(lng,lat,label){
   S.lastCoords=[lng,lat];
   if(addrMarker){addrMarker.remove();addrMarker=null;}
-  var inside=findEruv(lng,lat);S.resultEruv=inside;
+  var allInside=findAllEiruvim(lng,lat);
+  var inside=allInside[0]||null;
+  S.resultEruv=inside;
   var el=document.createElement('div');
   el.style.cssText='width:12px;height:12px;border-radius:50%;background:'+(inside?'#22a865':'#d94040')+';border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)';
   addrMarker=new mapboxgl.Marker({element:el}).setLngLat([lng,lat]).addTo(map);
@@ -1282,8 +1320,17 @@ function checkPoint(lng,lat,label){
   var card=document.getElementById('resultCard');
   card.className='result-card on '+(inside?'ins':'out');
   document.getElementById('resIco').textContent=inside?'✅':'❌';
-  document.getElementById('resTitle').textContent=inside?'Inside the Eiruv':'Outside the Eiruv';
-  document.getElementById('resSub').textContent=inside?'Within '+inside.name:'Not within any known eiruv boundary';
+  if(allInside.length>1){
+    var upCount=allInside.filter(function(e){return e.status==='up';}).length;
+    document.getElementById('resTitle').textContent='Inside '+allInside.length+' Eiruvim';
+    document.getElementById('resSub').innerHTML=allInside.map(function(e){
+      var dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
+      return dot+' '+e.name;
+    }).join('<br>');
+  } else {
+    document.getElementById('resTitle').textContent=inside?'Inside the Eiruv':'Outside the Eiruv';
+    document.getElementById('resSub').textContent=inside?'Within '+inside.name:'Not within any known eiruv boundary';
+  }
   document.getElementById('seeFullBtn').style.display=inside?'flex':'none';
   document.getElementById('planRouteBtn').style.display=inside?'flex':'none';
 }
