@@ -2035,7 +2035,6 @@ function doContractorApply(){
 }
 function signInAs(user){
   S.user=user;S.alerts=[];
-  // Load alerts from Firestore
   if(window._db&&user.email){
     window._db.loadAlerts(user.email).then(function(a){S.alerts=a||[];renderAlerts();});
     // Check Firestore for latest contractor status
@@ -2045,8 +2044,7 @@ function signInAs(user){
       var ct=conts.find(function(c){return c.email.toLowerCase()===user.email.toLowerCase();});
       if(ct&&ct.status==='approved'&&user.role!=='contractor'){
         user.role='contractor';user.contractorStatus='approved';
-        S.user=user;_cacheAndSaveUser(user);
-        _applyUserUI(user);
+        S.user=user;_cacheAndSaveUser(user);_applyUserUI(user);
       }
     });
   }
@@ -2055,7 +2053,7 @@ function signInAs(user){
   renderAlerts();toast('Welcome, '+user.name.split(' ')[0]+'!','ok');
 }
 function _applyUserUI(user){
-function _applyUserUI(user){
+  document.getElementById('signinPill').style.display='none';
   document.getElementById('userPillWrap').style.display='block';
   document.getElementById('uAv').textContent=(user.avatar||user.name[0]||'?').toUpperCase();
   document.getElementById('uNm').textContent=user.name.split(' ')[0];
@@ -2067,17 +2065,14 @@ function _applyUserUI(user){
   var isPendingCt=user.contractorStatus==='pending'||user.role==='contractor-pending';
   var isAdmin=user.role==='admin';
   var isCont=isApprovedCt||isAdmin;
-  // Show "Become a Contractor" only for regular users (not pending or approved)
   var ctBtn=document.getElementById('becomeContractorBtn');
   if(ctBtn)ctBtn.style.display=(isCont||isPendingCt)?'none':'block';
   document.getElementById('adminTrigger').style.display=isAdmin?'flex':'none';
-  // importMapTrigger removed — Import is only inside the zone editor
   document.getElementById('ctDashTrigger').style.display=isCont?'flex':'none';
   document.getElementById('editZonesTrigger').style.display=isCont?'flex':'none';
   document.getElementById('drawTrigger').style.display=isCont?'flex':'none';
   var brand=document.getElementById('hdrBrand');
   if(brand)brand.style.visibility=isCont?'hidden':'visible';
-}
 }
 function doSignOut(){
   S.user=null;S.alerts=[];
