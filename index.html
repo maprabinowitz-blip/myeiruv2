@@ -2391,6 +2391,41 @@ function saveCtDonateUrl(id,url){
   if(window._db)window._db.saveZone(e).then(function(){toast(url?'Donation link saved ❤':'Donation link removed','ok');});
   renderEruvList();renderStatus();
 }
+function _mkCtZoneCard(e){
+  var id=e.id;
+  var div=document.createElement('div');
+  div.className='ct-zone';
+  var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status]||'b-up';
+  div.innerHTML='<div style="flex:1">'
+    +'<div class="ct-zone-nm">'+e.name+'</div>'
+    +'<div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'
+    +((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')
+    +'<div style="margin:6px 0 4px">'
+    +'<input class="fi ctZoneInput" type="url" value="'+(e.donateUrl||'')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px" data-id="'+id+'" data-field="donateUrl">'
+    +'<input class="fi ctZoneInput" type="text" value="'+(e.rov||'')+'" placeholder="Rov / Rabbi" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px" data-id="'+id+'" data-field="rov">'
+    +'<input class="fi ctZoneInput" type="text" value="'+(e.note||'')+'" placeholder="Status note" style="font-size:.72rem;padding:4px 7px" data-id="'+id+'" data-field="note">'
+    +'</div>'
+    +'<div class="ct-acts">'
+    +'<button class="ct-act" style="background:var(--navy);color:#fff" data-id="'+id+'">✏️ Edit</button>'
+    +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" data-st="up">✓ Up</button>'
+    +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" data-st="review">Under Review</button>'
+    +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" data-st="down">Down</button>'
+    +'</div>'
+    +'</div><span class="badge '+bc+'" style="margin-left:10px">'+({up:'Up',review:'Under Review',down:'Down'}[e.status]||e.status)+'</span>';
+  // Bind events
+  div.querySelectorAll('.ctZoneInput').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      saveCtField(this.dataset.id,this.dataset.field,this.value);
+    });
+  });
+  div.querySelectorAll('.ct-act').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var bid=this.dataset.id,st=this.dataset.st;
+      if(st){admStatus(bid,st);}else{closeCtDash();openDraw('edit',bid);}
+    });
+  });
+  return div.outerHTML;
+}
 function renderCtMsgs(){
   var body=document.getElementById('ctBody');
   body.innerHTML='<div style="font-size:.85rem;font-weight:700;color:var(--navy);margin-bottom:12px;">✉ Messages</div><div id="ctMsgList" style="color:var(--muted);font-size:.8rem;">Loading...</div>';
@@ -2421,7 +2456,7 @@ function closeCtDash(){document.getElementById('ctDash').classList.remove('on');
 function renderCtDash(){
   var myZones=S.user&&S.user.role==='admin'?S.eruvin:S.eruvin.filter(function(e){return e.owner===S.user.email;});
   var up=myZones.filter(function(e){return e.status==='up';}).length,dn=myZones.filter(function(e){return e.status==='down';}).length;
-  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return '<div class="ct-zone"><div style="flex:1"><div class="ct-zone-nm">'+e.name+'</div><div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'+((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')+'<div style="margin:6px 0 2px"><input class="fi" id="ctDonate-'+e.id+'" type="url" value="'+(e.donateUrl||'').replace(/"/g,\'&quot;\')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:4px" onchange="saveCtDonateUrl(this.dataset.id,this.value)" data-id="'+e.id+'"></div><div style="margin-bottom:4px"><input class="fi" id="ctRov-'+e.id+'" type="text" value="'+(e.rov||'')+'" placeholder="Rov / Rabbi" style="font-size:.72rem;padding:4px 7px" onchange="saveCtField(this.dataset.id,\'rov\',this.value)" data-id="'+e.id+'"></div><div style="margin-bottom:6px"><input class="fi" id="ctNote-'+e.id+'" type="text" value="'+(e.note||'')+'" placeholder="Status note (optional)" style="font-size:.72rem;padding:4px 7px" onchange="saveCtField(this.dataset.id,\'note\',this.value)" data-id="'+e.id+'"></div><div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:32px 16px"><div style="font-size:2rem;margin-bottom:8px">🗺️</div><div style="color:var(--muted);font-size:.83rem;margin-bottom:16px">No zones yet.</div><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">+ Create First Zone</button></div>');
+  document.getElementById('ctBody').innerHTML='<div style="margin-bottom:16px"><div style="font-size:.72rem;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">Welcome, '+(S.user&&S.user.name.split(' ')[0]||'Contractor')+'</div><div class="ct-grid"><div class="ct-stat"><div class="ct-stat-n">'+myZones.length+'</div><div class="ct-stat-l">My Zones</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--green)">'+up+'</div><div class="ct-stat-l">Up</div></div><div class="ct-stat"><div class="ct-stat-n" style="color:var(--red)">'+dn+'</div><div class="ct-stat-l">Down</div></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:.84rem;font-weight:700;color:var(--navy)">My Zones</div><div style="display:flex;gap:6px"><button class="hbtn hbtn-ghost" onclick="closeCtDash();openMapImport()" style="font-size:.73rem;padding:5px 10px;background:rgba(26,44,74,.07);color:var(--navy);border:1px solid var(--border)">📂 Import Map</button><button class="hbtn hbtn-gold" onclick="closeCtDash();openDraw(\'draw\')" style="font-size:.73rem;padding:5px 10px">+ New Zone</button></div></div>'+(myZones.length?myZones.map(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];return _mkCtZoneCard(e)+''<div class="ct-acts"><button class="ct-act" style="background:var(--navy);color:#fff" onclick="closeCtDash();openDraw(\'edit\',\''+e.id+'\')">✏️ Edit</button><button class="ct-act" style="background:#e3f5ec;color:#1a7040" onclick="admStatus(\''+e.id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fef1e2;color:#955010" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="ct-act" style="background:#fbeaea;color:var(--red)" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div><span class="badge '+bc+'" style="margin-left:10px">'+e.status+'</span></div>';}).join(''):'<div style="text-align:center;padding:32px 16px"><div style="font-size:2rem;margin-bottom:8px">🗺️</div><div style="color:var(--muted);font-size:.83rem;margin-bottom:16px">No zones yet.</div><button class="btn btn-navy" onclick="closeCtDash();openDraw(\'draw\')">+ Create First Zone</button></div>');
 }
 
 // ZONE PICKER
