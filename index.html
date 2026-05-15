@@ -2269,7 +2269,13 @@ function renderAdmin(sec){
     });
     body.innerHTML='<span class="adm-sec">Users ('+users.length+')</span><input class="fi" placeholder="Search…" oninput="filterUsers(this.value)" style="margin-bottom:9px;padding:7px 11px;font-size:.79rem"><div id="userListEl">'+mkUserList(users,'')+'</div>';
   }else if(sec==='contractors'){
-    if(window._db)window._db.loadContractors().then(function(fresh){if(fresh)window._fsContractors=fresh;renderAdmin('contractors');});
+    // Only reload from Firestore if not already loaded
+    if(!window._fsContractors||!window._fsContractors.length){
+      if(window._db)window._db.loadContractors().then(function(fresh){
+        if(fresh)window._fsContractors=fresh;
+        renderAdmin('contractors');
+      });
+    }
     var pending=conts.filter(function(c){return c.status==='pending';});
     var active=conts.filter(function(c){return c.status==='approved';});
     function ctCard(c,isPending){
