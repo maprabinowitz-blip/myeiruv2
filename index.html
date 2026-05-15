@@ -2194,11 +2194,11 @@ function approveC(email){
   // If currently signed in user was just approved, refresh their portal
   if(S.user&&S.user.email.toLowerCase()===email.toLowerCase()){S.user.role='contractor';S.user.contractorStatus='approved';signInAs(S.user);}
   if(S.user&&S.user.email.toLowerCase()===email.toLowerCase()){S.user.role='contractor';signInAs(S.user);}
-  // Send approval email via user-message for reliable delivery
-  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'user-message'},
-    body:JSON.stringify({to:email,fromName:'MyEiruv Admin',fromEmail:'noreply@myeiruv.org',fromPhone:'',
-      eruvName:'Your MyEiruv Contractor Application was Approved!',
-      message:'Mazel tov! Your application has been approved.\n\nYou can now sign in at myeiruv.org and click "My Zones" in the header to access your contractor portal and start creating eiruv zones.'
+  fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+    body:JSON.stringify({to:email,toName:u&&u.name||email,
+      eruvName:'MyEiruv — Contractor Application Approved!',eruvCity:'',status:'up',
+      note:'Mazel tov! Your contractor application has been approved.\n\nSign in at myeiruv.org and click "My Zones" in the header to access your portal and start creating eiruv zones.',
+      timestamp:new Date().toLocaleDateString()
     })}).catch(function(){});
   toast((u&&u.name||email)+' approved ✓','ok');renderAdmin('contractors');
 }
