@@ -1871,7 +1871,7 @@ function updateAlertEruv(){
   s.innerHTML=zones.length?zones.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join(''):'<option>No eiruvim in this city</option>';
 }
 var alertOpen=false;
-function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);}
+function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);if(alertOpen)populateAlertCities();}
 function saveAlert(){
   var city=document.getElementById('alertCity').value,eruvSel=document.getElementById('alertEruv'),eruv=eruvSel.value,eruvName=eruvSel.options[eruvSel.selectedIndex]&&eruvSel.options[eruvSel.selectedIndex].text||eruv;
   if(!city||!eruv||eruv.indexOf('Select')>=0||eruv.indexOf('No ')>=0){toast('Select city and eiruv','err');return;}
