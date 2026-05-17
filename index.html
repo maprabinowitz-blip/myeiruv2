@@ -1470,7 +1470,12 @@ function planRoute(){
 
   // Geocode whatever is needed then call go()
   var pending=0,resolved={sc:sc,ec:ec};
-  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
+  function tryGo(){
+    if(pending>0)return;
+    if(!resolved.sc){toast('Could not find start address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    if(!resolved.ec){toast('Could not find end address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    go(resolved.sc,resolved.ec);
+  }
   if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
   if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
   if(sc&&ec)go(sc,ec);
