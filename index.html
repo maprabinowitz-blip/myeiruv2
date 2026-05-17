@@ -612,16 +612,7 @@ header{
             </select>
           </div>
           <div class="fg"><label class="lbl">Eiruv</label><select class="fi" id="alertEruv"><option>Select city first</option></select></div>
-          <div class="fg"><label class="lbl">Notify Via</label>
-            <div class="nchips">
-              <button class="nc on" id="alertViaEmail" onclick="this.classList.toggle('on')">&#128231; Email</button>
-              <button class="nc" id="alertViaSms" onclick="this.classList.toggle('on');document.getElementById('alertPhoneWrap').style.display=this.classList.contains('on')?'block':'none'">&#128244; SMS</button>
-            </div>
-          </div>
-          <div class="fg" id="alertPhoneWrap" style="display:none"><label class="lbl">Phone for SMS</label>
-            <input class="fi" id="alertPhone" type="tel" placeholder="+1 (555) 000-0000">
-            <div style="font-size:.68rem;color:var(--muted);margin-top:4px;line-height:1.4;">By providing your number, you agree to receive SMS eiruv status alerts. Msg &amp; data rates may apply. Reply STOP to unsubscribe.</div>
-          </div>
+          <div style="font-size:.72rem;color:var(--muted);padding:2px 0 4px;">📧 Alerts sent to your account email.</div>
           <div style="font-size:.72rem;color:var(--muted);padding:4px 0 8px;line-height:1.5;">📬 You'll receive an alert whenever this eiruv's status changes.</div>
           <div class="fg"><label class="lbl">Friday Reminder</label>
             <select class="fi" id="alertFridayTime">
