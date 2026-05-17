@@ -1468,18 +1468,6 @@ function planRoute(){
   if(startVal&&(!sc||sc.label!==startVal))sc=null;
   if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
-  // Geocode whatever is needed then call go()
-  var pending=0,resolved={sc:sc,ec:ec};
-  function tryGo(){
-    if(pending>0)return;
-    if(!resolved.sc){toast('Could not find start address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-    if(!resolved.ec){toast('Could not find end address','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-    go(resolved.sc,resolved.ec);
-  }
-  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
-  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
-  if(sc&&ec)go(sc,ec);
-
   // Decode Google encoded polyline to [[lng,lat],...]
   function decodePolyline(str){
     var idx=0,lat=0,lng=0,coords=[];
@@ -1502,19 +1490,32 @@ function planRoute(){
     var ck=cacheKey(sc,ec);
     if(_routeCache[ck]){processRoute(_routeCache[ck],sc,ec);return;}
 
-    // Use OSRM walking - reliable free routing
+    // Try Google first (most accurate walking), fallback to OSRM
     function tryOSRM(){
-      var url='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
+      // Use Mapbox walking directions - reliable, true pedestrian routing
+      var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
+        +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
+        +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN;
       fetch(url).then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){
-          var r=d.routes[0];
-          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
+          var best=d.routes[0],bestPct=0;
+          d.routes.forEach(function(r){
+            var inside=r.geometry.coordinates.filter(function(c){return findEruv(c[0],c[1])!==null;}).length;
+            var pct=inside/Math.max(1,r.geometry.coordinates.length);
+            if(pct>bestPct){bestPct=pct;best=r;}
+          });
+          var result={coords:best.geometry.coordinates,distance:best.distance||0,duration:best.duration||0,steps:(best.legs&&best.legs[0]&&best.legs[0].steps)||[],source:'mapbox-walk'};
           _routeCache[ck]=result;processRoute(result,sc,ec);
-        } else {toast('No route found between these addresses','err');btn.innerHTML='Check Route';btn.disabled=false;}
-      }).catch(function(){toast('Could not fetch route — check connection','err');btn.innerHTML='Check Route';btn.disabled=false;});
+        } else {toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
+      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
     function tryGoogle(){
-      var googleBody={origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},travelMode:'WALK',computeAlternativeRoutes:false,routeModifiers:{avoidFerries:true},polylineQuality:'HIGH_QUALITY'};
+      var googleBody={
+        origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
+        destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},
+        travelMode:'WALK',computeAlternativeRoutes:false,
+        routeModifiers:{avoidFerries:true},polylineQuality:'HIGH_QUALITY'
+      };
       fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'google-routes'},body:JSON.stringify(googleBody)})
       .then(function(r){return r.json();}).then(function(d){
         if(d.routes&&d.routes.length&&d.routes[0].polyline){
@@ -1525,7 +1526,7 @@ function planRoute(){
         } else {tryOSRM();}
       }).catch(function(){tryOSRM();});
     }
-    tryOSRM();
+    tryGoogle();
   }
 
   function processRoute(result,sc,ec){
@@ -1712,6 +1713,12 @@ function planRoute(){
       if(!pending){finish();return;}
       exits.forEach(function(exit,i){reverseGeocode(exit.lng,exit.lat,function(label){exits[i].label=label;done++;if(done>=pending)finish();});});
   }
+  // Geocode whatever is needed
+  var pending=0,resolved={sc:sc,ec:ec};
+  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
+  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
+  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
+  if(sc&&ec)go(sc,ec);
 }
 
 // MAP FS
