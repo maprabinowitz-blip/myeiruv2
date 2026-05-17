@@ -1513,15 +1513,26 @@ function planRoute(){
       }).catch(function(){tryOSRMFree();});
     }
     function tryOSRMFree(){
-      // Free OSRM as last resort
-      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
+      // Free OSRM as last resort - try multiple endpoints
+      var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
+      fetch(osrmUrl)
       .then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){
           var r=d.routes[0];
-          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
+          // OSRM foot speed ~5km/h - adjust duration
+          var walkMins=Math.round(r.distance/83.3);
+          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:walkMins*60,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
           _routeCache[ck]=result;processRoute(result,sc,ec);
-        } else {toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-      }).catch(function(){toast('Could not fetch route. Check your connection.','err');btn.innerHTML='Check Route';btn.disabled=false;});
+        } else {
+          // Last resort - draw straight line
+          var result={coords:[sc.lng+','+sc.lat,ec.lng+','+ec.lat].map(function(c){var p=c.split(',');return[parseFloat(p[0]),parseFloat(p[1])];}),distance:0,duration:0,steps:[],source:'direct'};
+          toast('Route estimated — straight line only','err');
+          _routeCache[ck]=result;processRoute(result,sc,ec);
+        }
+      }).catch(function(){
+        toast('No route found. Check your connection.','err');
+        btn.innerHTML='Check Route';btn.disabled=false;
+      });
     }
     function tryGoogle(){
       var googleBody={
@@ -1730,7 +1741,12 @@ function planRoute(){
   }
   // Geocode whatever is needed
   var pending=0,resolved={sc:sc,ec:ec};
-  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
+  function tryGo(){
+    if(pending>0)return;
+    if(!resolved.sc){toast('Start address not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    if(!resolved.ec){toast('End address not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    go(resolved.sc,resolved.ec);
+  }
   if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
   if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
   if(sc&&ec)go(sc,ec);
