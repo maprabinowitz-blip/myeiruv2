@@ -1446,6 +1446,14 @@ function reverseGeocode(lng,lat,cb){
     var parts=d.features[0].place_name.split(',');cb(parts[0]+(parts[1]?', '+parts[1].trim():''));
   }).catch(function(){cb(lat.toFixed(4)+', '+lng.toFixed(4));});
 }
+function toggleSteps(btn){
+  var sid=btn.dataset.sid;
+  var el=document.getElementById(sid);
+  if(!el)return;
+  var open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  btn.textContent=open?'🚶 Step-by-step directions ▴':'🚶 Step-by-step directions ▾';
+}
 function planRoute(){
   var btn=document.getElementById('routeBtn');
   btn.disabled=true;btn.innerHTML='<div class="spin-ico"></div> Checking…';
@@ -1473,11 +1481,14 @@ function planRoute(){
         var coords=route.geometry.coordinates;
         var insideCount=coords.filter(function(c){return findEruv(c[0],c[1])!==null;}).length;
         var pct=insideCount/Math.max(1,coords.length);
-        if(pct<0.8&&!waypoints&&(findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat))){
-          // Try to find a midpoint inside the eiruv as waypoint
-          var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);
-          if(eruv&&eruv.center){
-            fetchRoute(sc,ec,[{lng:eruv.center[0],lat:eruv.center[1]}]);
+        if(pct<0.85&&!waypoints){
+          // Route exits eiruv - try routing through eiruv centers as waypoints
+          var eruvsInvolved=[];
+          coords.forEach(function(c){var e=findEruv(c[0],c[1]);if(e&&eruvsInvolved.indexOf(e)===-1)eruvsInvolved.push(e);});
+          if(!eruvsInvolved.length){var e=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);if(e)eruvsInvolved.push(e);}
+          if(eruvsInvolved.length){
+            var wpts=eruvsInvolved.map(function(e){return{lng:e.center[0],lat:e.center[1]};});
+            fetchRoute(sc,ec,wpts);
             return;
           }
         }
