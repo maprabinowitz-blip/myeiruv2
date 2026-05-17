@@ -1507,7 +1507,7 @@ function planRoute(){
     var coords=route.geometry.coordinates;
     var dist=route.distance>=1000?(route.distance/1000).toFixed(1)+' km':Math.round(route.distance)+' m';
     var mins=Math.round(route.duration/60);
-    var time=mins>60?Math.floor(mins/60)+'h '+mins%60+'m':mins+' min';
+    var time=(mins>60?Math.floor(mins/60)+'h '+(mins%60)+'m':mins+' min')+' walk';
 
     // Draw line on map
     clearRouteLayer();
@@ -1553,9 +1553,20 @@ function planRoute(){
 
     // Alert
     var alert='';
-    if(allIn) alert='<div class="route-alert ra-ok">✅ This route is fully within the eiruv.</div>';
-    else if(allOut) alert='<div class="route-alert ra-err">❌ This route is outside any known eiruv.</div>';
-    else alert='<div class="route-alert ra-warn">⚠️ This route partially exits the eiruv.</div>';
+    if(allIn){
+      alert='<div class="route-alert ra-ok">✅ This route is fully within the eiruv — carrying is permitted.</div>';
+    } else if(allOut){
+      alert='<div class="route-alert ra-err">❌ This route is entirely outside any eiruv — carrying is not permitted.</div>';
+    } else {
+      // Find exit/entry points
+      var exitPts=[];
+      for(var ci=1;ci<zones.length;ci++){
+        if(zones[ci-1]!==null&&zones[ci]===null) exitPts.push('exits eiruv at point '+ci);
+        else if(zones[ci-1]===null&&zones[ci]!==null) exitPts.push('re-enters eiruv at point '+ci);
+      }
+      var covPct=Math.round(zones.filter(function(z){return z!==null;}).length/Math.max(1,zones.length)*100);
+      alert='<div class="route-alert ra-warn">⚠️ This route exits the eiruv ('+covPct+'% within). No alternative eiruv route found — you may need to walk a different path to stay within the eiruv boundary.</div>';
+    }
 
     // Steps
     var steps=(route.legs&&route.legs[0]&&route.legs[0].steps)||[];
@@ -1567,7 +1578,7 @@ function planRoute(){
         var d=s.distance>=1000?(s.distance/1000).toFixed(1)+' km':Math.round(s.distance)+' m';
         return '<div class="step-row"><span class="step-ic">'+icon+'</span><div class="step-txt"><div>'+s.maneuver.instruction+'</div><div class="step-d">'+d+'</div></div></div>';
       }).join('');
-      stepsHtml='<div style="margin-top:10px"><button data-sid="'+sid+'" onclick="var el=document.getElementById(this.dataset.sid);el.style.display=el.style.display===\'none\'?\'block\':\'none\'" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button><div id="'+sid+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+rows+'</div></div>';
+      stepsHtml='<div style="margin-top:10px"><button data-sid="'+sid+'" onclick="toggleSteps(this)" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button><div id="'+sid+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+rows+'</div></div>';
     }
 
     document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>🚶 Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alert+stepsHtml;
