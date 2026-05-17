@@ -2497,6 +2497,11 @@ function saveCtDonateUrl(id,url){
   if(window._db)window._db.saveZone(e).then(function(){toast(url?'Donation link saved ❤':'Donation link removed','ok');});
   renderEruvList();renderStatus();
 }
+function ctDelZone(id){
+  if(!confirm('Delete this zone permanently?'))return;
+  admDel(id);
+  renderCtDash();
+}
 function _mkCtZoneCard(e){
   var id=e.id;
   var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status]||'b-up';
@@ -2516,6 +2521,7 @@ function _mkCtZoneCard(e){
     +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27up\x27)">✓ Up</button>'
     +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27review\x27)">Under Review</button>'
     +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27down\x27)">Down</button>'
+    +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" data-id="'+id+'" onclick="ctDelZone(this.dataset.id)">🗑 Delete Zone</button>'
     +'</div>'
     +'</div>'
     +'<span class="badge '+bc+'" style="margin-left:10px">'+(sl[e.status]||e.status)+'</span>'
