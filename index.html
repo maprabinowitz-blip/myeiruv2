@@ -1502,11 +1502,19 @@ function planRoute(){
       // Use Mapbox walking directions - reliable, true pedestrian routing
       var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
         +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
-        +'?overview=full&geometries=geojson&steps=true&access_token='+TOKEN;
+        +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN;
       fetch(url).then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){
-          var r=d.routes[0];
-          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox-walk'};
+          // Pick route with highest % inside eiruv
+          var best=d.routes[0];
+          var bestPct=0;
+          d.routes.forEach(function(r){
+            var coords=r.geometry.coordinates;
+            var inside=coords.filter(function(c){return findEruv(c[0],c[1])!==null;}).length;
+            var pct=inside/Math.max(1,coords.length);
+            if(pct>bestPct){bestPct=pct;best=r;}
+          });
+          var result={coords:best.geometry.coordinates,distance:best.distance||0,duration:best.duration||0,steps:(best.legs&&best.legs[0]&&best.legs[0].steps)||[],source:'mapbox-walk',insidePct:bestPct};
           _routeCache[ck]=result;processRoute(result,sc,ec);
         } else {toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
@@ -1596,9 +1604,9 @@ function planRoute(){
       var singleZone=(!allOut&&!exits.length&&!crosses.length)?zones.find(function(z){return z!==null;})||null:null;
       var fullyInside=!allOut&&!exits.length&&!crosses.length;
 
-      // Step-by-step directions only when fully inside eruv
+      // Step-by-step directions
       var stepsHtml='';
-      if(fullyInside&&d.routes[0].legs&&d.routes[0].legs[0]&&d.routes[0].legs[0].steps){
+      if(route.legs&&route.legs[0]&&route.legs[0].steps&&route.legs[0].steps.length){
         var rawSteps=d.routes[0].legs[0].steps;
         var stepRows=rawSteps.filter(function(s){return s.maneuver&&s.maneuver.instruction;}).map(function(s){
           var slng=s.maneuver.location[0],slat=s.maneuver.location[1];
@@ -1619,9 +1627,10 @@ function planRoute(){
             +'<div style="font-size:.68rem;color:var(--muted);margin-top:1px">'+dist+'</div></div></div>';
         });
         if(stepRows.length){
+          var stepsId='steps-'+Date.now();
           stepsHtml='<div style="margin-top:10px">'
-            +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Walking directions</div>'
-            +'<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+stepRows.join('')+'</div>'
+            +'<button onclick="var s=document.getElementById(\''+stepsId+'\');s.style.display=s.style.display===\'none\'?\'block\':\'none\'" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button>'
+            +'<div id="'+stepsId+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+stepRows.join('')+'</div>'
             +'</div>';
         }
       }
