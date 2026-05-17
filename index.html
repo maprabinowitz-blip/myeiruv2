@@ -1493,13 +1493,23 @@ function planRoute(){
     // Try Google first (most accurate walking), fallback to OSRM
     function tryOSRM(){
       var url='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
-      fetch(url).then(function(r){return r.json();}).then(function(d){
+      console.log('[ROUTE] Fetching OSRM:', url);
+      fetch(url)
+      .then(function(r){
+        console.log('[ROUTE] OSRM status:', r.status);
+        return r.json();
+      })
+      .then(function(d){
+        console.log('[ROUTE] OSRM response:', d.code, d.routes&&d.routes.length);
         if(d.code==='Ok'&&d.routes&&d.routes.length){
           var r=d.routes[0];
           var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
           _routeCache[ck]=result;processRoute(result,sc,ec);
         } else {toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+      }).catch(function(e){
+        console.error('[ROUTE] OSRM error:', e);
+        toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;
+      });
     }
     function tryGoogle(){
       var googleBody={
