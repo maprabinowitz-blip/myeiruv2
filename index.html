@@ -1187,8 +1187,7 @@ function fetchAC(q,id){
     +'&country=us'
     +'&limit=8'
     +'&proximity='+prox;
-  console.log('[AC] fetching:', url.slice(0,80));
-  fetch(url).then(function(r){return r.json();}).then(function(d){console.log('[AC] result:', d.features&&d.features.length, 'features');
+  fetch(url).then(function(r){return r.json();}).then(function(d){
     var features=d.features||[];
     var q2=q.toLowerCase();
     var allShuls=(S.shuls||[]).concat(_shulMarkers.map(function(m){return m.shul||null;}).filter(Boolean));
@@ -1319,9 +1318,8 @@ function checkPoint(lng,lat,label){
   var inside=allInside[0]||null;
   S.resultEruv=inside;
   var el=document.createElement('div');
-  el.style.cssText='font-size:1.6rem;line-height:1;cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))';
-  el.textContent=inside?'📍':'📍';
-  addrMarker=new mapboxgl.Marker({element:el,anchor:'bottom'}).setLngLat([lng,lat]).addTo(map);
+  el.style.cssText='width:12px;height:12px;border-radius:50%;background:'+(inside?'#22a865':'#d94040')+';border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+  addrMarker=new mapboxgl.Marker({element:el}).setLngLat([lng,lat]).addTo(map);
   map.flyTo({center:[lng,lat],zoom:15,duration:900});
   var card=document.getElementById('resultCard');
   card.className='result-card on '+(inside?'ins':'out');
@@ -1497,8 +1495,7 @@ function planRoute(){
       var url='https://api.mapbox.com/directions/v5/mapbox/walking/'
         +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
         +'?overview=full&geometries=geojson&steps=true&access_token='+TOKEN;
-      console.log('[AC] fetching:', url.slice(0,80));
-  fetch(url).then(function(r){return r.json();}).then(function(d){console.log('[AC] result:', d.features&&d.features.length, 'features');
+      fetch(url).then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){
           var r=d.routes[0];
           var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'mapbox-walk'};
@@ -1526,14 +1523,7 @@ function planRoute(){
     tryGoogle();
   }
 
-  var pending=0,resolved={sc:sc,ec:ec};
-  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
-  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
-  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
-  if(sc&&ec)go(sc,ec);
-}
-
-function processRoute(result,sc,ec){
+  function processRoute(result,sc,ec){
     var coords=result.coords;
     var baseId='rt-'+Date.now();
     S.routeLayerId=baseId;
@@ -1542,7 +1532,7 @@ function processRoute(result,sc,ec){
     renderRouteResult(route,coords,baseId,sc,ec);
   }
 
-function renderRouteResult(route,coords,baseId,sc,ec){
+  function renderRouteResult(route,coords,baseId,sc,ec){
 
       // Check every coord for zone membership (full resolution)
       var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
@@ -1598,9 +1588,9 @@ function renderRouteResult(route,coords,baseId,sc,ec){
       var singleZone=(!allOut&&!exits.length&&!crosses.length)?zones.find(function(z){return z!==null;})||null:null;
       var fullyInside=!allOut&&!exits.length&&!crosses.length;
 
-      // Step-by-step directions
+      // Step-by-step directions only when fully inside eruv
       var stepsHtml='';
-      if(route.legs&&route.legs[0]&&route.legs[0].steps&&route.legs[0].steps.length){
+      if(fullyInside&&d.routes[0].legs&&d.routes[0].legs[0]&&d.routes[0].legs[0].steps){
         var rawSteps=d.routes[0].legs[0].steps;
         var stepRows=rawSteps.filter(function(s){return s.maneuver&&s.maneuver.instruction;}).map(function(s){
           var slng=s.maneuver.location[0],slat=s.maneuver.location[1];
@@ -1621,10 +1611,9 @@ function renderRouteResult(route,coords,baseId,sc,ec){
             +'<div style="font-size:.68rem;color:var(--muted);margin-top:1px">'+dist+'</div></div></div>';
         });
         if(stepRows.length){
-          var stepsId='steps-'+Date.now();
           stepsHtml='<div style="margin-top:10px">'
-            +'<button onclick="var s=document.getElementById(\''+stepsId+'\');s.style.display=s.style.display===\'none\'?\'block\':\'none\'" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button>'
-            +'<div id="'+stepsId+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+stepRows.join('')+'</div>'
+            +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">Walking directions</div>'
+            +'<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+stepRows.join('')+'</div>'
             +'</div>';
         }
       }
@@ -1720,15 +1709,11 @@ function renderRouteResult(route,coords,baseId,sc,ec){
   }
   // Geocode whatever is needed
   var pending=0,resolved={sc:sc,ec:ec};
-  function tryGo(){
-    if(pending>0)return;
-    if(!resolved.sc){toast('Start address not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-    if(!resolved.ec){toast('End address not found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-    go(resolved.sc,resolved.ec);
-  }
+  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
   if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
   if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
   if(sc&&ec)go(sc,ec);
+}
 
 // MAP FS
 function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
@@ -1736,7 +1721,16 @@ function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-full
 // SIDEBAR
 function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);if(id==='status')checkHereStatus();try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
-// ── Parsha / Hebrew timestamp ────────────────────────────────────────────────
+// ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
+// Returns "Shabbos Parshas X" or weekday name for a given Date
+var PARSHIOS=[
+  'Bereishis','Noach','Lech Lecha','Vayeira','Chayei Sarah','Toldos','Vayeitzei','Vayishlach',
+  'Vayeishev','Mikeitz','Vayigash','Vayechi','Shemos','Va\'eira','Bo','Beshalach','Yisro',
+  'Mishpatim','Terumah','Tetzaveh','Ki Sisa','Vayakheil-Pekudei','Vayikra','Tzav','Shemini',
+  'Tazria-Metzora','Acharei Mos-Kedoshim','Emor','Behar-Bechukosai','Bamidbar','Nasso',
+  'Behaaloscha','Shelach','Korach','Chukas','Balak','Pinchas','Matos-Masei','Devarim',
+  'Va\'eschanan','Eikev','Re\'eh','Shoftim','Ki Seitzei','Ki Savo','Nitzavim-Vayeilech','Ha\'azinu'
+];
 function getParsha(date){
   // Base: Parshas Bereishis 5786 = Shabbos Oct 25 2025 (US)
   var BASE=new Date('2025-10-25');
@@ -1846,10 +1840,8 @@ function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toas
 function populateAlertCities(){
   var sel=document.getElementById('alertCity');
   if(!sel)return;
-  var cities=[...new Set(S.eruvin.filter(function(e){return !e._deleted&&e.city;}).map(function(e){return e.city.trim();}).filter(Boolean))].sort();
-  sel.innerHTML='<option value="">— Select a city —</option>'+cities.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
-  // If only one city, auto-select it
-  if(cities.length===1){sel.value=cities[0];updateAlertEruv();}
+  var cities=[...new Set(S.eruvin.filter(function(e){return !e._deleted;}).map(function(e){return e.city;}))].sort();
+  sel.innerHTML='<option value="">— Select a city —</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('');
 }
 function updateAlertEruv(){
   var c=document.getElementById('alertCity').value;
@@ -1858,7 +1850,7 @@ function updateAlertEruv(){
   s.innerHTML=zones.length?zones.map(function(e){return '<option value="'+e.id+'">'+e.name+'</option>';}).join(''):'<option>No eiruvim in this city</option>';
 }
 var alertOpen=false;
-function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);if(alertOpen)populateAlertCities();}
+function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);}
 function saveAlert(){
   var city=document.getElementById('alertCity').value,eruvSel=document.getElementById('alertEruv'),eruv=eruvSel.value,eruvName=eruvSel.options[eruvSel.selectedIndex]&&eruvSel.options[eruvSel.selectedIndex].text||eruv;
   if(!city||!eruv||eruv.indexOf('Select')>=0||eruv.indexOf('No ')>=0){toast('Select city and eiruv','err');return;}
@@ -3038,7 +3030,7 @@ function openDraw(mode,editId){
   S.editTargetId=editId||null;S.exclMode=false;S.curExcl=[];S.curAdj=[];_drawHistory=[];
   document.getElementById('drawOverlay').classList.add('on');
   document.getElementById('drawModeBadge').textContent=mode==='edit'?'Edit':'Draw';
-  ['zoneName','zoneCity','zoneNote','zoneDonate','zoneRov'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['zoneName','zoneCity','zoneNote','zoneDonate'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('zoneStatus').value='up';
   setStatus('up',true);
   renderExclList();
@@ -3376,7 +3368,7 @@ function loadForEdit(editId){
   S.curExcl=(e.exclusions||[]).map(function(ex){return Object.assign({},ex);});
   S.curAdj=(e.adjacency||[]).map(function(a){return Object.assign({},a);});
   document.getElementById('zoneName').value=e.name;document.getElementById('zoneCity').value=e.city;
-  document.getElementById('zoneStatus').value=e.status;document.getElementById('zoneNote').value=e.note||'';if(document.getElementById('zoneRov'))document.getElementById('zoneRov').value=e.rov||'';
+  document.getElementById('zoneStatus').value=e.status;document.getElementById('zoneNote').value=e.note||'';
   document.getElementById('zoneDonate').value=e.donateUrl||'';
   setStatus(e.status,true);
   Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]},properties:{isExcl:'0'}});
@@ -3523,7 +3515,7 @@ function autoDetectZoneCity(coords){
 function saveZone(){
   if(_cd.active){if(_cd.pts.length>=3){_finishCustomDraw();}else{toast('Draw zone boundary first (need 3+ points)','err');return;}setTimeout(saveZone,200);return;}
   if(!Draw)return;
-  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim(),rov=(document.getElementById('zoneRov')&&document.getElementById('zoneRov').value.trim())||'';
+  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim();
   if(!name||!city){toast('Enter zone name and city','err');return;}
   var feats=Draw.getAll().features,main=feats.find(function(f){return f.properties.isExcl!=='1';});
   if(!main){toast('Draw zone boundary first','err');return;}
@@ -3533,8 +3525,8 @@ function saveZone(){
   var excls=S.curExcl.slice();
   feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
   var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
-  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
-  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
+  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
   saveCustomZones();renderEruvList();renderStatus();closeDraw();
 }
 
