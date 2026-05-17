@@ -1478,19 +1478,27 @@ function planRoute(){
       if(d.code==='Ok'&&d.routes&&d.routes.length){
         var route=d.routes[0];
         // Check if route exits eiruv - if so, try to add waypoint to keep inside
+        // Check if route exits eiruv - if so, try to re-route with boundary waypoints
         var coords=route.geometry.coordinates;
-        var insideCount=coords.filter(function(c){return findEruv(c[0],c[1])!==null;}).length;
+        var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
+        var insideCount=zones.filter(function(z){return z!==null;}).length;
         var pct=insideCount/Math.max(1,coords.length);
-        if(pct<0.85&&!waypoints){
-          // Route exits eiruv - try routing through eiruv centers as waypoints
-          var eruvsInvolved=[];
-          coords.forEach(function(c){var e=findEruv(c[0],c[1]);if(e&&eruvsInvolved.indexOf(e)===-1)eruvsInvolved.push(e);});
-          if(!eruvsInvolved.length){var e=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);if(e)eruvsInvolved.push(e);}
-          if(eruvsInvolved.length){
-            var wpts=eruvsInvolved.map(function(e){return{lng:e.center[0],lat:e.center[1]};});
-            fetchRoute(sc,ec,wpts);
-            return;
+        if(pct<0.9&&!waypoints){
+          // Find exit points and add waypoints just before each exit
+          var wpts=[];
+          for(var ci=1;ci<zones.length;ci++){
+            if(zones[ci-1]!==null&&zones[ci]===null){
+              // Find eiruv of last inside point and use a point near boundary
+              var e=zones[ci-1];
+              // Add midpoint between last inside and exit as waypoint
+              var mid=[(coords[ci-1][0]+coords[ci][0])/2,(coords[ci-1][1]+coords[ci][1])/2];
+              // Only add if it's actually inside
+              if(findEruv(mid[0],mid[1])){
+                wpts.push({lng:coords[ci-1][0],lat:coords[ci-1][1]});
+              }
+            }
           }
+          if(wpts.length){fetchRoute(sc,ec,wpts);return;}
         }
         drawRoute(route,sc,ec);
       } else {
@@ -1506,8 +1514,9 @@ function planRoute(){
   function drawRoute(route,sc,ec){
     var coords=route.geometry.coordinates;
     var dist=route.distance>=1000?(route.distance/1000).toFixed(1)+' km':Math.round(route.distance)+' m';
+    // OSRM /foot/ uses 1.4m/s walking speed - correct
     var mins=Math.round(route.duration/60);
-    var time=(mins>60?Math.floor(mins/60)+'h '+(mins%60)+'m':mins+' min')+' walk';
+    var time=mins>60?Math.floor(mins/60)+'h '+(mins%60)+'m':mins+' min';
 
     // Draw line on map
     clearRouteLayer();
