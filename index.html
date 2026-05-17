@@ -700,7 +700,7 @@ header{
               <div class="fg"><input class="fi" id="rCtRov" placeholder="Rabbinic oversight" style="font-size:.78rem;padding:5px 8px"></div>
             </div>
           </div>
-          <script>document.getElementById('rApplyCt').addEventListener('change',function(){document.getElementById('rApplyCtFields').style.display=this.checked?'block':'none';});</script>
+          <script>document.addEventListener('DOMContentLoaded',function(){var el=document.getElementById('rApplyCt');if(el)el.addEventListener('change',function(){document.getElementById('rApplyCtFields').style.display=this.checked?'block':'none';});});</script>
           <div class="e-msg" id="rErr"></div>
           <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
         </div>
