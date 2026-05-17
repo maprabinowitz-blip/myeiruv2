@@ -1496,7 +1496,7 @@ function planRoute(){
         denseCoords.push(coords[coords.length-1]);
         var zones=denseCoords.map(function(c){return findEruv(c[0],c[1]);});
         var insideCount=zones.filter(function(z){return z!==null;}).length;
-        var pct=insideCount/Math.max(1,coords.length);
+        var pct=insideCount/Math.max(1,denseCoords.length);
         if(pct<0.9&&!waypoints){
           // Find exit points and add waypoints just before each exit
           var wpts=[];
@@ -1517,7 +1517,7 @@ function planRoute(){
           var anyEruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);
           if(anyEruv&&anyEruv.center){fetchRoute(sc,ec,[{lng:anyEruv.center[0],lat:anyEruv.center[1]}]);return;}
         }
-        drawRoute(route,sc,ec);
+        drawRoute(route,sc,ec,denseCoords,zones);
       } else {
         // Mapbox failed - try OSRM
         var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
@@ -1536,7 +1536,7 @@ function planRoute(){
     });
   }
 
-  function drawRoute(route,sc,ec){
+  function drawRoute(route,sc,ec,denseCoords,zones){
     var coords=route.geometry.coordinates;
     var dist=route.distance>=1000?(route.distance/1000).toFixed(1)+' km':Math.round(route.distance)+' m';
     // OSRM /foot/ uses 1.4m/s walking speed - correct
@@ -1545,7 +1545,7 @@ function planRoute(){
 
     // Draw line on map
     clearRouteLayer();
-    var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
+    if(!zones){var zones=coords.map(function(c){return findEruv(c[0],c[1]);}); denseCoords=coords;}
     var allIn=zones.every(function(z){return z!==null;});
     var allOut=zones.every(function(z){return z===null;});
     var covText=allIn?'✅ Full':allOut?'❌ None':Math.round(zones.filter(function(z){return z!==null;}).length/Math.max(1,zones.length)*100)+'%';
