@@ -1524,6 +1524,13 @@ function planRoute(){
     tryGoogle();
   }
 
+  var pending=0,resolved={sc:sc,ec:ec};
+  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
+  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
+  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
+  if(sc&&ec)go(sc,ec);
+}
+
   function processRoute(result,sc,ec){
     var coords=result.coords;
     var baseId='rt-'+Date.now();
@@ -1728,12 +1735,6 @@ function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-full
 // SIDEBAR
 function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);if(id==='status')checkHereStatus();try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
-  var pending=0,resolved={sc:sc,ec:ec};
-  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
-  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
-  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
-  if(sc&&ec)go(sc,ec);
-}
 // ── Parsha / Hebrew timestamp ────────────────────────────────────────────────
 function getParsha(date){
   // Base: Parshas Bereishis 5786 = Shabbos Oct 25 2025 (US)
