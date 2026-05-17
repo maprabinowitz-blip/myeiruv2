@@ -590,6 +590,7 @@ header{
       </div>
     </div>
     <div class="panel" id="panel-status">
+      <div id="hereBox" style="display:none;margin:0 0 10px;padding:10px 12px;border-radius:10px;background:#f0f6ff;border:1px solid #c8ddf7;font-size:.8rem;"></div>
       <div class="filter-row">
         <button class="chip on" onclick="fStatus(this,'all')">All</button>
         <button class="chip" onclick="fStatus(this,'up')">Up &#10003;</button>
@@ -1715,7 +1716,7 @@ function planRoute(){
 function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
 
 // SIDEBAR
-function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
+function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);if(id==='status')checkHereStatus();try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
 // ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
 // Returns "Shabbos Parshas X" or weekday name for a given Date
@@ -1749,6 +1750,27 @@ function getEruvTimestamp(){
     return dayName+' '+time+' · Parshas '+getParsha(nextShabbos);
   }
   return dayName+' '+time;
+}
+function checkHereStatus(){
+  var box=document.getElementById('hereBox');
+  if(!box)return;
+  if(!navigator.geolocation){box.style.display='none';return;}
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var lng=pos.coords.longitude,lat=pos.coords.latitude;
+    var here=S.eruvin.filter(function(e){return e.coords&&pip(lng,lat,e.coords)&&!inExcl(lng,lat,e);});
+    if(!here.length){box.style.display='none';return;}
+    var sl={up:'✅ Up & Kosher',review:'⚠️ Under Review',down:'❌ Down'};
+    var html='<div style="font-weight:700;color:var(--navy);margin-bottom:6px;">📍 You are in:</div>';
+    html+=here.map(function(e){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.06)">'
+        +'<div><div style="font-weight:600;font-size:.82rem;">'+e.name+'</div>'
+        +'<div style="font-size:.7rem;color:var(--muted);">'+e.city+'</div></div>'
+        +'<span class="badge '+(e.status==='up'?'b-up':e.status==='down'?'b-dn':'b-rv')+'">'+(sl[e.status]||e.status)+'</span>'
+        +'</div>';
+    }).join('');
+    box.innerHTML=html;
+    box.style.display='block';
+  },function(){box.style.display='none';},{timeout:5000});
 }
 function renderStatus(f){
   f=f||'all';
@@ -2189,7 +2211,7 @@ function admStatus(id,status){
   if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked});
   // Send status update notification
   sendEruvEmailAlerts(e,status,note);
-  renderEruvList();renderStatus();renderAdmin('overview');
+  renderEruvList();renderStatus();renderAdmin('overview');checkHereStatus();
 }
 function admDel(id){
   if(!confirm('Delete this zone permanently?'))return;
