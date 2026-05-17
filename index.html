@@ -1481,7 +1481,20 @@ function planRoute(){
         // Check if route exits eiruv - if so, try to add waypoint to keep inside
         // Check if route exits eiruv - if so, try to re-route with boundary waypoints
         var coords=route.geometry.coordinates;
-        var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
+        // Interpolate extra points between each coord pair for accurate eiruv checking
+        var denseCoords=[];
+        for(var di=0;di<coords.length-1;di++){
+          denseCoords.push(coords[di]);
+          var steps=10;
+          for(var ds=1;ds<steps;ds++){
+            denseCoords.push([
+              coords[di][0]+(coords[di+1][0]-coords[di][0])*ds/steps,
+              coords[di][1]+(coords[di+1][1]-coords[di][1])*ds/steps
+            ]);
+          }
+        }
+        denseCoords.push(coords[coords.length-1]);
+        var zones=denseCoords.map(function(c){return findEruv(c[0],c[1]);});
         var insideCount=zones.filter(function(z){return z!==null;}).length;
         var pct=insideCount/Math.max(1,coords.length);
         if(pct<0.9&&!waypoints){
