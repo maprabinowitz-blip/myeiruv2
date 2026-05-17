@@ -1499,6 +1499,9 @@ function planRoute(){
             }
           }
           if(wpts.length){fetchRoute(sc,ec,wpts);return;}
+          // If no good waypoints found, try routing via eiruv center
+          var anyEruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);
+          if(anyEruv&&anyEruv.center){fetchRoute(sc,ec,[{lng:anyEruv.center[0],lat:anyEruv.center[1]}]);return;}
         }
         drawRoute(route,sc,ec);
       } else {
@@ -1578,7 +1581,9 @@ function planRoute(){
     }
 
     // Steps
-    var steps=(route.legs&&route.legs[0]&&route.legs[0].steps)||[];
+    // OSRM steps are in legs[0].steps
+    var steps=[];
+    if(route.legs){route.legs.forEach(function(leg){if(leg.steps)leg.steps.forEach(function(s){steps.push(s);});});}
     var stepsHtml='';
     if(steps.length){
       var sid='steps-'+Date.now();
