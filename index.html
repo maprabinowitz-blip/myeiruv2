@@ -1473,7 +1473,8 @@ function planRoute(){
     var pts=[sc.lng+','+sc.lat];
     if(waypoints)waypoints.forEach(function(w){pts.push(w.lng+','+w.lat);});
     pts.push(ec.lng+','+ec.lat);
-    var url='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
+    var url='https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')
+      +'?overview=full&geometries=geojson&steps=true&access_token='+TOKEN;
     fetch(url).then(function(r){return r.json();}).then(function(d){
       if(d.code==='Ok'&&d.routes&&d.routes.length){
         var route=d.routes[0];
