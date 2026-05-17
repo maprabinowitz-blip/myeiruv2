@@ -1531,7 +1531,7 @@ function planRoute(){
   if(sc&&ec)go(sc,ec);
 }
 
-  function processRoute(result,sc,ec){
+function processRoute(result,sc,ec){
     var coords=result.coords;
     var baseId='rt-'+Date.now();
     S.routeLayerId=baseId;
@@ -1540,7 +1540,7 @@ function planRoute(){
     renderRouteResult(route,coords,baseId,sc,ec);
   }
 
-  function renderRouteResult(route,coords,baseId,sc,ec){
+function renderRouteResult(route,coords,baseId,sc,ec){
 
       // Check every coord for zone membership (full resolution)
       var zones=coords.map(function(c){return findEruv(c[0],c[1]);});
@@ -1727,7 +1727,6 @@ function planRoute(){
   if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
   if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
   if(sc&&ec)go(sc,ec);
-}
 
 // MAP FS
 function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
