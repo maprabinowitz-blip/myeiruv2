@@ -1468,6 +1468,13 @@ function planRoute(){
   if(startVal&&(!sc||sc.label!==startVal))sc=null;
   if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
+  // Geocode whatever is needed then call go()
+  var pending=0,resolved={sc:sc,ec:ec};
+  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
+  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
+  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
+  if(sc&&ec)go(sc,ec);
+
   // Decode Google encoded polyline to [[lng,lat],...]
   function decodePolyline(str){
     var idx=0,lat=0,lng=0,coords=[];
@@ -1713,12 +1720,6 @@ function planRoute(){
       if(!pending){finish();return;}
       exits.forEach(function(exit,i){reverseGeocode(exit.lng,exit.lat,function(label){exits[i].label=label;done++;if(done>=pending)finish();});});
   }
-  // Geocode whatever is needed
-  var pending=0,resolved={sc:sc,ec:ec};
-  function tryGo(){if(pending===0)go(resolved.sc,resolved.ec);}
-  if(!sc){pending++;geocodeOne(startVal||document.getElementById('rStart').value,function(r){resolved.sc=r;if(r)S.routeStart=r;pending--;tryGo();});}
-  if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
-  if(sc&&ec)go(sc,ec);
 }
 
 // MAP FS
