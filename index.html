@@ -1734,7 +1734,7 @@ function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(f
   if(!ec){pending++;geocodeOne(endVal||document.getElementById('rEnd').value,function(r){resolved.ec=r;if(r)S.routeEnd=r;pending--;tryGo();});}
   if(sc&&ec)go(sc,ec);
 }
-tParsha(date){
+function getParsha(date){
   // Base: Parshas Bereishis 5786 = Shabbos Oct 25 2025 (US)
   var BASE=new Date('2025-10-25');
   var msPerWeek=7*24*60*60*1000;
