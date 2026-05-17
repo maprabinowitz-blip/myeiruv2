@@ -962,6 +962,7 @@ header{
             </div>
             <input type="hidden" id="zoneStatus" value="up">
           </div>
+          <div class="fg"><label class="lbl">Rabbinic Endorsement</label><input class="fi" id="zoneRov" placeholder="e.g. Rabbi Y. Goldstein, Beth Din of..."></div>
           <div class="fg"><label class="lbl">Status Note</label><input class="fi" id="zoneNote" placeholder="e.g. Fixed after rain damage"></div>
           <div class="fg"><label class="lbl">Donation Link</label><input class="fi" id="zoneDonate" placeholder="https://…"></div>
         </div>
@@ -1326,8 +1327,9 @@ function checkPoint(lng,lat,label){
   var inside=allInside[0]||null;
   S.resultEruv=inside;
   var el=document.createElement('div');
-  el.style.cssText='width:12px;height:12px;border-radius:50%;background:'+(inside?'#22a865':'#d94040')+';border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)';
-  addrMarker=new mapboxgl.Marker({element:el}).setLngLat([lng,lat]).addTo(map);
+  el.style.cssText='font-size:1.6rem;line-height:1;cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))';
+  el.textContent=inside?'📍':'📍';
+  addrMarker=new mapboxgl.Marker({element:el,anchor:'bottom'}).setLngLat([lng,lat]).addTo(map);
   map.flyTo({center:[lng,lat],zoom:15,duration:900});
   var card=document.getElementById('resultCard');
   card.className='result-card on '+(inside?'ins':'out');
@@ -1857,8 +1859,10 @@ function flyTo(center,name){map.flyTo({center:center,zoom:13,duration:900});toas
 function populateAlertCities(){
   var sel=document.getElementById('alertCity');
   if(!sel)return;
-  var cities=[...new Set(S.eruvin.filter(function(e){return !e._deleted;}).map(function(e){return e.city;}))].sort();
-  sel.innerHTML='<option value="">— Select a city —</option>'+cities.map(function(c){return '<option>'+c+'</option>';}).join('');
+  var cities=[...new Set(S.eruvin.filter(function(e){return !e._deleted&&e.city;}).map(function(e){return e.city.trim();}).filter(Boolean))].sort();
+  sel.innerHTML='<option value="">— Select a city —</option>'+cities.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
+  // If only one city, auto-select it
+  if(cities.length===1){sel.value=cities[0];updateAlertEruv();}
 }
 function updateAlertEruv(){
   var c=document.getElementById('alertCity').value;
@@ -3047,7 +3051,7 @@ function openDraw(mode,editId){
   S.editTargetId=editId||null;S.exclMode=false;S.curExcl=[];S.curAdj=[];_drawHistory=[];
   document.getElementById('drawOverlay').classList.add('on');
   document.getElementById('drawModeBadge').textContent=mode==='edit'?'Edit':'Draw';
-  ['zoneName','zoneCity','zoneNote','zoneDonate'].forEach(function(id){document.getElementById(id).value='';});
+  ['zoneName','zoneCity','zoneNote','zoneDonate','zoneRov'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('zoneStatus').value='up';
   setStatus('up',true);
   renderExclList();
@@ -3385,7 +3389,7 @@ function loadForEdit(editId){
   S.curExcl=(e.exclusions||[]).map(function(ex){return Object.assign({},ex);});
   S.curAdj=(e.adjacency||[]).map(function(a){return Object.assign({},a);});
   document.getElementById('zoneName').value=e.name;document.getElementById('zoneCity').value=e.city;
-  document.getElementById('zoneStatus').value=e.status;document.getElementById('zoneNote').value=e.note||'';
+  document.getElementById('zoneStatus').value=e.status;document.getElementById('zoneNote').value=e.note||'';if(document.getElementById('zoneRov'))document.getElementById('zoneRov').value=e.rov||'';
   document.getElementById('zoneDonate').value=e.donateUrl||'';
   setStatus(e.status,true);
   Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]},properties:{isExcl:'0'}});
@@ -3532,7 +3536,7 @@ function autoDetectZoneCity(coords){
 function saveZone(){
   if(_cd.active){if(_cd.pts.length>=3){_finishCustomDraw();}else{toast('Draw zone boundary first (need 3+ points)','err');return;}setTimeout(saveZone,200);return;}
   if(!Draw)return;
-  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim();
+  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim(),rov=(document.getElementById('zoneRov')&&document.getElementById('zoneRov').value.trim())||'';
   if(!name||!city){toast('Enter zone name and city','err');return;}
   var feats=Draw.getAll().features,main=feats.find(function(f){return f.properties.isExcl!=='1';});
   if(!main){toast('Draw zone boundary first','err');return;}
@@ -3542,8 +3546,8 @@ function saveZone(){
   var excls=S.curExcl.slice();
   feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
   var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
-  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
-  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
+  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
   saveCustomZones();renderEruvList();renderStatus();closeDraw();
 }
 
