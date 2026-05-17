@@ -1476,7 +1476,7 @@ function planRoute(){
     var url='https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')
       +'?overview=full&geometries=geojson&steps=true&access_token='+TOKEN;
     fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.code==='Ok'&&d.routes&&d.routes.length){
+      if(d.routes&&d.routes.length){  // Mapbox returns 'Ok', check routes directly
         var route=d.routes[0];
         // Check if route exits eiruv - if so, try to add waypoint to keep inside
         // Check if route exits eiruv - if so, try to re-route with boundary waypoints
@@ -1506,12 +1506,20 @@ function planRoute(){
         }
         drawRoute(route,sc,ec);
       } else {
-        toast('No route found between these addresses','err');
-        btn.innerHTML='Check Route';btn.disabled=false;
+        // Mapbox failed - try OSRM
+        var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
+        fetch(osrmUrl).then(function(r){return r.json();}).then(function(d){
+          if(d.code==='Ok'&&d.routes&&d.routes.length){drawRoute(d.routes[0],sc,ec);}
+          else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
+        }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
       }
     }).catch(function(){
-      toast('Could not fetch route','err');
-      btn.innerHTML='Check Route';btn.disabled=false;
+      // Mapbox network error - try OSRM
+      var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
+      fetch(osrmUrl).then(function(r){return r.json();}).then(function(d){
+        if(d.code==='Ok'&&d.routes&&d.routes.length){drawRoute(d.routes[0],sc,ec);}
+        else{toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;}
+      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     });
   }
 
