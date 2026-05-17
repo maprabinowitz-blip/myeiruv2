@@ -1509,8 +1509,19 @@ function planRoute(){
           });
           var result={coords:best.geometry.coordinates,distance:best.distance||0,duration:best.duration||0,steps:(best.legs&&best.legs[0]&&best.legs[0].steps)||[],source:'mapbox-walk',insidePct:bestPct};
           _routeCache[ck]=result;processRoute(result,sc,ec);
+        } else {tryOSRMFree();}
+      }).catch(function(){tryOSRMFree();});
+    }
+    function tryOSRMFree(){
+      // Free OSRM as last resort
+      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.code==='Ok'&&d.routes&&d.routes.length){
+          var r=d.routes[0];
+          var result={coords:r.geometry.coordinates,distance:r.distance||0,duration:r.duration||0,steps:(r.legs&&r.legs[0]&&r.legs[0].steps)||[],source:'osrm'};
+          _routeCache[ck]=result;processRoute(result,sc,ec);
         } else {toast('No walking route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+      }).catch(function(){toast('Could not fetch route. Check your connection.','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
     function tryGoogle(){
       var googleBody={
