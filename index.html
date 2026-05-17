@@ -668,7 +668,7 @@ header{
 
 <!-- CONTRACTOR DASHBOARD -->
 <div class="ct-dash" id="ctDash">
-  <div class="ct-hdr"><div class="ct-title">&#128205; My Zones</div><button onclick="renderCtMsgs()" style="border:none;background:rgba(74,144,217,.12);color:var(--blue);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;margin-right:8px;">✉ Messages</button><button class="adm-cls" onclick="closeCtDash()">&#10005;</button></div>
+  <div class="ct-hdr"><div class="ct-title">&#128205; My Zones</div><div style="display:flex;gap:6px"><button onclick="renderCtProfile()" style="border:none;background:rgba(74,144,217,.12);color:var(--blue);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">👤 Profile</button><button onclick="renderCtMsgs()" style="border:none;background:rgba(74,144,217,.12);color:var(--blue);padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit;">✉ Messages</button><button class="adm-cls" onclick="closeCtDash()">&#10005;</button></div></div>
   <div class="ct-body" id="ctBody"></div>
 </div>
 
@@ -699,6 +699,17 @@ header{
           <div class="fg"><label class="lbl">Full Name</label><input class="fi" id="rName" type="text"></div>
           <div class="fg"><label class="lbl">Email</label><input class="fi" id="rEmail" type="email"></div>
           <div class="fg"><label class="lbl">Password</label><div style="position:relative"><input class="fi" id="rPass" type="password" placeholder="Min 6 chars" style="padding-right:38px"><button type="button" onclick="var i=document.getElementById('rPass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;font-size:.85rem;padding:2px;">👁</button></div></div>
+          <div class="fg" style="margin-top:2px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.8rem;color:var(--navy)">
+              <input type="checkbox" id="rApplyCt" style="width:15px;height:15px;cursor:pointer">
+              <span>Apply to become an eiruv contractor</span>
+            </label>
+            <div id="rApplyCtFields" style="display:none;margin-top:8px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border)">
+              <div class="fg"><input class="fi" id="rCtArea" placeholder="Service area (e.g. Brooklyn, NY)" style="font-size:.78rem;padding:5px 8px"></div>
+              <div class="fg"><input class="fi" id="rCtRov" placeholder="Rabbinic oversight" style="font-size:.78rem;padding:5px 8px"></div>
+            </div>
+          </div>
+          <script>document.getElementById('rApplyCt').addEventListener('change',function(){document.getElementById('rApplyCtFields').style.display=this.checked?'block':'none';});</script>
           <div class="e-msg" id="rErr"></div>
           <button class="btn btn-navy btn-full" onclick="doRegister()">Create Account</button>
         </div>
@@ -2506,6 +2517,38 @@ function _mkCtZoneCard(e){
     +'</div>';
 }
 
+function renderCtProfile(){
+  var user=S.user||{};
+  var body=document.getElementById('ctBody');
+  body.innerHTML='<div style="font-size:.85rem;font-weight:700;color:var(--navy);margin-bottom:12px;">👤 Public Profile</div>'
+    +'<div style="font-size:.72rem;color:var(--muted);margin-bottom:12px;line-height:1.5;">This info appears when users click your eiruv — it's your public contractor profile.</div>'
+    +'<div class="fg"><label class="lbl">Display Name</label><input class="fi" id="ctProfName" value="'+(user.name||'')+'" placeholder="Your full name"></div>'
+    +'<div class="fg"><label class="lbl">Phone</label><input class="fi" id="ctProfPhone" type="tel" value="'+(user.phone||'')+'" placeholder="+1 (555) 000-0000"></div>'
+    +'<div class="fg"><label class="lbl">Rabbinic Oversight</label><input class="fi" id="ctProfRov" value="'+(user.rov||'')+'" placeholder="e.g. Rabbi Y. Goldstein"></div>'
+    +'<div class="fg"><label class="lbl">Service Area</label><input class="fi" id="ctProfArea" value="'+(user.area||'')+'" placeholder="e.g. Brooklyn, NY"></div>'
+    +'<div class="fg"><label class="lbl">Donation Link</label><input class="fi" id="ctProfDonate" type="url" value="'+(user.donateUrl||'')+'" placeholder="https://..."></div>'
+    +'<div class="fg"><label class="lbl">About / Bio</label><textarea class="fi" id="ctProfBio" rows="3" placeholder="Brief description of your eiruv management...">'+(user.bio||'')+'</textarea></div>'
+    +'<button class="btn btn-navy btn-full" onclick="saveCtProfile()">Save Profile</button>';
+}
+function saveCtProfile(){
+  if(!S.user)return;
+  var fields={
+    name:document.getElementById('ctProfName').value.trim(),
+    phone:document.getElementById('ctProfPhone').value.trim(),
+    rov:document.getElementById('ctProfRov').value.trim(),
+    area:document.getElementById('ctProfArea').value.trim(),
+    donateUrl:document.getElementById('ctProfDonate').value.trim(),
+    bio:document.getElementById('ctProfBio').value.trim()
+  };
+  Object.assign(S.user,fields);
+  _cacheAndSaveUser(S.user);
+  if(window._db){
+    window._db.patchUser(S.user.email,fields);
+    window._db.patchContractor(S.user.email,{name:fields.name,phone:fields.phone,rov:fields.rov,area:fields.area,donateUrl:fields.donateUrl,bio:fields.bio});
+  }
+  toast('Profile saved ✓','ok');
+  renderCtDash();
+}
 function renderCtMsgs(){
   var body=document.getElementById('ctBody');
   body.innerHTML='<div style="font-size:.85rem;font-weight:700;color:var(--navy);margin-bottom:12px;">✉ Messages</div><div id="ctMsgList" style="color:var(--muted);font-size:.8rem;">Loading...</div>';
