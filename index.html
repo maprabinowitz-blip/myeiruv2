@@ -1788,30 +1788,34 @@ function showEruvDetail(id){
   }
 
   var html='<div>'
-    +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;position:sticky;top:0;background:#fff;z-index:2">'
-    +'<button onclick="showV(\x27vMain\x27)" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px">←</button>'
-    +'<div style="flex:1"><div style="font-size:.95rem;font-weight:700;color:var(--navy)">'+e.name+'</div>'
+    // Sticky header with back + name + status
+    +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;position:sticky;top:0;background:#fff;z-index:2">'
+    +'<button onclick="document.getElementById('vEruvDetail').style.display='none';document.getElementById('vMain').style.display='block'" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:0 6px 0 0">←</button>'
+    +'<div style="flex:1;min-width:0"><div style="font-size:.95rem;font-weight:800;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e.name+'</div>'
     +'<div style="font-size:.72rem;color:var(--muted)">'+e.city+'</div></div>'
-    +'<span class="badge '+(e.status==='up'?'b-up':e.status==='down'?'b-dn':'b-rv')+'" style="font-size:.75rem">'+lbl+'</span>'
+    +'<span class="badge '+(e.status==='up'?'b-up':e.status==='down'?'b-dn':'b-rv')+'">'+lbl+'</span>'
     +'</div>'
-    +'<div style="padding:14px 16px">'    
-
-    +(e.lastChecked?'<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">Updated: '+e.lastChecked+'</div>':'')
-    +(e.note?'<div style="font-size:.82rem;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:10px;border:1px solid var(--border)">'+e.note+'</div>':'')
+    // Body
+    +'<div style="padding:14px 16px">'
+    // Last updated
+    +(e.lastChecked?'<div style="font-size:.7rem;color:var(--muted);margin-bottom:10px">'+e.lastChecked+'</div>':'')
+    // Public note
+    +(e.note?'<div style="font-size:.82rem;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:10px;border:1px solid var(--border);line-height:1.5">'+e.note+'</div>':'')
+    // Boundary/segment notes
     +segNotesHtml
-    +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:10px">❤️ Support This Eiruv</a>':'')
-    +ctHtml
-    +'</div>'
-    // Adjacent zones - show carrying permissions
+    // Donate
+    +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:12px">❤️ Support This Eiruv</a><br>':'')
+    // Adjacent carrying
     +(function(){
       var adjZones=(e.adjacency||[]).filter(function(a){return a.canEnter;});
       if(!adjZones.length)return '';
       var adjNames=adjZones.map(function(a){var z=S.eruvin.find(function(x){return x.id===a.id;});return z?z.name:null;}).filter(Boolean);
       if(!adjNames.length)return '';
-      return '<div style="margin-top:10px;padding:8px 12px;background:#f0fff4;border-radius:8px;border-left:3px solid #22a865;font-size:.78rem;color:#1a5c30"><span style="font-weight:600">↔ Carrying permitted into:</span> '+adjNames.join(', ')+'</div>';
+      return '<div style="margin-bottom:12px;padding:8px 12px;background:#f0fff4;border-radius:8px;border-left:3px solid #22a865;font-size:.78rem;color:#1a5c30"><span style="font-weight:600">↔ Carrying permitted also in:</span> '+adjNames.join(', ')+'</div>';
     })()
-    +'</div>';
-
+    // Contractor
+    +ctHtml
+    +'</div></div>'
   openModal('vEruvDetail');
   document.getElementById('eruvDetailBody').innerHTML=html;
 }
