@@ -3532,7 +3532,7 @@ function renderAdjList(){
       +'<div style="font-size:.66rem;color:rgba(255,255,255,.35)">'+e.city+'</div></div>'
       +'<div style="display:flex;align-items:center;gap:6px">'
       +'<span style="font-size:.65rem;color:rgba(255,255,255,.4)">Allow carrying</span>'
-      +'<button class="toggle '+(on?'on':'')+'" onclick="toggleAdj(''+e.id+'')" title="Allow carrying between these eiruvim"></button>'
+      +'<button class="toggle '+(on?'on':'')+'" data-id="'+e.id+'" onclick="toggleAdj(this.dataset.id)" title="Allow carrying between these eiruvim"></button>'
       +'</div></div>';
   }).join('');
 }
