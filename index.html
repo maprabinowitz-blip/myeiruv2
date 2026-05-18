@@ -1780,6 +1780,14 @@ function showEruvDetail(id){
     +segNotesHtml
     +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:10px">❤️ Support This Eiruv</a>':'')
     +ctHtml
+    // Adjacent zones
+    +(function(){
+      var adjZones=(e.adjacency||[]).filter(function(a){return a.canEnter;});
+      if(!adjZones.length)return '';
+      var adjNames=adjZones.map(function(a){var z=S.eruvin.find(function(x){return x.id===a.id;});return z?z.name:null;}).filter(Boolean);
+      if(!adjNames.length)return '';
+      return '<div style="margin-top:10px;padding:8px 12px;background:#f0fff4;border-radius:8px;border-left:3px solid #22a865;font-size:.78rem;color:#1a5c30"><span style="font-weight:600">↔ Carrying permitted into:</span> '+adjNames.join(', ')+'</div>';
+    })()
     +'</div>';
 
   openModal('vEruvDetail');
