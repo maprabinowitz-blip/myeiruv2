@@ -3159,7 +3159,10 @@ function initDrawMap(mode,editId){
         var d=Math.sqrt(Math.pow((pt[0]-mx)*Math.cos(pt[1]*Math.PI/180),2)+Math.pow(pt[1]-my,2));
         if(d<minDist){minDist=d;bestSeg=i;}
       }
-      if(minDist<0.003){
+      if(minDist<0.003&&_segNoteMode){
+        _segNoteMode=false;
+        document.getElementById('segNoteModeHint').style.display='none';
+        if(drawMap)drawMap.getCanvas().style.cursor='';
         selectSegment(bestSeg,pt);
       }
     });
@@ -3503,6 +3506,14 @@ function renderSegNotes(){
       +'</div>';
   }).join('');
 }
+var _segNoteMode=false;
+function startSegNoteMode(){
+  _segNoteMode=true;
+  document.getElementById('segNoteModeHint').style.display='block';
+  document.getElementById('addSegNoteBtn').style.display='none';
+  // Cursor hint
+  if(drawMap)drawMap.getCanvas().style.cursor='crosshair';
+}
 function selectSegment(segIdx,coord){
   _selectedSeg=segIdx;
   var form=document.getElementById('segNoteForm');
@@ -3519,12 +3530,15 @@ function saveSegNote(){
   if(val)_segNotes[_selectedSeg]=val;
   else delete _segNotes[_selectedSeg];
   document.getElementById('segNoteForm').style.display='none';
-  _selectedSeg=null;
+  document.getElementById('addSegNoteBtn').style.display='block';
+  _selectedSeg=null;_segNoteMode=false;
   renderSegNotes();
 }
 function cancelSegNote(){
   document.getElementById('segNoteForm').style.display='none';
-  _selectedSeg=null;
+  document.getElementById('addSegNoteBtn').style.display='block';
+  _selectedSeg=null;_segNoteMode=false;
+  if(drawMap)drawMap.getCanvas().style.cursor='';
 }
 function deleteSegNote(k){
   delete _segNotes[k];
