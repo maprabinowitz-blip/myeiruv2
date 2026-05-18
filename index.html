@@ -1131,13 +1131,17 @@ function addEruvToMap(e){
     map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.07}});
     map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':2.5,'line-opacity':.9}});
     map.on('click',sid+'-fill',()=>showEruvPopup(e));
-  // Add note label marker if note exists
-  if(e.note&&e.center){
+  // Add 💬 marker if zone has any notes
+  var hasNotes=e.note||(e.boundaryNotes)||(e.segNotes&&Object.keys(e.segNotes).length);
+  if(hasNotes&&e.center){
     var noteEl=document.createElement('div');
-    noteEl.style.cssText='background:rgba(15,31,56,.82);color:#fff;font-size:.68rem;padding:3px 8px;border-radius:10px;cursor:pointer;max-width:140px;text-align:center;line-height:1.3;box-shadow:0 2px 6px rgba(0,0,0,.25);';
-    noteEl.textContent=e.note.length>40?e.note.slice(0,38)+'…':e.note;
+    noteEl.style.cssText='font-size:1.2rem;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));line-height:1;';
+    noteEl.textContent='💬';
+    noteEl.title=e.note||'Click to see boundary notes';
     noteEl.onclick=function(){showEruvPopup(e);};
-    var nm=new mapboxgl.Marker({element:noteEl,anchor:'center'}).setLngLat(e.center).addTo(map);
+    noteEl.onmouseenter=function(){this.style.transform='scale(1.2)';};
+    noteEl.onmouseleave=function(){this.style.transform='scale(1)';};
+    var nm=new mapboxgl.Marker({element:noteEl,anchor:'bottom'}).setLngLat(e.center).addTo(map);
     S.noteMarkers=S.noteMarkers||[];S.noteMarkers.push(nm);
   }
     map.on('mouseenter',sid+'-fill',()=>{map.getCanvas().style.cursor='pointer';});
@@ -3506,10 +3510,10 @@ function _drawSegMarkers(){
     (function(idx,lnglat){
       el.onclick=function(e){
         e.stopPropagation();
-        _segNoteMode=false;
-        if(drawMap)drawMap.getCanvas().style.cursor='';
+        e.preventDefault();
         selectSegment(idx,lnglat);
       };
+      el.onmousedown=function(e){e.stopPropagation();};
     })(i,[mx,my]);
     _segMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([mx,my]).addTo(drawMap));
   }
