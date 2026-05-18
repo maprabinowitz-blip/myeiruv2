@@ -953,7 +953,8 @@ header{
             </div>
             <input type="hidden" id="zoneStatus" value="up">
           </div>
-          <div class="fg"><label class="lbl">Status Note</label><input class="fi" id="zoneNote" placeholder="e.g. Fixed after rain damage"></div>
+          <div class="fg"><label class="lbl">Public Note <span style="font-size:.68rem;color:var(--muted)">(shown on map)</span></label><input class="fi" id="zoneNote" placeholder="e.g. Check with your rav before Shabbos"></div>
+          <div class="fg"><label class="lbl">Boundary Notes <span style="font-size:.68rem;color:var(--muted)">(visible when clicking zone)</span></label><textarea class="fi" id="zoneBoundaryNotes" rows="3" placeholder="e.g. The eruv runs along the east side of Oak St but NOT the west side. The pole at Oak & Main is the northern boundary..."></textarea></div>
           <div class="fg"><label class="lbl">Rabbinic Endorsement</label><input class="fi" id="zoneRov" placeholder="e.g. Rabbi Y. Goldstein, Beth Din of..."></div>
           <div class="fg"><label class="lbl">Donation Link</label><input class="fi" id="zoneDonate" placeholder="https://…"></div>
         </div>
@@ -1114,6 +1115,15 @@ function addEruvToMap(e){
     map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.07}});
     map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':2.5,'line-opacity':.9}});
     map.on('click',sid+'-fill',()=>showEruvPopup(e));
+  // Add note label marker if note exists
+  if(e.note&&e.center){
+    var noteEl=document.createElement('div');
+    noteEl.style.cssText='background:rgba(15,31,56,.82);color:#fff;font-size:.68rem;padding:3px 8px;border-radius:10px;cursor:pointer;max-width:140px;text-align:center;line-height:1.3;box-shadow:0 2px 6px rgba(0,0,0,.25);';
+    noteEl.textContent=e.note.length>40?e.note.slice(0,38)+'…':e.note;
+    noteEl.onclick=function(){showEruvPopup(e);};
+    var nm=new mapboxgl.Marker({element:noteEl,anchor:'center'}).setLngLat(e.center).addTo(map);
+    S.noteMarkers=S.noteMarkers||[];S.noteMarkers.push(nm);
+  }
     map.on('mouseenter',sid+'-fill',()=>{map.getCanvas().style.cursor='pointer';});
     map.on('mouseleave',sid+'-fill',()=>{map.getCanvas().style.cursor='';});
   }
@@ -1142,7 +1152,7 @@ function showEruvPopup(e){
   var html='<div style="min-width:200px">'
     +'<div class="pop-title">'+e.name+'</div>'
     +'<div class="pop-status">'+dot+' '+lbl+'</div>'
-    +lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+adj
+    +lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+bNotes+adj
     +(don?'<div style="margin-top:6px">'+don+'</div>':'')+ctInfo+'</div>';
   var lngLat=e.center;
   if(!lngLat&&e.coords&&e.coords.length){
@@ -1749,6 +1759,7 @@ function showEruvDetail(id){
     +'<div style="font-size:1.05rem;font-weight:600;margin-bottom:4px;">'+dot+' '+lbl+'</div>'
     +(e.lastChecked?'<div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">Updated: '+e.lastChecked+'</div>':'')
     +(e.note?'<div style="font-size:.8rem;padding:8px;background:var(--bg);border-radius:6px;margin-bottom:8px;">'+e.note+'</div>':'')
+    +(e.boundaryNotes?'<div style="margin-bottom:10px;padding:10px;background:#f0f4ff;border-radius:8px;border-left:3px solid var(--blue)"><div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Boundary Notes</div><div style="font-size:.8rem;color:var(--text);line-height:1.6;white-space:pre-wrap">'+e.boundaryNotes+'</div></div>':'')
     +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none;margin-bottom:8px;">❤️ Support This Eiruv</a>':'')
     +ctHtml;
   openModal('vEruvDetail');
