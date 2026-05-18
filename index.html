@@ -2964,6 +2964,7 @@ function openDraw(mode,editId){
   setTimeout(function(){initDrawMap(mode,editId);},80);
 }
 function closeDraw(){
+  _segMarkers.forEach(function(m){m.remove();});_segMarkers=[];
   _stopCustomDraw(true);
   document.getElementById('drawOverlay').classList.remove('on');
   S.exclMode=false;
@@ -3465,12 +3466,44 @@ function renderSegNotes(){
   }).join('');
 }
 var _segNoteMode=false;
+var _segMarkers=[];
+function _drawSegMarkers(){
+  _segMarkers.forEach(function(m){m.remove();});
+  _segMarkers=[];
+  var coords=importedCoords;
+  if((!coords||coords.length<3)&&typeof Draw!=='undefined'&&Draw){
+    var feats=Draw.getAll().features;
+    var main=feats.find(function(f){return f.properties.isExcl!=='1';});
+    if(main)coords=main.geometry.coordinates[0];
+  }
+  if(!coords||coords.length<3)return;
+  for(var i=0;i<coords.length-1;i++){
+    var mx=(coords[i][0]+coords[i+1][0])/2;
+    var my=(coords[i][1]+coords[i+1][1])/2;
+    var el=document.createElement('div');
+    var hasNote=!!_segNotes[i];
+    el.style.cssText='width:24px;height:24px;border-radius:50%;background:'+(hasNote?'#22a865':'rgba(26,48,85,.9)')+';color:#fff;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid '+(hasNote?'#fff':'rgba(255,255,255,.5)')+';box-shadow:0 2px 8px rgba(0,0,0,.5);transition:transform .1s;';
+    el.textContent=i+1;
+    el.title='Click to add note to segment '+(i+1);
+    el.onmouseenter=function(){this.style.transform='scale(1.3)';};
+    el.onmouseleave=function(){this.style.transform='scale(1)';};
+    (function(idx,lnglat){
+      el.onclick=function(e){
+        e.stopPropagation();
+        _segNoteMode=false;
+        if(drawMap)drawMap.getCanvas().style.cursor='';
+        selectSegment(idx,lnglat);
+      };
+    })(i,[mx,my]);
+    _segMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([mx,my]).addTo(drawMap));
+  }
+}
 function startSegNoteMode(){
   _segNoteMode=true;
   document.getElementById('segNoteModeHint').style.display='block';
   document.getElementById('addSegNoteBtn').style.display='none';
-  // Cursor hint
   if(drawMap)drawMap.getCanvas().style.cursor='crosshair';
+  _drawSegMarkers();
 }
 function selectSegment(segIdx,coord){
   _selectedSeg=segIdx;
@@ -3491,6 +3524,7 @@ function saveSegNote(){
   document.getElementById('addSegNoteBtn').style.display='block';
   _selectedSeg=null;_segNoteMode=false;
   renderSegNotes();
+  _drawSegMarkers();
 }
 function cancelSegNote(){
   document.getElementById('segNoteForm').style.display='none';
