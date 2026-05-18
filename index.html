@@ -1131,19 +1131,9 @@ function addEruvToMap(e){
     map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.07}});
     map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':2.5,'line-opacity':.9}});
     map.on('click',sid+'-fill',()=>showEruvPopup(e));
-  // Add 💬 marker if zone has any notes
-  var hasNotes=e.note||(e.boundaryNotes)||(e.segNotes&&Object.keys(e.segNotes).length);
-  if(hasNotes&&e.center){
-    var noteEl=document.createElement('div');
-    noteEl.style.cssText='font-size:1.2rem;cursor:pointer;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));line-height:1;';
-    noteEl.textContent='💬';
-    noteEl.title=e.note||'Click to see boundary notes';
-    noteEl.onclick=function(){showEruvPopup(e);};
-    noteEl.onmouseenter=function(){this.style.transform='scale(1.2)';};
-    noteEl.onmouseleave=function(){this.style.transform='scale(1)';};
-    var nm=new mapboxgl.Marker({element:noteEl,anchor:'bottom'}).setLngLat(e.center).addTo(map);
-    S.noteMarkers=S.noteMarkers||[];S.noteMarkers.push(nm);
-  }
+  // 💬 markers hidden by default - shown when eiruv is clicked/focused
+  // Store reference for later use
+  e._hasNotes=!!(e.note||e.boundaryNotes||(e.segNotes&&Object.keys(e.segNotes).length));
     map.on('mouseenter',sid+'-fill',()=>{map.getCanvas().style.cursor='pointer';});
     map.on('mouseleave',sid+'-fill',()=>{map.getCanvas().style.cursor='';});
   }
