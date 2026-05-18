@@ -1639,7 +1639,8 @@ function planRoute(){
 function toggleMapFs(){S.mapFs=!S.mapFs;document.body.classList.toggle('map-fullscreen',S.mapFs);document.getElementById('fsExit').classList.toggle('on',S.mapFs);setTimeout(function(){map.resize();},350);}
 
 // SIDEBAR
-function sTab(btn,id){document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);if(id==='status')checkHereStatus();try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
+function clearNoteMarkers(){(S.noteMarkers||[]).forEach(function(m){m.remove();});S.noteMarkers=[];}
+function sTab(btn,id){clearNoteMarkers();document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('on');});btn.classList.add('on');document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('on');});document.getElementById('panel-'+id).classList.add('on');if(id==='alerts'&&!S.user)setTimeout(function(){openModal('vMain');},200);if(id==='status')checkHereStatus();try{history.pushState({tab:id},'',(id==='status'?'/':'/?tab='+id));}catch(e){}}
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
 // ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
 // Returns "Shabbos Parshas X" or weekday name for a given Date
@@ -1729,12 +1730,15 @@ function showEruvDetail(id){
       el.style.cssText='background:#1a3055;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.8rem;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #4a90d9;';
       el.textContent='💬';
       var note=e.segNotes[k],seg=idx;
-      el.onclick=function(){
-        new mapboxgl.Popup({closeButton:true,maxWidth:'220px',offset:5})
-          .setLngLat([mx,my])
-          .setHTML('<div style="font-size:.75rem;line-height:1.5"><div style="font-size:.68rem;color:#888;margin-bottom:3px">Segment '+(seg+1)+'</div>'+note+'</div>')
-          .addTo(map);
-      };
+      (function(n,s,lng,lat){
+        el.addEventListener('click',function(ev){
+          ev.stopPropagation();
+          new mapboxgl.Popup({closeButton:true,maxWidth:'220px',offset:5})
+            .setLngLat([lng,lat])
+            .setHTML('<div style="font-size:.78rem;line-height:1.5"><div style="font-size:.68rem;font-weight:600;color:#888;margin-bottom:4px">📍 Segment '+(s+1)+'</div>'+n+'</div>')
+            .addTo(map);
+        },true);
+      })(note,seg,mx,my);
       S.noteMarkers=S.noteMarkers||[];
       S.noteMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([mx,my]).addTo(map));
     });
