@@ -3524,13 +3524,21 @@ function endSegNoteMode(){
   document.getElementById('segNoteModeHint').style.display='none';
   document.getElementById('addSegNoteBtn').style.display='block';
   document.getElementById('segNoteForm').style.display='none';
-  if(drawMap)drawMap.getCanvas().style.cursor='';
+  if(drawMap){
+    drawMap.getCanvas().style.cursor='';
+    drawMap.dragPan.enable();
+    drawMap.scrollZoom.enable();
+  }
 }
 function startSegNoteMode(){
   _segNoteMode=true;
   document.getElementById('segNoteModeHint').style.display='flex';
   document.getElementById('addSegNoteBtn').style.display='none';
-  if(drawMap)drawMap.getCanvas().style.cursor='crosshair';
+  if(drawMap){
+    drawMap.getCanvas().style.cursor='crosshair';
+    drawMap.dragPan.disable();
+    drawMap.scrollZoom.disable();
+  }
   _drawSegMarkers();
 }
 function selectSegment(segIdx,coord){
