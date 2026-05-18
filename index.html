@@ -959,7 +959,7 @@ header{
               <label class="lbl" style="margin:0">Boundary Notes</label>
               <button id="addSegNoteBtn" onclick="startSegNoteMode()" style="border:none;background:rgba(74,144,217,.15);color:rgba(255,255,255,.8);padding:4px 10px;border-radius:6px;font-size:.71rem;cursor:crosshair;font-family:inherit;white-space:nowrap;">🖊 Add to segment</button>
             </div>
-            <div id="segNoteModeHint" style="display:none;background:rgba(74,144,217,.2);border:1px solid rgba(74,144,217,.4);border-radius:7px;padding:6px 10px;font-size:.73rem;color:rgba(255,255,255,.85);margin-bottom:6px;text-align:center;">👆 Click a numbered segment on the map</div>
+            <div id="segNoteModeHint" style="display:none;background:rgba(74,144,217,.15);border:1px solid rgba(74,144,217,.3);border-radius:7px;padding:6px 10px;font-size:.73rem;color:rgba(255,255,255,.85);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;"><span>👆 Click numbered segments to add notes</span><button onclick="endSegNoteMode()" style="border:none;background:rgba(255,255,255,.15);color:#fff;padding:3px 8px;border-radius:5px;font-size:.7rem;cursor:pointer;font-family:inherit;">Done</button></div>
             <div id="segNotesList" style="margin-bottom:6px;"></div>
             <div id="segNoteForm" style="display:none;background:rgba(255,255,255,.06);border-radius:8px;padding:10px;border:1px solid rgba(255,255,255,.1);margin-bottom:6px;">
               <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:5px;" id="segNoteLabel">Note for segment:</div>
@@ -3514,9 +3514,17 @@ function _drawSegMarkers(){
     _segMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([mx,my]).addTo(drawMap));
   }
 }
+function endSegNoteMode(){
+  _segNoteMode=false;
+  _segMarkers.forEach(function(m){m.remove();});_segMarkers=[];
+  document.getElementById('segNoteModeHint').style.display='none';
+  document.getElementById('addSegNoteBtn').style.display='block';
+  document.getElementById('segNoteForm').style.display='none';
+  if(drawMap)drawMap.getCanvas().style.cursor='';
+}
 function startSegNoteMode(){
   _segNoteMode=true;
-  document.getElementById('segNoteModeHint').style.display='block';
+  document.getElementById('segNoteModeHint').style.display='flex';
   document.getElementById('addSegNoteBtn').style.display='none';
   if(drawMap)drawMap.getCanvas().style.cursor='crosshair';
   _drawSegMarkers();
@@ -3537,16 +3545,15 @@ function saveSegNote(){
   if(val)_segNotes[_selectedSeg]=val;
   else delete _segNotes[_selectedSeg];
   document.getElementById('segNoteForm').style.display='none';
-  document.getElementById('addSegNoteBtn').style.display='block';
-  _selectedSeg=null;_segNoteMode=false;
+  _selectedSeg=null;
   renderSegNotes();
-  _drawSegMarkers();
+  _drawSegMarkers(); // refresh markers (green = has note)
+  // Keep in note mode so user can keep clicking segments
 }
 function cancelSegNote(){
   document.getElementById('segNoteForm').style.display='none';
-  document.getElementById('addSegNoteBtn').style.display='block';
-  _selectedSeg=null;_segNoteMode=false;
-  if(drawMap)drawMap.getCanvas().style.cursor='';
+  _selectedSeg=null;
+  // Markers stay visible until user clicks Done
 }
 function deleteSegNote(k){
   delete _segNotes[k];
