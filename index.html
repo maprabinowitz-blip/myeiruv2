@@ -1483,72 +1483,23 @@ function planRoute(){
   if(startVal&&(!sc||sc.label!==startVal))sc=null;
   if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
-  function fetchRoute(sc,ec,waypoints){
-    var pts=[sc.lng+','+sc.lat];
-    if(waypoints)waypoints.forEach(function(w){pts.push(w.lng+','+w.lat);});
-    pts.push(ec.lng+','+ec.lat);
-    var url='https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')
+  function fetchRoute(sc,ec){
+    var mbUrl='https://api.mapbox.com/directions/v5/mapbox/walking/'
+      +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
       +'?overview=full&geometries=geojson&steps=true&access_token='+TOKEN;
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.routes&&d.routes.length){  // Mapbox returns 'Ok', check routes directly
-        var route=d.routes[0];
-        // Check if route exits eiruv - if so, try to add waypoint to keep inside
-        // Check if route exits eiruv - if so, try to re-route with boundary waypoints
-        var coords=route.geometry.coordinates;
-        // Interpolate extra points between each coord pair for accurate eiruv checking
-        var denseCoords=[];
-        for(var di=0;di<coords.length-1;di++){
-          denseCoords.push(coords[di]);
-          var steps=10;
-          for(var ds=1;ds<steps;ds++){
-            denseCoords.push([
-              coords[di][0]+(coords[di+1][0]-coords[di][0])*ds/steps,
-              coords[di][1]+(coords[di+1][1]-coords[di][1])*ds/steps
-            ]);
-          }
-        }
-        denseCoords.push(coords[coords.length-1]);
-        var zones=denseCoords.map(function(c){return findEruv(c[0],c[1]);});
-        var insideCount=zones.filter(function(z){return z!==null;}).length;
-        var pct=insideCount/Math.max(1,denseCoords.length);
-        if(pct<0.9&&!waypoints){
-          // Find exit points and add waypoints just before each exit
-          var wpts=[];
-          for(var ci=1;ci<zones.length;ci++){
-            if(zones[ci-1]!==null&&zones[ci]===null){
-              // Find eiruv of last inside point and use a point near boundary
-              var e=zones[ci-1];
-              // Add midpoint between last inside and exit as waypoint
-              var mid=[(coords[ci-1][0]+coords[ci][0])/2,(coords[ci-1][1]+coords[ci][1])/2];
-              // Only add if it's actually inside
-              if(findEruv(mid[0],mid[1])){
-                wpts.push({lng:coords[ci-1][0],lat:coords[ci-1][1]});
-              }
-            }
-          }
-          if(wpts.length){fetchRoute(sc,ec,wpts);return;}
-          // If no good waypoints found, try routing via eiruv center
-          var anyEruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);
-          if(anyEruv&&anyEruv.center){fetchRoute(sc,ec,[{lng:anyEruv.center[0],lat:anyEruv.center[1]}]);return;}
-        }
-        drawRoute(route,sc,ec,denseCoords,zones);
-      } else {
-        // Mapbox failed - try OSRM
-        var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
-        fetch(osrmUrl).then(function(r){return r.json();}).then(function(d){
-          if(d.code==='Ok'&&d.routes&&d.routes.length){drawRoute(d.routes[0],sc,ec);}
-          else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-        }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
-      }
-    }).catch(function(){
-      // Mapbox network error - try OSRM
-      var osrmUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
-      fetch(osrmUrl).then(function(r){return r.json();}).then(function(d){
+    fetch(mbUrl).then(function(r){return r.json();}).then(function(d){
+      if(d.routes&&d.routes.length){drawRoute(d.routes[0],sc,ec);}
+      else{tryOSRM();}
+    }).catch(function(){tryOSRM();});
+    function tryOSRM(){
+      var osUrl='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
+      fetch(osUrl).then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){drawRoute(d.routes[0],sc,ec);}
-        else{toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;}
+        else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
-    });
+    }
   }
+
 
   function drawRoute(route,sc,ec){
     var coords=route.geometry.coordinates;
