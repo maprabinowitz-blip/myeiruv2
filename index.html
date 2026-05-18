@@ -1592,14 +1592,48 @@ function planRoute(){
     } else if(allOut){
       alert='<div class="route-alert ra-err">❌ This route is entirely outside any eiruv — carrying is not permitted.</div>';
     } else {
-      // Find exit/entry points
-      var exitPts=[];
-      for(var ci=1;ci<zones.length;ci++){
-        if(zones[ci-1]!==null&&zones[ci]===null) exitPts.push('exits eiruv at point '+ci);
-        else if(zones[ci-1]===null&&zones[ci]!==null) exitPts.push('re-enters eiruv at point '+ci);
+      // Find exit points from denseCoords
+      var exitCoords=[];
+      for(var ci=1;ci<denseCoords.length;ci++){
+        if(zones[ci-1]!==null&&zones[ci]===null) exitCoords.push({coord:denseCoords[ci],type:'exit'});
+        else if(zones[ci-1]===null&&zones[ci]!==null) exitCoords.push({coord:denseCoords[ci],type:'enter'});
       }
-      var covPct=Math.round(zones.filter(function(z){return z!==null;}).length/Math.max(1,zones.length)*100);
-      alert='<div class="route-alert ra-warn">⚠️ This route exits the eiruv ('+covPct+'% within). No alternative eiruv route found — you may need to walk a different path to stay within the eiruv boundary.</div>';
+      // Add ⚠️ markers at exit points
+      exitCoords.forEach(function(ep){
+        var el=document.createElement('div');
+        el.style.cssText='font-size:1.2rem;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));cursor:default;';
+        el.textContent=ep.type==='exit'?'⚠️':'✅';
+        routeMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat(ep.coord).addTo(map));
+      });
+      // Reverse geocode first exit point for description
+      var firstExit=exitCoords.find(function(e){return e.type==='exit';});
+      var alertEl=document.getElementById('routeResult');
+      alert='<div class="route-alert ra-warn" id="exitAlert">⚠️ Route exits the eiruv — see ⚠️ on map. Searching for eiruv-friendly route...</div>';
+      // Try alternative route through eiruv
+      if(firstExit&&!waypoints){
+        var exitPt=firstExit.coord;
+        // Find eiruv the route was in before exiting
+        var lastInside=null;
+        for(var ci=denseCoords.length-1;ci>=0;ci--){
+          if(zones[ci]!==null){lastInside=denseCoords[ci];break;}
+        }
+        // Add a waypoint just before exit to force route to stay inside
+        var wpts=[];
+        if(lastInside) wpts.push({lng:lastInside[0],lat:lastInside[1]});
+        var nearEruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);
+        if(nearEruv&&nearEruv.center) wpts.push({lng:nearEruv.center[0],lat:nearEruv.center[1]});
+        if(wpts.length){
+          fetchRoute(sc,ec,wpts);
+          return;
+        }
+      }
+      // No alternative found - show location via reverse geocode
+      if(firstExit){
+        reverseGeocode(firstExit.coord[0],firstExit.coord[1],function(label){
+          var el=document.getElementById('exitAlert');
+          if(el)el.innerHTML='⚠️ Route exits the eiruv'+(label?' near <strong>'+label.split(',')[0]+'</strong>':'')+'. No eiruv-friendly alternative found — see ⚠️ on map.';
+        });
+      }
     }
 
     // Steps
