@@ -1536,122 +1536,98 @@ function planRoute(){
     });
   }
 
-  function drawRoute(route,sc,ec,denseCoords,zones){
+  function drawRoute(route,sc,ec){
     var coords=route.geometry.coordinates;
     var dist=route.distance>=1000?(route.distance/1000).toFixed(1)+' km':Math.round(route.distance)+' m';
-    // OSRM /foot/ uses 1.4m/s walking speed - correct
     var mins=Math.round(route.duration/60);
     var time=mins>60?Math.floor(mins/60)+'h '+(mins%60)+'m':mins+' min';
 
-    // Draw line on map
     clearRouteLayer();
-    if(!zones){var zones=coords.map(function(c){return findEruv(c[0],c[1]);}); denseCoords=coords;}
-    var allIn=zones.every(function(z){return z!==null;});
-    var allOut=zones.every(function(z){return z===null;});
-    var covText=allIn?'✅ Full':allOut?'❌ None':Math.round(zones.filter(function(z){return z!==null;}).length/Math.max(1,zones.length)*100)+'%';
+    routeMarkers.forEach(function(m){m.remove();});routeMarkers=[];
 
+    // Dense check - 20 points between each coordinate
+    var dense=[];
+    for(var i=0;i<coords.length-1;i++){
+      dense.push(coords[i]);
+      for(var j=1;j<20;j++){
+        dense.push([coords[i][0]+(coords[i+1][0]-coords[i][0])*j/20,
+                    coords[i][1]+(coords[i+1][1]-coords[i][1])*j/20]);
+      }
+    }
+    dense.push(coords[coords.length-1]);
+    var inEruv=dense.map(function(c){return findEruv(c[0],c[1])!==null;});
+
+    var allIn=inEruv.every(Boolean);
+    var allOut=inEruv.every(function(v){return !v;});
+
+    // Draw segments - green inside eiruv, red outside
     var baseId='rt-'+Date.now();
     S.routeLayerId=baseId;
-    map.addSource(baseId,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
-    map.addLayer({id:baseId+'-line',type:'line',source:baseId,layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':allIn?'#22a865':allOut?'#d94040':'#e08020','line-width':4,'line-opacity':.85}});
-
-    // Start/end markers
-    routeMarkers.forEach(function(m){m.remove();});routeMarkers=[];
-    // Start marker — walking man with shtreimel (custom SVG)
-    var sEl=document.createElement('div');
-    sEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))';
-    sEl.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42">'
-      // shtreimel brim
-      +'<ellipse cx="15" cy="10" rx="10" ry="3" fill="#3a1e08"/>'
-      +'<ellipse cx="7"  cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
-      +'<ellipse cx="11" cy="8.8" rx="2"   ry="1.6" fill="#7a3d18"/>'
-      +'<ellipse cx="15" cy="8.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
-      +'<ellipse cx="19" cy="8.8" rx="2"   ry="1.6" fill="#7a3d18"/>'
-      +'<ellipse cx="23" cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/>'
-      // shtreimel velvet crown
-      +'<ellipse cx="15" cy="7" rx="6.5" ry="5" fill="#0f0704"/>'
-      // head
-      +'<circle cx="15" cy="15" r="4.5" fill="#f5c8a0"/>'
-      // body
-      +'<line x1="15" y1="19.5" x2="15" y2="28" stroke="#1a2c4a" stroke-width="2.5" stroke-linecap="round"/>'
-      // arms
-      +'<line x1="15" y1="22" x2="10" y2="26" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
-      +'<line x1="15" y1="22" x2="20" y2="25" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/>'
-      // legs
-      +'<line x1="15" y1="28" x2="10" y2="36" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
-      +'<line x1="15" y1="28" x2="20" y2="34" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/>'
-      +'</svg>';
-    var eEl=document.createElement('div');eEl.style.cssText='font-size:1.4rem;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))';eEl.textContent='📍';
-    routeMarkers.push(new mapboxgl.Marker({element:sEl,anchor:'bottom'}).setLngLat([sc.lng,sc.lat]).addTo(map));
-    routeMarkers.push(new mapboxgl.Marker({element:eEl,anchor:'bottom'}).setLngLat([ec.lng,ec.lat]).addTo(map));
-
-    // Alert
-    var alert='';
-    if(allIn){
-      alert='<div class="route-alert ra-ok">✅ This route is fully within the eiruv — carrying is permitted.</div>';
-    } else if(allOut){
-      alert='<div class="route-alert ra-err">❌ This route is entirely outside any eiruv — carrying is not permitted.</div>';
+    if(allIn||allOut){
+      map.addSource(baseId,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
+      map.addLayer({id:baseId+'-line',type:'line',source:baseId,layout:{'line-join':'round','line-cap':'round'},
+        paint:{'line-color':allIn?'#22a865':'#d94040','line-width':5,'line-opacity':.9}});
     } else {
-      // Find exit points from denseCoords
-      var exitCoords=[];
-      for(var ci=1;ci<denseCoords.length;ci++){
-        if(zones[ci-1]!==null&&zones[ci]===null) exitCoords.push({coord:denseCoords[ci],type:'exit'});
-        else if(zones[ci-1]===null&&zones[ci]!==null) exitCoords.push({coord:denseCoords[ci],type:'enter'});
-      }
-      // Add ⚠️ markers at exit points
-      exitCoords.forEach(function(ep){
-        var el=document.createElement('div');
-        el.style.cssText='font-size:1.2rem;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));cursor:default;';
-        el.textContent=ep.type==='exit'?'⚠️':'✅';
-        routeMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat(ep.coord).addTo(map));
-      });
-      // Reverse geocode first exit point for description
-      var firstExit=exitCoords.find(function(e){return e.type==='exit';});
-      var alertEl=document.getElementById('routeResult');
-      alert='<div class="route-alert ra-warn" id="exitAlert">⚠️ Route exits the eiruv — see ⚠️ on map. Searching for eiruv-friendly route...</div>';
-      // Try alternative route through eiruv
-      if(firstExit&&!waypoints){
-        var exitPt=firstExit.coord;
-        // Find eiruv the route was in before exiting
-        var lastInside=null;
-        for(var ci=denseCoords.length-1;ci>=0;ci--){
-          if(zones[ci]!==null){lastInside=denseCoords[ci];break;}
-        }
-        // Add a waypoint just before exit to force route to stay inside
-        var wpts=[];
-        if(lastInside) wpts.push({lng:lastInside[0],lat:lastInside[1]});
-        var nearEruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat);
-        if(nearEruv&&nearEruv.center) wpts.push({lng:nearEruv.center[0],lat:nearEruv.center[1]});
-        if(wpts.length){
-          fetchRoute(sc,ec,wpts);
-          return;
+      // Split into colored segments
+      var greenSegs=[],redSegs=[],cur=[dense[0]],curIn=inEruv[0];
+      for(var i=1;i<dense.length;i++){
+        if(inEruv[i]===curIn){
+          cur.push(dense[i]);
+        } else {
+          if(cur.length>1){(curIn?greenSegs:redSegs).push(cur);}
+          cur=[dense[i-1],dense[i]];curIn=inEruv[i];
         }
       }
-      // No alternative found - show location via reverse geocode
-      if(firstExit){
-        reverseGeocode(firstExit.coord[0],firstExit.coord[1],function(label){
-          var el=document.getElementById('exitAlert');
-          if(el)el.innerHTML='⚠️ Route exits the eiruv'+(label?' near <strong>'+label.split(',')[0]+'</strong>':'')+'. No eiruv-friendly alternative found — see ⚠️ on map.';
-        });
+      if(cur.length>1)(curIn?greenSegs:redSegs).push(cur);
+
+      var fc={type:'FeatureCollection',features:
+        greenSegs.map(function(s){return {type:'Feature',geometry:{type:'LineString',coordinates:s},properties:{c:'#22a865'}};})
+        .concat(redSegs.map(function(s){return {type:'Feature',geometry:{type:'LineString',coordinates:s},properties:{c:'#d94040'}};}))
+      };
+      map.addSource(baseId,{type:'geojson',data:fc});
+      map.addLayer({id:baseId+'-line',type:'line',source:baseId,layout:{'line-join':'round','line-cap':'round'},
+        paint:{'line-color':['get','c'],'line-width':5,'line-opacity':.9}});
+
+      // Add warning markers at exit points
+      for(var i=1;i<dense.length;i++){
+        if(inEruv[i-1]&&!inEruv[i]){
+          var el=document.createElement('div');
+          el.style.cssText='font-size:1.3rem;cursor:default;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))';
+          el.textContent='⚠️';
+          routeMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat(dense[i]).addTo(map));
+        }
       }
     }
 
+    // Start/end markers
+    var sEl=document.createElement('div');
+    sEl.style.cssText='cursor:default;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))';
+    sEl.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" width="28" height="40" viewBox="0 0 30 42"><ellipse cx="15" cy="10" rx="10" ry="3" fill="#3a1e08"/><ellipse cx="7" cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/><ellipse cx="15" cy="8.5" rx="2.2" ry="1.8" fill="#6b3515"/><ellipse cx="23" cy="9.5" rx="2.2" ry="1.8" fill="#6b3515"/><ellipse cx="15" cy="7" rx="6.5" ry="5" fill="#0f0704"/><circle cx="15" cy="15" r="4.5" fill="#f5c8a0"/><line x1="15" y1="19.5" x2="15" y2="28" stroke="#1a2c4a" stroke-width="2.5" stroke-linecap="round"/><line x1="15" y1="22" x2="10" y2="26" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="22" x2="20" y2="25" stroke="#1a2c4a" stroke-width="2" stroke-linecap="round"/><line x1="15" y1="28" x2="10" y2="36" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/><line x1="15" y1="28" x2="20" y2="34" stroke="#1a2c4a" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    var eEl=document.createElement('div');eEl.style.cssText='font-size:1.4rem;line-height:1;';eEl.textContent='📍';
+    routeMarkers.push(new mapboxgl.Marker({element:sEl,anchor:'bottom'}).setLngLat([sc.lng,sc.lat]).addTo(map));
+    routeMarkers.push(new mapboxgl.Marker({element:eEl,anchor:'bottom'}).setLngLat([ec.lng,ec.lat]).addTo(map));
+
+    // Result panel
+    var covText=allIn?'✅ Full':allOut?'❌ None':Math.round(inEruv.filter(Boolean).length/inEruv.length*100)+'%';
+    var alertHtml='';
+    if(allIn) alertHtml='<div class="route-alert ra-ok">✅ Route is fully within the eiruv — carrying is permitted.</div>';
+    else if(allOut) alertHtml='<div class="route-alert ra-err">❌ Route is outside the eiruv — carrying is not permitted.</div>';
+    else alertHtml='<div class="route-alert ra-warn">⚠️ Route exits the eiruv (red section on map). Carrying not permitted on red portions.</div>';
+
     // Steps
-    // OSRM steps are in legs[0].steps
     var steps=[];
-    if(route.legs){route.legs.forEach(function(leg){if(leg.steps)leg.steps.forEach(function(s){steps.push(s);});});}
+    if(route.legs)route.legs.forEach(function(leg){if(leg.steps)leg.steps.forEach(function(s){steps.push(s);});});
     var stepsHtml='';
     if(steps.length){
       var sid='steps-'+Date.now();
       var rows=steps.filter(function(s){return s.maneuver&&s.maneuver.instruction;}).map(function(s){
-        var icon={turn:'↰',uturn:'↩',depart:'▶',arrive:'🏁','new name':'↑','continue':'↑','keep left':'↙','keep right':'↘','fork left':'↙','fork right':'↘'}[s.maneuver.type]||'↑';
         var d=s.distance>=1000?(s.distance/1000).toFixed(1)+' km':Math.round(s.distance)+' m';
-        return '<div class="step-row"><span class="step-ic">'+icon+'</span><div class="step-txt"><div>'+s.maneuver.instruction+'</div><div class="step-d">'+d+'</div></div></div>';
+        return '<div class="step-row"><span class="step-ic">›</span><div class="step-txt"><div>'+s.maneuver.instruction+'</div><div class="step-d">'+d+'</div></div></div>';
       }).join('');
       stepsHtml='<div style="margin-top:10px"><button data-sid="'+sid+'" onclick="toggleSteps(this)" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button><div id="'+sid+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+rows+'</div></div>';
     }
 
-    document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>🚶 Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alert+stepsHtml;
+    document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>🚶 Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alertHtml+stepsHtml;
 
     var bounds=coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(coords[0],coords[0]));
     map.fitBounds(bounds,{padding:{top:80,bottom:120,left:60,right:60},duration:800,maxZoom:16});
