@@ -1612,13 +1612,29 @@ function planRoute(){
     var alertHtml='';
     if(allIn) alertHtml='<div class="route-alert ra-ok">✅ Route is fully within the eiruv — carrying is permitted.</div>';
     else if(allOut) alertHtml='<div class="route-alert ra-err">❌ Route is outside the eiruv — carrying is not permitted.</div>';
-    else alertHtml='<div class="route-alert ra-warn">⚠️ Route exits the eiruv (red section on map). Carrying not permitted on red portions.</div>';
+    else {
+      alertHtml='<div class="route-alert ra-warn" id="eruvExitAlert">⚠️ Route exits the eiruv — see red section on map. Carrying not permitted on that portion.</div>';
+      // Reverse geocode first exit point
+      var firstExitPt=null;
+      for(var i=1;i<dense.length;i++){
+        if(inEruv[i-1]&&!inEruv[i]){firstExitPt=dense[i];break;}
+      }
+      if(firstExitPt){
+        reverseGeocode(firstExitPt[0],firstExitPt[1],function(label){
+          var el=document.getElementById('eruvExitAlert');
+          if(el&&label){
+            var street=label.split(',')[0];
+            el.innerHTML='⚠️ Route exits the eiruv near <strong>'+street+'</strong> (red on map). Carrying not permitted on that portion.';
+          }
+        });
+      }
+    }
 
-    // Steps
+    // Steps - only show if fully inside eiruv
     var steps=[];
     if(route.legs)route.legs.forEach(function(leg){if(leg.steps)leg.steps.forEach(function(s){steps.push(s);});});
     var stepsHtml='';
-    if(steps.length){
+    if(allIn&&steps.length){
       var sid='steps-'+Date.now();
       var rows=steps.filter(function(s){return s.maneuver&&s.maneuver.instruction;}).map(function(s){
         var d=s.distance>=1000?(s.distance/1000).toFixed(1)+' km':Math.round(s.distance)+' m';
