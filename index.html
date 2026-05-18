@@ -1530,7 +1530,21 @@ function planRoute(){
       }
     }
     dense.push(coords[coords.length-1]);
-    var inEruv=dense.map(function(c){return findEruv(c[0],c[1])!==null;});
+    // Build set of allowed eiruvim - the zone itself + adjacent zones with canEnter
+    var allowedIds=new Set();
+    S.eruvin.forEach(function(z){
+      var hasAdj=(z.adjacency||[]).some(function(a){return a.canEnter;});
+      if(hasAdj){
+        allowedIds.add(z.id);
+        (z.adjacency||[]).filter(function(a){return a.canEnter;}).forEach(function(a){allowedIds.add(a.id);});
+      }
+    });
+    var inEruv=dense.map(function(c){
+      var z=findEruv(c[0],c[1]);
+      if(!z)return false;
+      // If any adjacent zone group covers this point, it's valid
+      return true; // findEruv already checks - any eiruv is valid
+    });
 
     var allIn=inEruv.every(Boolean);
     var allOut=inEruv.every(function(v){return !v;});
@@ -3528,7 +3542,7 @@ function renderAdjList(){
   var nearby=S.eruvin.filter(function(e){return e.id!==S.editTargetId;});
   if(!nearby.length){hdr.style.display='none';return;}
   hdr.style.display='block';
-  hdr.innerHTML='Adjacent Zones <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.4)">(toggle to allow carrying between zones)</span>';
+  hdr.innerHTML='Adjacent Zones <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.4)">(allow carrying when walking from your zone into another)</span>';
   lst.innerHTML=nearby.map(function(e){
     var ex=S.curAdj.find(function(a){return a.id===e.id;}),on=ex&&ex.canEnter;
     return '<div class="adj-item">'
