@@ -1619,9 +1619,12 @@ function planRoute(){
 
     // Result panel
     var covText=allIn?'✅ Full':allOut?'❌ None':Math.round(inEruv.filter(Boolean).length/inEruv.length*100)+'%';
+    // Check if start/end are inside eiruv
+    var startIn=findEruv(sc.lng,sc.lat)!==null;
+    var endIn=findEruv(ec.lng,ec.lat)!==null;
     var alertHtml='';
     if(allIn) alertHtml='<div class="route-alert ra-ok">✅ Route is fully within the eiruv — carrying is permitted.</div>';
-    else if(allOut) alertHtml='<div class="route-alert ra-err">❌ Route is outside the eiruv — carrying is not permitted.</div>';
+    else if(allOut) alertHtml='<div class="route-alert ra-err">❌ '+(startIn?'Destination':'Starting point')+' is outside the eiruv. This route cannot be done while carrying.</div>';
     else {
       alertHtml='<div class="route-alert ra-warn" id="eruvExitAlert">⚠️ Route exits the eiruv — see red section on map. Carrying not permitted on that portion.</div>';
       // Reverse geocode first exit point
