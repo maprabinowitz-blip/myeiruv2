@@ -1708,28 +1708,80 @@ function renderEruvList(){
 function showEruvDetail(id){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
-  if(e.center)flyTo(e.center,e.name);
+
+  // Clear previous note markers
+  (S.noteMarkers||[]).forEach(function(m){m.remove();});S.noteMarkers=[];
+
+  // Fit zone on map
+  if(e.coords&&e.coords.length){
+    var bounds=e.coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(e.coords[0],e.coords[0]));
+    map.fitBounds(bounds,{padding:{top:60,bottom:60,left:60,right:60},duration:800,maxZoom:15});
+  } else if(e.center){map.flyTo({center:e.center,zoom:14,duration:800});}
+
+  // Show 💬 markers for segment notes
+  if(e.segNotes&&e.coords){
+    Object.keys(e.segNotes).forEach(function(k){
+      var idx=parseInt(k);
+      if(idx>=e.coords.length-1)return;
+      var mx=(e.coords[idx][0]+e.coords[idx+1][0])/2;
+      var my=(e.coords[idx][1]+e.coords[idx+1][1])/2;
+      var el=document.createElement('div');
+      el.style.cssText='background:#1a3055;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:.8rem;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #4a90d9;';
+      el.textContent='💬';
+      var note=e.segNotes[k],seg=idx;
+      el.onclick=function(){
+        new mapboxgl.Popup({closeButton:true,maxWidth:'220px',offset:5})
+          .setLngLat([mx,my])
+          .setHTML('<div style="font-size:.75rem;line-height:1.5"><div style="font-size:.68rem;color:#888;margin-bottom:3px">Segment '+(seg+1)+'</div>'+note+'</div>')
+          .addTo(map);
+      };
+      S.noteMarkers=S.noteMarkers||[];
+      S.noteMarkers.push(new mapboxgl.Marker({element:el,anchor:'center'}).setLngLat([mx,my]).addTo(map));
+    });
+  }
+
   var dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
   var lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status]||e.status;
   var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
+
+  var segNotesHtml='';
+  if(e.segNotes&&Object.keys(e.segNotes).length){
+    segNotesHtml='<div style="margin-bottom:10px;padding:10px;background:#f0f4ff;border-radius:8px;border-left:3px solid var(--blue)">'
+      +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Boundary Notes</div>'
+      +Object.keys(e.segNotes).map(function(k){
+        return '<div style="margin-bottom:5px;padding:5px 7px;background:#fff;border-radius:5px;font-size:.78rem"><span style="font-size:.65rem;color:var(--muted);margin-right:4px">Seg '+(parseInt(k)+1)+':</span>'+e.segNotes[k]+'</div>';
+      }).join('')
+      +(e.boundaryNotes?'<div style="font-size:.78rem;margin-top:6px;color:var(--text);line-height:1.5;white-space:pre-wrap">'+e.boundaryNotes+'</div>':'')
+      +'</div>';
+  } else if(e.boundaryNotes){
+    segNotesHtml='<div style="margin-bottom:10px;padding:10px;background:#f0f4ff;border-radius:8px;border-left:3px solid var(--blue)"><div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Boundary Notes</div><div style="font-size:.78rem;line-height:1.5;white-space:pre-wrap">'+e.boundaryNotes+'</div></div>';
+  }
+
   var ctHtml='';
   if(ct&&ct.name){
-    ctHtml='<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">'
-      +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Contractor</div>'
-      +'<div style="font-size:.85rem;font-weight:600;">'+ct.name+'</div>'
-      +(e.rov?'<div style="font-size:.75rem;color:var(--muted);margin-top:2px;">Rov: '+e.rov+'</div>':'')
-      +(ct.phone?'<div style="margin-top:5px;"><a href="tel:'+ct.phone+'" style="color:var(--blue);font-size:.8rem;">📞 '+ct.phone+'</a></div>':'')
-      +(ct.email?'<div style="font-size:.72rem;color:var(--muted);margin-top:6px;">Your contact details will be shared with the contractor.</div><button onclick="sendMsgToContractor(\''+ct.email+'\',\''+e.name+'\')" style="margin-top:8px;border:none;background:var(--navy);color:#fff;padding:7px 0;border-radius:6px;font-size:.78rem;cursor:pointer;font-family:inherit;width:100%;font-weight:600;">✉ Send Message</button>':'')
+    ctHtml='<div style="margin-top:12px;padding:10px 12px;background:var(--bg);border-radius:10px;border:1px solid var(--border)">'
+      +'<div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Contractor</div>'
+      +'<div style="font-size:.9rem;font-weight:700;color:var(--navy)">'+ct.name+'</div>'
+      +(e.rov?'<div style="font-size:.76rem;color:var(--muted);margin-top:2px">Rov: '+e.rov+'</div>':'')
+      +(ct.phone?'<div style="margin-top:6px"><a href="tel:'+ct.phone+'" style="color:var(--blue);font-size:.82rem;text-decoration:none;font-weight:600">📞 '+ct.phone+'</a></div>':'')
+      +(ct.email?'<div style="font-size:.71rem;color:var(--muted);margin-top:8px;line-height:1.4">Your name, email and phone will be shared so the contractor can contact you back.</div>'
+        +'<button onclick="sendMsgToContractor(''+ct.email+'',''+e.name+'')" style="margin-top:6px;border:none;background:var(--navy);color:#fff;padding:7px 0;border-radius:8px;font-size:.8rem;cursor:pointer;font-family:inherit;width:100%;font-weight:600">✉ Send Message</button>':'')
       +'</div>';
   }
-  var html='<div style="font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:4px;">'+e.name+'</div>'
-    +'<div style="font-size:.85rem;color:var(--muted);margin-bottom:8px;">'+e.city+'</div>'
-    +'<div style="font-size:1.05rem;font-weight:600;margin-bottom:4px;">'+dot+' '+lbl+'</div>'
-    +(e.lastChecked?'<div style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">Updated: '+e.lastChecked+'</div>':'')
-    +(e.note?'<div style="font-size:.8rem;padding:8px;background:var(--bg);border-radius:6px;margin-bottom:8px;">'+e.note+'</div>':'')
-    +(e.boundaryNotes?'<div style="margin-bottom:10px;padding:10px;background:#f0f4ff;border-radius:8px;border-left:3px solid var(--blue)"><div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Boundary Notes</div><div style="font-size:.8rem;color:var(--text);line-height:1.6;white-space:pre-wrap">'+e.boundaryNotes+'</div></div>':'')
-    +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none;margin-bottom:8px;">❤️ Support This Eiruv</a>':'')
-    +ctHtml;
+
+  var html='<div style="padding:14px 16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+    +'<div><div style="font-size:1.05rem;font-weight:800;color:var(--navy)">'+e.name+'</div>'
+    +'<div style="font-size:.8rem;color:var(--muted);margin-top:2px">'+e.city+'</div></div>'
+    +'<span class="badge '+(e.status==='up'?'b-up':e.status==='down'?'b-dn':'b-rv')+'" style="font-size:.75rem">'+lbl+'</span>'
+    +'</div>'
+    +(e.lastChecked?'<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">Updated: '+e.lastChecked+'</div>':'')
+    +(e.note?'<div style="font-size:.82rem;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:10px;border:1px solid var(--border)">'+e.note+'</div>':'')
+    +segNotesHtml
+    +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:10px">❤️ Support This Eiruv</a>':'')
+    +ctHtml
+    +'</div>';
+
   openModal('vEruvDetail');
   document.getElementById('eruvDetailBody').innerHTML=html;
 }
