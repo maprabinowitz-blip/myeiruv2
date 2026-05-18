@@ -1765,7 +1765,7 @@ function showEruvDetail(id){
       +(e.rov?'<div style="font-size:.76rem;color:var(--muted);margin-top:2px">Rov: '+e.rov+'</div>':'')
       +(ct.phone?'<div style="margin-top:6px"><a href="tel:'+ct.phone+'" style="color:var(--blue);font-size:.82rem;text-decoration:none;font-weight:600">📞 '+ct.phone+'</a></div>':'')
       +(ct.email?'<div style="font-size:.71rem;color:var(--muted);margin-top:8px;line-height:1.4">Your name, email and phone will be shared so the contractor can contact you back.</div>'
-        +'<button onclick="sendMsgToContractor(''+ct.email+'',''+e.name+'')" style="margin-top:6px;border:none;background:var(--navy);color:#fff;padding:7px 0;border-radius:8px;font-size:.8rem;cursor:pointer;font-family:inherit;width:100%;font-weight:600">✉ Send Message</button>':'')
+        +'<button onclick="sendMsgToContractor(this.dataset.e,this.dataset.n)" data-e="'+ct.email+'" data-n="'+e.name+'" style="margin-top:6px;border:none;background:var(--navy);color:#fff;padding:7px 0;border-radius:8px;font-size:.8rem;cursor:pointer;font-family:inherit;width:100%;font-weight:600">✉ Send Message</button>':'')
       +'</div>';
   }
 
