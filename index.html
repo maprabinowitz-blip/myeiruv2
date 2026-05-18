@@ -1769,18 +1769,22 @@ function showEruvDetail(id){
       +'</div>';
   }
 
-  var html='<div style="padding:14px 16px">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
-    +'<div><div style="font-size:1.05rem;font-weight:800;color:var(--navy)">'+e.name+'</div>'
-    +'<div style="font-size:.8rem;color:var(--muted);margin-top:2px">'+e.city+'</div></div>'
+  var html='<div>'
+    +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;position:sticky;top:0;background:#fff;z-index:2">'
+    +'<button onclick="showV('vMain')" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px">←</button>'
+    +'<div style="flex:1"><div style="font-size:.95rem;font-weight:700;color:var(--navy)">'+e.name+'</div>'
+    +'<div style="font-size:.72rem;color:var(--muted)">'+e.city+'</div></div>'
     +'<span class="badge '+(e.status==='up'?'b-up':e.status==='down'?'b-dn':'b-rv')+'" style="font-size:.75rem">'+lbl+'</span>'
     +'</div>'
+    +'<div style="padding:14px 16px">'    
+
     +(e.lastChecked?'<div style="font-size:.7rem;color:var(--muted);margin-bottom:8px">Updated: '+e.lastChecked+'</div>':'')
     +(e.note?'<div style="font-size:.82rem;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:10px;border:1px solid var(--border)">'+e.note+'</div>':'')
     +segNotesHtml
     +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:10px">❤️ Support This Eiruv</a>':'')
     +ctHtml
-    // Adjacent zones
+    +'</div>'
+    // Adjacent zones - show carrying permissions
     +(function(){
       var adjZones=(e.adjacency||[]).filter(function(a){return a.canEnter;});
       if(!adjZones.length)return '';
@@ -3516,9 +3520,21 @@ function toggleExclMode(){
 function renderExclList(){document.getElementById('exclList').innerHTML=S.curExcl.map(function(ex,i){return '<div class="excl-item"><span class="excl-nm">\u2298 '+ex.name+'</span><button class="excl-del" onclick="removeExcl('+i+')">\u2715</button></div>';}).join('');}
 function removeExcl(i){var ex=S.curExcl[i];S.curExcl.splice(i,1);var f=Draw&&Draw.getAll().features.find(function(x){return x.properties.exclId===ex.id;});if(f)Draw.delete([f.id]);renderExclList();}
 function renderAdjList(){
-  var hdr=document.getElementById('adjHeader'),lst=document.getElementById('adjList'),nearby=S.eruvin.filter(function(e){return e.id!==S.editTargetId;});
-  if(!nearby.length){hdr.style.display='none';return;}hdr.style.display='block';
-  lst.innerHTML=nearby.map(function(e){var ex=S.curAdj.find(function(a){return a.id===e.id;}),on=ex&&ex.canEnter;return '<div class="adj-item"><div><div class="adj-nm">'+e.name+'</div><div style="font-size:.66rem;color:rgba(255,255,255,.3)">'+e.city+'</div></div><div style="display:flex;align-items:center;gap:5px"><button class="toggle '+(on?'on':'')+'\" onclick="toggleAdj(\''+e.id+'\')"></button></div></div>';}).join('');
+  var hdr=document.getElementById('adjHeader'),lst=document.getElementById('adjList');
+  var nearby=S.eruvin.filter(function(e){return e.id!==S.editTargetId;});
+  if(!nearby.length){hdr.style.display='none';return;}
+  hdr.style.display='block';
+  hdr.innerHTML='Adjacent Zones <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.4)">(toggle to allow carrying between zones)</span>';
+  lst.innerHTML=nearby.map(function(e){
+    var ex=S.curAdj.find(function(a){return a.id===e.id;}),on=ex&&ex.canEnter;
+    return '<div class="adj-item">'
+      +'<div><div class="adj-nm">'+e.name+'</div>'
+      +'<div style="font-size:.66rem;color:rgba(255,255,255,.35)">'+e.city+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:6px">'
+      +'<span style="font-size:.65rem;color:rgba(255,255,255,.4)">Allow carrying</span>'
+      +'<button class="toggle '+(on?'on':'')+'" onclick="toggleAdj(''+e.id+'')" title="Allow carrying between these eiruvim"></button>'
+      +'</div></div>';
+  }).join('');
 }
 function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a){a={id:id,canEnter:true,note:''};S.curAdj.push(a);}else a.canEnter=!a.canEnter;renderAdjList();var e=S.eruvin.find(function(x){return x.id===id;});toast(a.canEnter?'Carrying allowed into '+(e&&e.name):'Carrying disabled into '+(e&&e.name),a.canEnter?'ok':'warn');}
 
