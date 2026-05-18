@@ -954,7 +954,23 @@ header{
             <input type="hidden" id="zoneStatus" value="up">
           </div>
           <div class="fg"><label class="lbl">Public Note <span style="font-size:.68rem;color:var(--muted)">(shown on map)</span></label><input class="fi" id="zoneNote" placeholder="e.g. Check with your rav before Shabbos"></div>
-          <div class="fg"><label class="lbl">Boundary Notes <span style="font-size:.68rem;color:var(--muted)">(visible when clicking zone)</span></label><textarea class="fi" id="zoneBoundaryNotes" rows="3" placeholder="e.g. The eruv runs along the east side of Oak St but NOT the west side. The pole at Oak & Main is the northern boundary..."></textarea></div>
+          <div class="fg">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <label class="lbl" style="margin:0">Boundary Notes</label>
+              <button id="addSegNoteBtn" onclick="startSegNoteMode()" style="border:none;background:rgba(74,144,217,.15);color:rgba(255,255,255,.8);padding:4px 10px;border-radius:6px;font-size:.71rem;cursor:crosshair;font-family:inherit;white-space:nowrap;">🖊 Add to segment</button>
+            </div>
+            <div id="segNoteModeHint" style="display:none;background:rgba(74,144,217,.2);border:1px solid rgba(74,144,217,.4);border-radius:7px;padding:6px 10px;font-size:.73rem;color:rgba(255,255,255,.85);margin-bottom:6px;text-align:center;">👆 Click a numbered segment on the map</div>
+            <div id="segNotesList" style="margin-bottom:6px;"></div>
+            <div id="segNoteForm" style="display:none;background:rgba(255,255,255,.06);border-radius:8px;padding:10px;border:1px solid rgba(255,255,255,.1);margin-bottom:6px;">
+              <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:5px;" id="segNoteLabel">Note for segment:</div>
+              <textarea class="fi" id="segNoteText" rows="2" placeholder="e.g. Runs along east side only" style="font-size:.76rem;margin-bottom:6px;"></textarea>
+              <div style="display:flex;gap:6px">
+                <button onclick="saveSegNote()" style="flex:1;border:none;background:#22a865;color:#fff;padding:5px;border-radius:6px;font-size:.74rem;cursor:pointer;font-family:inherit;">Save</button>
+                <button onclick="cancelSegNote()" style="border:none;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);padding:5px 10px;border-radius:6px;font-size:.74rem;cursor:pointer;font-family:inherit;">Cancel</button>
+              </div>
+            </div>
+            <textarea class="fi" id="zoneBoundaryNotes" rows="2" placeholder="General notes about boundary..."></textarea>
+          </div>
           <div class="fg"><label class="lbl">Rabbinic Endorsement</label><input class="fi" id="zoneRov" placeholder="e.g. Rabbi Y. Goldstein, Beth Din of..."></div>
           <div class="fg"><label class="lbl">Donation Link</label><input class="fi" id="zoneDonate" placeholder="https://…"></div>
         </div>
