@@ -3137,6 +3137,32 @@ function initDrawMap(mode,editId){
       if(_cd.dblPending){_cd.dblPending=false;return;}
       _onCdClick(e);
     });
+
+    // Segment note clicks — when in edit mode (step 3, not drawing)
+    drawMap.on('click',function(e){
+      if(_cd.active)return;
+      var zpDetails=document.getElementById('zpDetails');
+      if(!zpDetails||zpDetails.style.display==='none')return;
+      // Get polygon coords
+      var coords=importedCoords;
+      if((!coords||coords.length<3)&&typeof Draw!=='undefined'&&Draw){
+        var feats=Draw.getAll().features;
+        var main=feats.find(function(f){return f.properties.isExcl!=='1';});
+        if(main)coords=main.geometry.coordinates[0];
+      }
+      if(!coords||coords.length<3)return;
+      var pt=[e.lngLat.lng,e.lngLat.lat];
+      var minDist=Infinity,bestSeg=0;
+      for(var i=0;i<coords.length-1;i++){
+        var mx=(coords[i][0]+coords[i+1][0])/2;
+        var my=(coords[i][1]+coords[i+1][1])/2;
+        var d=Math.sqrt(Math.pow((pt[0]-mx)*Math.cos(pt[1]*Math.PI/180),2)+Math.pow(pt[1]-my,2));
+        if(d<minDist){minDist=d;bestSeg=i;}
+      }
+      if(minDist<0.003){
+        selectSegment(bestSeg,pt);
+      }
+    });
     drawMap.on('dblclick',function(e){
       if(!_cd.active)return;
       _cd.dblPending=true;
