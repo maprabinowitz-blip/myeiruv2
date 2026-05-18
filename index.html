@@ -2579,6 +2579,8 @@ function closeZonePicker(){document.getElementById('zonePickerBd').classList.rem
 
 // MAP IMPORT (AI)
 var importedCoords=null,importPreviewMap=null;
+var _segNotes={}; // {segIndex: "note text"}
+var _selectedSeg=null;
 function openMapImport(){document.getElementById('mapImportBd').classList.add('on');resetMapImport();}
 function closeMapImport(){document.getElementById('mapImportBd').classList.remove('on');}
 function resetMapImport(){
@@ -3462,6 +3464,46 @@ function renderAdjList(){
 }
 function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a){a={id:id,canEnter:true,note:''};S.curAdj.push(a);}else a.canEnter=!a.canEnter;renderAdjList();var e=S.eruvin.find(function(x){return x.id===id;});toast(a.canEnter?'Carrying allowed into '+(e&&e.name):'Carrying disabled into '+(e&&e.name),a.canEnter?'ok':'warn');}
 
+function renderSegNotes(){
+  var list=document.getElementById('segNotesList');
+  if(!list)return;
+  var keys=Object.keys(_segNotes);
+  if(!keys.length){list.innerHTML='<div style="font-size:.71rem;color:rgba(255,255,255,.35);font-style:italic;">Click a boundary segment on the map to add a note</div>';return;}
+  list.innerHTML=keys.map(function(k){
+    return '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;background:rgba(255,255,255,.06);border-radius:6px;padding:6px 8px">'
+      +'<div style="flex:1"><div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-bottom:2px;">Segment '+(parseInt(k)+1)+'</div>'
+      +'<div style="font-size:.76rem;color:rgba(255,255,255,.8);">'+_segNotes[k]+'</div></div>'
+      +'<button onclick="deleteSegNote('+k+')" style="border:none;background:none;color:rgba(255,255,255,.3);cursor:pointer;font-size:.9rem;padding:0;flex-shrink:0;">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function selectSegment(segIdx,coord){
+  _selectedSeg=segIdx;
+  var form=document.getElementById('segNoteForm');
+  var lbl=document.getElementById('segNoteLabel');
+  var txt=document.getElementById('segNoteText');
+  if(form){form.style.display='block';}
+  if(lbl){lbl.textContent='Note for segment '+(segIdx+1)+':';}
+  if(txt){txt.value=_segNotes[segIdx]||'';txt.focus();}
+}
+function saveSegNote(){
+  var txt=document.getElementById('segNoteText');
+  if(_selectedSeg===null||!txt)return;
+  var val=txt.value.trim();
+  if(val)_segNotes[_selectedSeg]=val;
+  else delete _segNotes[_selectedSeg];
+  document.getElementById('segNoteForm').style.display='none';
+  _selectedSeg=null;
+  renderSegNotes();
+}
+function cancelSegNote(){
+  document.getElementById('segNoteForm').style.display='none';
+  _selectedSeg=null;
+}
+function deleteSegNote(k){
+  delete _segNotes[k];
+  renderSegNotes();
+}
 function autoDetectZoneCity(coords){
   if(!coords||coords.length<3)return;
   var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
@@ -3481,7 +3523,7 @@ function autoDetectZoneCity(coords){
 function saveZone(){
   if(_cd.active){if(_cd.pts.length>=3){_finishCustomDraw();}else{toast('Draw zone boundary first (need 3+ points)','err');return;}setTimeout(saveZone,200);return;}
   if(!Draw)return;
-  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim();
+  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim(),rov=(document.getElementById('zoneRov')&&document.getElementById('zoneRov').value.trim())||'',boundaryNotes=(document.getElementById('zoneBoundaryNotes')&&document.getElementById('zoneBoundaryNotes').value.trim())||'';
   if(!name||!city){toast('Enter zone name and city','err');return;}
   var feats=Draw.getAll().features,main=feats.find(function(f){return f.properties.isExcl!=='1';});
   if(!main){toast('Draw zone boundary first','err');return;}
@@ -3491,8 +3533,8 @@ function saveZone(){
   var excls=S.curExcl.slice();
   feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
   var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
-  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
-  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
+  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
   saveCustomZones();renderEruvList();renderStatus();closeDraw();
 }
 
