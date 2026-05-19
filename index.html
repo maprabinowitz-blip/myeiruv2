@@ -1784,7 +1784,10 @@ function showEruvDetail(id){
           ev.stopPropagation();
           new mapboxgl.Popup({closeButton:true,maxWidth:'220px',offset:5})
             .setLngLat([lng,lat])
-            .setHTML('<div style="font-size:.82rem;line-height:1.6;max-width:200px;padding:2px">'+n+'</div>')
+            .setHTML('<div style="font-size:.82rem;line-height:1.6;max-width:220px;padding:2px">'
+            +(Array.isArray(n)?n.map(function(t,i){return (n.length>1?'<div style="font-size:.68rem;color:#888;margin-bottom:2px">Note '+(i+1)+':</div>':'')+t;}).join('<div style="border-top:1px solid #eee;margin:6px 0"></div>')
+            :n)
+            +'</div>')
             .addTo(map);
         },true);
       })(note,seg,mx,my);
@@ -2682,7 +2685,7 @@ function closeZonePicker(){document.getElementById('zonePickerBd').classList.rem
 
 // MAP IMPORT (AI)
 var importedCoords=null,importPreviewMap=null;
-var _segNotes={}; // {segIndex: "note text"}
+var _segNotes={}; // {segIndex: ["note1","note2",...]} - multiple notes per segment
 var _selectedSeg=null;
 function openMapImport(){document.getElementById('mapImportBd').classList.add('on');resetMapImport();}
 function closeMapImport(){document.getElementById('mapImportBd').classList.remove('on');}
@@ -3612,16 +3615,24 @@ function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a
 function renderSegNotes(){
   var list=document.getElementById('segNotesList');
   if(!list)return;
-  var keys=Object.keys(_segNotes);
-  if(!keys.length){list.innerHTML='<div style="font-size:.71rem;color:rgba(255,255,255,.35);font-style:italic;">Click a boundary segment on the map to add a note</div>';return;}
+  var keys=Object.keys(_segNotes).filter(function(k){return _segNotes[k]&&_segNotes[k].length;});
+  if(!keys.length){
+    list.innerHTML='<div style="font-size:.71rem;color:rgba(255,255,255,.35);font-style:italic;padding:4px 0">Click a segment number on the map to add notes</div>';
+    return;
+  }
   list.innerHTML=keys.map(function(k){
-    return '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;background:rgba(255,255,255,.06);border-radius:6px;padding:6px 8px">'
-      +'<div style="flex:1"><div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-bottom:2px;">Segment '+(parseInt(k)+1)+'</div>'
-      +'<div style="font-size:.76rem;color:rgba(255,255,255,.8);">'+_segNotes[k]+'</div></div>'
-      +'<button onclick="deleteSegNote('+k+')" style="border:none;background:none;color:rgba(255,255,255,.3);cursor:pointer;font-size:.9rem;padding:0;flex-shrink:0;">✕</button>'
-      +'</div>';
+    var notes=_segNotes[k];
+    if(!Array.isArray(notes))notes=[notes]; // backward compat
+    return notes.map(function(note,ni){
+      return '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:5px;background:rgba(255,255,255,.06);border-radius:6px;padding:6px 8px">'
+        +'<div style="flex:1"><div style="font-size:.67rem;color:rgba(255,255,255,.4);margin-bottom:2px;">Segment '+(parseInt(k)+1)+(notes.length>1?' · note '+(ni+1):'')+'</div>'
+        +'<div style="font-size:.76rem;color:rgba(255,255,255,.8);">'+note+'</div></div>'
+        +'<button onclick="deleteSegNote('+k+','+ni+')" style="border:none;background:none;color:rgba(255,255,255,.3);cursor:pointer;font-size:.9rem;padding:0;flex-shrink:0;line-height:1;">✕</button>'
+        +'</div>';
+    }).join('');
   }).join('');
 }
+
 var _segNoteMode=false;
 var _segMarkers=[];
 function _drawSegMarkers(){
@@ -3717,30 +3728,50 @@ function selectSegment(segIdx,coord){
   var form=document.getElementById('segNoteForm');
   var lbl=document.getElementById('segNoteLabel');
   var txt=document.getElementById('segNoteText');
+  var existing=(_segNotes[segIdx]&&Array.isArray(_segNotes[segIdx]))?_segNotes[segIdx]:(_segNotes[segIdx]?[_segNotes[segIdx]]:[]);
   if(form){form.style.display='block';}
-  if(lbl){lbl.textContent='Note for segment '+(segIdx+1)+':';}
-  if(txt){txt.value=_segNotes[segIdx]||'';txt.focus();}
+  if(lbl){
+    var existingHtml=existing.length
+      ?'<div style="margin-bottom:6px;">'+existing.map(function(n,i){
+          return '<div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:3px;background:rgba(255,255,255,.08);border-radius:5px;padding:4px 7px">'
+            +'<div style="flex:1;font-size:.73rem;color:rgba(255,255,255,.8)">'+n+'</div>'
+            +'<button onclick="deleteSegNote('+segIdx+','+i+');selectSegment('+segIdx+',null)" style="border:none;background:none;color:rgba(255,255,255,.3);cursor:pointer;font-size:.85rem;padding:0;flex-shrink:0;">✕</button>'
+            +'</div>';
+        }).join('')+'</div>'
+      :'';
+    lbl.innerHTML=existingHtml+'<div style="font-size:.72rem;color:rgba(255,255,255,.5);margin-bottom:4px;">Add note to segment '+(segIdx+1)+':</div>';
+  }
+  if(txt){txt.value='';txt.focus();}
 }
 function saveSegNote(){
   var txt=document.getElementById('segNoteText');
   if(_selectedSeg===null||!txt)return;
   var val=txt.value.trim();
-  if(val)_segNotes[_selectedSeg]=val;
-  else delete _segNotes[_selectedSeg];
-  document.getElementById('segNoteForm').style.display='none';
-  _selectedSeg=null;
+  if(!val)return;
+  if(!_segNotes[_selectedSeg])_segNotes[_selectedSeg]=[];
+  if(!Array.isArray(_segNotes[_selectedSeg]))_segNotes[_selectedSeg]=[_segNotes[_selectedSeg]];
+  _segNotes[_selectedSeg].push(val);
+  txt.value='';
+  // Refresh form to show new note in existing list
+  selectSegment(_selectedSeg,null);
   renderSegNotes();
-  _drawSegMarkers(); // refresh markers (green = has note)
-  // Keep in note mode so user can keep clicking segments
+  _drawSegMarkers();
+  toast('Note saved ✓','ok');
 }
 function cancelSegNote(){
   document.getElementById('segNoteForm').style.display='none';
   _selectedSeg=null;
   // Markers stay visible until user clicks Done
 }
-function deleteSegNote(k){
-  delete _segNotes[k];
+function deleteSegNote(k,ni){
+  if(!_segNotes[k])return;
+  if(!Array.isArray(_segNotes[k])){delete _segNotes[k];}
+  else{
+    _segNotes[k].splice(ni,1);
+    if(!_segNotes[k].length)delete _segNotes[k];
+  }
   renderSegNotes();
+  _drawSegMarkers();
 }
 function autoDetectZoneCity(coords){
   if(!coords||coords.length<3)return;
