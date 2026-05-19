@@ -165,6 +165,8 @@ header{
 .res-btn.blue-btn{background:rgba(37,99,176,.08);border-color:rgba(37,99,176,.2);color:#2563b0;}
 .res-btn.blue-btn:hover{background:rgba(37,99,176,.16);}
 .eruv-list{display:flex;flex-direction:column;gap:5px;}
+.eruv-detail-panel{background:#f7f9fc;border-top:1px solid var(--border);padding:0;overflow:hidden;transition:all .2s;}
+.eruv-detail-panel.open{padding:12px 14px;}
 .eruv-row{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .18s;background:#fff;}
 .eruv-row:hover{box-shadow:var(--sh);border-color:var(--sky);}
 .er-nm{font-size:.82rem;font-weight:600;color:var(--navy);}
@@ -431,6 +433,8 @@ header{
 }
 @keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.eruv-detail-panel{background:#f7f9fc;border-top:1px solid var(--border);padding:0;overflow:hidden;transition:all .2s;}
+.eruv-detail-panel.open{padding:12px 14px;}
 .eruv-row{animation:fadeIn .15s ease;}
 .acard{animation:fadeIn .15s ease;}
 </style>
@@ -1720,6 +1724,19 @@ function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Under Review',down:'Down'};
   document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="showEruvDetail(\''+e.id+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+(e.lastChecked?' · '+e.lastChecked:'')+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
 }
+function toggleEruvDetail(id){
+  var panel=document.getElementById('eruv-detail-'+id);
+  if(!panel)return;
+  var isOpen=panel.classList.contains('open');
+  // Close all others
+  document.querySelectorAll('.eruv-detail-panel.open').forEach(function(p){
+    p.classList.remove('open');p.style.display='none';
+  });
+  if(isOpen)return; // just close
+  panel.style.display='block';
+  setTimeout(function(){panel.classList.add('open');},10);
+  showEruvDetail(id); // populate and show on map
+}
 function showEruvDetail(id){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
@@ -1815,11 +1832,10 @@ function showEruvDetail(id){
     })()
     // Contractor
     +ctHtml
-    +'</div></div>'
-  // Show inline in sidebar panel instead of modal
-  document.getElementById('eruvDetailBody').innerHTML=html;
-  document.getElementById('vEruvDetail').style.display='block';
-  document.getElementById('vMain').style.display='none';
+    +'</div>'
+  // Show in accordion panel below the row
+  var panel=document.getElementById('eruv-detail-'+e.id);
+  if(panel)panel.innerHTML=html;
 }
 function sendMsgToContractor(email,eruvName){
   if(!S.user){toast('Please sign in first','err');openModal('vMain');return;}
