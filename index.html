@@ -1722,7 +1722,18 @@ function renderStatus(f){
 }
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Under Review',down:'Down'};
-  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){return '<div class="eruv-row" onclick="showEruvDetail(\''+e.id+'\')"><div><div class="er-nm">'+e.name+'</div><div class="er-mt">'+e.city+(e.lastChecked?' · '+e.lastChecked:'')+'</div>'+(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;padding:3px 8px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.71rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'')+'</div><span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span></div>';}).join('');
+  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){
+    var sc={up:'#22a865',review:'#e08020',down:'#d94040'}[e.status]||'#ccc';
+    return '<div id="wrap-'+e.id+'">'
+      +'<div class="eruv-row" style="position:relative;padding-left:12px;cursor:pointer" onclick="toggleEruvDetail(''+e.id+'')">'
+      +'<div style="position:absolute;left:0;top:4px;bottom:4px;width:3px;background:'+sc+';border-radius:2px"></div>'
+      +'<div><div class="er-nm">'+e.name+'</div>'
+      +'<div class="er-mt">'+e.city+(e.lastChecked?' · <span style="font-size:.62rem">'+e.lastChecked+'</span>':'')+'</div></div>'
+      +'<span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span>'
+      +'</div>'
+      +'<div id="detail-'+e.id+'" style="display:none;background:#f8f9fb;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:12px 14px;font-size:.82rem;"></div>'
+      +'</div>';
+  }).join('');
 }
 function toggleEruvDetail(id){
   var panel=document.getElementById('eruv-detail-'+id);
@@ -1736,6 +1747,13 @@ function toggleEruvDetail(id){
   panel.style.display='block';
   setTimeout(function(){panel.classList.add('open');},10);
   showEruvDetail(id); // populate and show on map
+}
+function toggleEruvDetail(id){
+  var d=document.getElementById('detail-'+id);
+  if(!d)return;
+  if(d.style.display!=='none'){d.style.display='none';clearNoteMarkers();return;}
+  document.querySelectorAll('[id^="detail-"]').forEach(function(el){el.style.display='none';});
+  showEruvDetail(id);
 }
 function showEruvDetail(id){
   var e=S.eruvin.find(function(x){return x.id===id;});
