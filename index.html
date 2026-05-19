@@ -3575,9 +3575,18 @@ function renderSegNotes(){
 }
 var _segNoteMode=false;
 var _segMarkers=[];
+function _getScreenPos(lngLat){
+  if(!drawMap)return null;
+  var p=drawMap.project(lngLat);
+  var canvas=drawMap.getCanvas();
+  var rect=canvas.getBoundingClientRect();
+  return {x:p.x,y:p.y,rect:rect};
+}
 function _drawSegMarkers(){
-  // Remove old markers
+  // Remove old markers and overlay
   _segMarkers.forEach(function(m){m.remove();});_segMarkers=[];
+  var overlay=document.getElementById('segOverlay');
+  if(overlay)overlay.remove();
   var coords=importedCoords;
   if((!coords||coords.length<3)&&typeof Draw!=='undefined'&&Draw){
     var feats=Draw.getAll().features;
@@ -3585,35 +3594,49 @@ function _drawSegMarkers(){
     if(main)coords=main.geometry.coordinates[0];
   }
   if(!coords||coords.length<3)return;
-  // Place a small circle at each segment midpoint
-  for(var i=0;i<coords.length-1;i++){
-    var mx=(coords[i][0]+coords[i+1][0])/2;
-    var my=(coords[i][1]+coords[i+1][1])/2;
-    var el=document.createElement('div');
-    var hasNote=!!_segNotes[i];
-    el.style.cssText='width:22px;height:22px;border-radius:50%;'
-      +'background:'+(hasNote?'#22a865':'#1a3055')+';'
-      +'color:#fff;font-size:.62rem;font-weight:700;'
-      +'display:flex;align-items:center;justify-content:center;'
-      +'border:2px solid '+(hasNote?'#a8f0c6':'rgba(255,255,255,.6)')+';'
-      +'box-shadow:0 2px 8px rgba(0,0,0,.5);'
-      +'pointer-events:all;user-select:none;'
-      +'cursor:pointer;z-index:999;';
-    el.textContent=i+1;
-    el.setAttribute('data-seg',i);
-    // Use touchend + mouseup to avoid map drag interference
-    var handler=(function(idx,lng,lat){
-      return function(ev){
-        ev.stopPropagation();ev.preventDefault();
-        selectSegment(idx,[lng,lat]);
-      };
-    })(i,mx,my);
-    el.addEventListener('click',handler,true);
-    el.addEventListener('touchend',handler,true);
-    var marker=new mapboxgl.Marker({element:el,anchor:'center',draggable:false})
-      .setLngLat([mx,my]).addTo(drawMap);
-    _segMarkers.push(marker);
+  // Create overlay div on top of map canvas
+  var canvas=drawMap.getCanvas();
+  var wrapper=canvas.parentElement;
+  overlay=document.createElement('div');
+  overlay.id='segOverlay';
+  overlay.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
+  wrapper.style.position='relative';
+  wrapper.appendChild(overlay);
+  function updatePositions(){
+    overlay.innerHTML='';
+    for(var i=0;i<coords.length-1;i++){
+      var mx=(coords[i][0]+coords[i+1][0])/2;
+      var my=(coords[i][1]+coords[i+1][1])/2;
+      var p=drawMap.project([mx,my]);
+      var hasNote=!!_segNotes[i];
+      var btn=document.createElement('button');
+      btn.style.cssText='position:absolute;'
+        +'left:'+(p.x-11)+'px;top:'+(p.y-11)+'px;'
+        +'width:22px;height:22px;border-radius:50%;'
+        +'background:'+(hasNote?'#22a865':'#1a3055')+';'
+        +'color:#fff;font-size:.62rem;font-weight:700;'
+        +'border:2px solid '+(hasNote?'#a8f0c6':'rgba(255,255,255,.7)')+';'
+        +'box-shadow:0 2px 8px rgba(0,0,0,.6);'
+        +'pointer-events:all;cursor:pointer;'
+        +'display:flex;align-items:center;justify-content:center;'
+        +'font-family:inherit;';
+      btn.textContent=i+1;
+      btn.title='Segment '+(i+1);
+      (function(idx,lng,lat){
+        btn.addEventListener('mousedown',function(e){e.stopPropagation();e.preventDefault();},true);
+        btn.addEventListener('click',function(e){
+          e.stopPropagation();e.preventDefault();
+          selectSegment(idx,[lng,lat]);
+        },true);
+      })(i,mx,my);
+      overlay.appendChild(btn);
+    }
   }
+  updatePositions();
+  // Update on map move
+  drawMap._segOverlayMoveHandler=updatePositions;
+  drawMap.on('move',updatePositions);
+  drawMap.on('zoom',updatePositions);
 }
 
 function startSegNoteMode(){
