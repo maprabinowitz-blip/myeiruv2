@@ -1748,13 +1748,7 @@ function toggleEruvDetail(id){
   setTimeout(function(){panel.classList.add('open');},10);
   showEruvDetail(id); // populate and show on map
 }
-function toggleEruvDetail(id){
-  var d=document.getElementById('detail-'+id);
-  if(!d)return;
-  if(d.style.display!=='none'){d.style.display='none';clearNoteMarkers();return;}
-  document.querySelectorAll('[id^="detail-"]').forEach(function(el){el.style.display='none';});
-  showEruvDetail(id);
-}
+
 function showEruvDetail(id){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
