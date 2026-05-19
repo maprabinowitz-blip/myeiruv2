@@ -3624,18 +3624,15 @@ function renderSegNotes(){
 }
 var _segNoteMode=false;
 var _segMarkers=[];
-function _getScreenPos(lngLat){
-  if(!drawMap)return null;
-  var p=drawMap.project(lngLat);
-  var canvas=drawMap.getCanvas();
-  var rect=canvas.getBoundingClientRect();
-  return {x:p.x,y:p.y,rect:rect};
-}
 function _drawSegMarkers(){
-  // Remove old markers and overlay
-  _segMarkers.forEach(function(m){m.remove();});_segMarkers=[];
-  var overlay=document.getElementById('segOverlay');
-  if(overlay)overlay.remove();
+  // Remove old overlay
+  var old=document.getElementById('segOverlay');
+  if(old)old.remove();
+  if(drawMap&&drawMap._segMoveH){
+    drawMap.off('move',drawMap._segMoveH);
+    drawMap.off('zoom',drawMap._segMoveH);
+    drawMap._segMoveH=null;
+  }
   var coords=importedCoords;
   if((!coords||coords.length<3)&&typeof Draw!=='undefined'&&Draw){
     var feats=Draw.getAll().features;
@@ -3643,49 +3640,63 @@ function _drawSegMarkers(){
     if(main)coords=main.geometry.coordinates[0];
   }
   if(!coords||coords.length<3)return;
-  // Create overlay div on top of map canvas
+
+  // Create overlay absolutely positioned over the map canvas
   var canvas=drawMap.getCanvas();
-  var wrapper=canvas.parentElement;
-  overlay=document.createElement('div');
+  var parent=canvas.parentElement;
+  if(getComputedStyle(parent).position==='static')parent.style.position='relative';
+
+  var overlay=document.createElement('div');
   overlay.id='segOverlay';
-  overlay.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10;';
-  wrapper.style.position='relative';
-  wrapper.appendChild(overlay);
-  function updatePositions(){
+  overlay.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100;overflow:hidden;';
+  parent.appendChild(overlay);
+
+  function render(){
     overlay.innerHTML='';
-    for(var i=0;i<coords.length-1;i++){
-      var mx=(coords[i][0]+coords[i+1][0])/2;
-      var my=(coords[i][1]+coords[i+1][1])/2;
+    var currentCoords=importedCoords;
+    if((!currentCoords||currentCoords.length<3)&&typeof Draw!=='undefined'&&Draw){
+      var feats=Draw.getAll().features;
+      var main=feats.find(function(f){return f.properties.isExcl!=='1';});
+      if(main)currentCoords=main.geometry.coordinates[0];
+    }
+    if(!currentCoords||currentCoords.length<3)return;
+    for(var i=0;i<currentCoords.length-1;i++){
+      var mx=(currentCoords[i][0]+currentCoords[i+1][0])/2;
+      var my=(currentCoords[i][1]+currentCoords[i+1][1])/2;
       var p=drawMap.project([mx,my]);
       var hasNote=!!_segNotes[i];
       var btn=document.createElement('button');
       btn.style.cssText='position:absolute;'
-        +'left:'+(p.x-11)+'px;top:'+(p.y-11)+'px;'
-        +'width:22px;height:22px;border-radius:50%;'
+        +'left:'+(p.x-13)+'px;top:'+(p.y-13)+'px;'
+        +'width:26px;height:26px;border-radius:50%;'
         +'background:'+(hasNote?'#22a865':'#1a3055')+';'
-        +'color:#fff;font-size:.62rem;font-weight:700;'
-        +'border:2px solid '+(hasNote?'#a8f0c6':'rgba(255,255,255,.7)')+';'
-        +'box-shadow:0 2px 8px rgba(0,0,0,.6);'
+        +'color:#fff;font-size:.68rem;font-weight:700;'
+        +'border:2.5px solid '+(hasNote?'#a8f0c6':'rgba(255,255,255,.8)')+';'
+        +'box-shadow:0 2px 10px rgba(0,0,0,.7);'
         +'pointer-events:all;cursor:pointer;'
         +'display:flex;align-items:center;justify-content:center;'
-        +'font-family:inherit;';
+        +'font-family:inherit;line-height:1;'
+        +'transition:transform .1s;';
       btn.textContent=i+1;
-      btn.title='Segment '+(i+1);
+      btn.addEventListener('mouseenter',function(){this.style.transform='scale(1.25)';});
+      btn.addEventListener('mouseleave',function(){this.style.transform='scale(1)';});
       (function(idx,lng,lat){
-        btn.addEventListener('mousedown',function(e){e.stopPropagation();e.preventDefault();},true);
+        btn.addEventListener('pointerdown',function(e){
+          e.stopPropagation();e.preventDefault();
+        });
         btn.addEventListener('click',function(e){
           e.stopPropagation();e.preventDefault();
           selectSegment(idx,[lng,lat]);
-        },true);
+        });
       })(i,mx,my);
       overlay.appendChild(btn);
     }
   }
-  updatePositions();
-  // Update on map move
-  drawMap._segOverlayMoveHandler=updatePositions;
-  drawMap.on('move',updatePositions);
-  drawMap.on('zoom',updatePositions);
+
+  render();
+  drawMap._segMoveH=render;
+  drawMap.on('move',render);
+  drawMap.on('zoom',render);
 }
 
 function startSegNoteMode(){
