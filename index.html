@@ -1846,8 +1846,21 @@ function showEruvDetail(id){
     +ctHtml
     +'</div>'
   // Show in accordion panel below the row
-  var panel=document.getElementById('eruv-detail-'+e.id);
-  if(panel)panel.innerHTML=html;
+  var d=document.getElementById('detail-'+id);
+  if(d){
+    d.innerHTML=html;
+    d.style.display='block';
+    setTimeout(function(){d.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+  }
+  // Highlight zone on map
+  S.eruvin.forEach(function(z){
+    try{
+      if(map.getLayer('eruv-'+z.id+'-fill'))
+        map.setPaintProperty('eruv-'+z.id+'-fill','fill-opacity',z.id===id?0.55:0.1);
+      if(map.getLayer('eruv-'+z.id+'-line'))
+        map.setPaintProperty('eruv-'+z.id+'-line','line-width',z.id===id?3:1.5);
+    }catch(_){}
+  });
 }
 function sendMsgToContractor(email,eruvName){
   if(!S.user){toast('Please sign in first','err');openModal('vMain');return;}
