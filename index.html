@@ -1731,7 +1731,7 @@ function renderEruvList(){
       +'<div class="er-mt">'+e.city+(e.lastChecked?' · <span style="font-size:.62rem">'+e.lastChecked+'</span>':'')+'</div></div>'
       +'<span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span>'
       +'</div>'
-      +'<div id="detail-\'+e.id+'" style="display:none;background:#f8f9fb;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:12px 14px;font-size:.82rem;"></div>'
+      +'<div id="detail-'+e.id+'" style="display:none;background:#f8f9fb;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:12px 14px;font-size:.82rem;"></div>'
       +'</div>';
   }).join('');
 }
