@@ -1862,9 +1862,9 @@ function showEruvDetail(id){
   S.eruvin.forEach(function(z){
     try{
       if(map.getLayer('eruv-'+z.id+'-fill'))
-        map.setPaintProperty('eruv-'+z.id+'-fill','fill-opacity',z.id===id?0.55:0.1);
+        map.setPaintProperty('eruv-'+z.id+'-fill','fill-opacity',z.id===id?0.3:0.08);
       if(map.getLayer('eruv-'+z.id+'-line'))
-        map.setPaintProperty('eruv-'+z.id+'-line','line-width',z.id===id?3:1.5);
+        map.setPaintProperty('eruv-'+z.id+'-line','line-width',z.id===id?2.5:1.5);
     }catch(_){}
   });
 }
