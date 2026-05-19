@@ -3649,6 +3649,8 @@ function _drawSegMarkers(){
   var overlay=document.createElement('div');
   overlay.id='segOverlay';
   overlay.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100;overflow:hidden;';
+  // Prevent any mousedown that hits a button from reaching the map
+  overlay.addEventListener('mousedown',function(e){if(e.target.tagName==='BUTTON'){e.stopPropagation();e.preventDefault();}},true);
   parent.appendChild(overlay);
 
   function render(){
