@@ -1534,20 +1534,31 @@ function planRoute(){
       }
     }
     dense.push(coords[coords.length-1]);
-    // Build set of allowed eiruvim - the zone itself + adjacent zones with canEnter
-    var allowedIds=new Set();
+    // Find which eiruvim the route touches
+    var routeZones=new Set();
+    dense.forEach(function(c){var z=findEruv(c[0],c[1]);if(z)routeZones.add(z.id);});
+    // Build allowed zone pairs - direct zones + adjacent pairs with canEnter
+    var allowedPairs=[]; // [{ids: Set}]
     S.eruvin.forEach(function(z){
-      var hasAdj=(z.adjacency||[]).some(function(a){return a.canEnter;});
-      if(hasAdj){
-        allowedIds.add(z.id);
-        (z.adjacency||[]).filter(function(a){return a.canEnter;}).forEach(function(a){allowedIds.add(a.id);});
-      }
+      var single=new Set([z.id]);
+      allowedPairs.push(single);
+      (z.adjacency||[]).filter(function(a){return a.canEnter;}).forEach(function(a){
+        allowedPairs.push(new Set([z.id,a.id]));
+      });
     });
+    // Check: is every point covered by at least one consistent allowed zone set?
+    // A point is valid if it's inside a zone that's in the same pair as all other touched zones
     var inEruv=dense.map(function(c){
       var z=findEruv(c[0],c[1]);
       if(!z)return false;
-      // If any adjacent zone group covers this point, it's valid
-      return true; // findEruv already checks - any eiruv is valid
+      // Check if this zone + all other route zones fit within an allowed pair
+      var thisAndRoute=new Set([z.id]);
+      routeZones.forEach(function(id){thisAndRoute.add(id);});
+      return allowedPairs.some(function(pair){
+        var allIn=true;
+        thisAndRoute.forEach(function(id){if(!pair.has(id))allIn=false;});
+        return allIn;
+      });
     });
 
     var allIn=inEruv.every(Boolean);
