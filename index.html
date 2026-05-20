@@ -2427,8 +2427,22 @@ async function sendSmsBlast(){
 
 function filterUsers(v){var el=document.getElementById('userListEl');if(el)el.innerHTML=mkUserList(window._fsUsers||[],v.toLowerCase());}
 function mkUserList(users,q){
-  var f=q?users.filter(function(u){return u.name.toLowerCase().indexOf(q)>=0||u.email.toLowerCase().indexOf(q)>=0;}):users;
-  return f.map(function(u){return '<div class="user-row"><div class="u-info"><div class="u-av-sm">'+(u.avatar||u.name[0]||'?').toUpperCase()+'</div><div><div style="font-size:.8rem;font-weight:600;color:var(--navy)">'+u.name+'</div><div style="font-size:.68rem;color:var(--muted)">'+u.email+'</div></div></div><span class="badge" style="background:var(--gold2);color:#7a4010">'+(u.role==='admin'?'Admin':u.role==='contractor'?'Contractor':u.contractorStatus==='pending'?'Pending':'User')+'</span></div>';}).join('')||'<div style="font-size:.79rem;color:var(--muted)">None.</div>';
+  var f=q?users.filter(function(u){return (u.name||'').toLowerCase().indexOf(q)>=0||(u.email||'').toLowerCase().indexOf(q)>=0;}):users;
+  if(!f.length)return '<div style="font-size:.79rem;color:var(--muted);padding:8px 0">No users found.</div>';
+  return f.map(function(u){
+    var role=u.role==='admin'?'Admin':u.role==='contractor'||u.contractorStatus==='approved'?'Contractor':u.contractorStatus==='pending'?'Pending':'Member';
+    var rc={Admin:'#c0284a',Contractor:'#16a05a',Pending:'#d97706',Member:'#6b7a99'}[role]||'#6b7a99';
+    var av=(u.avatar||u.name&&u.name[0]||u.email&&u.email[0]||'?').toUpperCase();
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)">'
+      +'<div style="width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0">'+av+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:.83rem;font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(u.name||'—')+'</div>'
+      +'<div style="font-size:.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+u.email+'</div>'
+      +(u.phone?'<div style="font-size:.68rem;color:var(--muted2)">'+u.phone+'</div>':'')
+      +'</div>'
+      +'<span style="font-size:.68rem;font-weight:700;color:'+rc+';white-space:nowrap;padding:2px 8px;border-radius:10px;background:'+rc+'18">'+role+'</span>'
+      +'</div>';
+  }).join('');
 }
 function _renderContractors(body){
   var conts=window._fsContractors||[];
