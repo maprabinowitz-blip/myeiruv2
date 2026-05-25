@@ -1507,23 +1507,67 @@ function planRoute(){
   if(startVal&&(!sc||sc.label!==startVal))sc=null;
   if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
-  function fetchRoute(sc,ec){
-    var mbUrl='https://api.mapbox.com/directions/v5/mapbox/walking/'
-      +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
+  function fetchRoute(sc,ec,waypoints,attempt){
+    attempt=attempt||0;
+    var pts=[sc.lng+','+sc.lat];
+    if(waypoints&&waypoints.length)waypoints.forEach(function(w){pts.push(w[0]+','+w[1]);});
+    pts.push(ec.lng+','+ec.lat);
+    var mbUrl='https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')
       +'?overview=full&geometries=geojson&steps=true&access_token='+TOKEN;
-    fetch(mbUrl).then(function(r){return r.json();}).then(function(d){
-      if(d.routes&&d.routes.length){drawRoute(d.routes[0],sc,ec);}
-      else{tryOSRM();}
-    }).catch(function(){tryOSRM();});
     function tryOSRM(){
-      var osUrl='https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true';
+      var osUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
       fetch(osUrl).then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length){drawRoute(d.routes[0],sc,ec);}
+        if(d.code==='Ok'&&d.routes&&d.routes.length){handleRoute(d.routes[0]);}
         else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
+    function handleRoute(route){
+      if(attempt>=3){drawRoute(route,sc,ec);return;}
+      var coords=route.geometry.coordinates;
+      var dense=[];
+      for(var i=0;i<coords.length-1;i++){
+        dense.push(coords[i]);
+        for(var j=1;j<15;j++)dense.push([coords[i][0]+(coords[i+1][0]-coords[i][0])*j/15,coords[i][1]+(coords[i+1][1]-coords[i][1])*j/15]);
+      }
+      dense.push(coords[coords.length-1]);
+      var inEruv=dense.map(function(c){return findEruv(c[0],c[1])!==null;});
+      var pct=inEruv.filter(Boolean).length/dense.length;
+      if(pct>=0.97){drawRoute(route,sc,ec);return;}
+      // Find first exit and add a waypoint inside the eiruv near it
+      var newWpts=waypoints?waypoints.slice():[];
+      var added=false;
+      for(var i=1;i<dense.length;i++){
+        if(inEruv[i-1]&&!inEruv[i]){
+          var lastIn=dense[i-1];
+          var eruv=findEruv(lastIn[0],lastIn[1]);
+          if(eruv&&eruv.coords){
+            var exitPt=dense[i];
+            var best=null,bestD=Infinity;
+            for(var k=0;k<eruv.coords.length;k++){
+              var dx=exitPt[0]-eruv.coords[k][0],dy=exitPt[1]-eruv.coords[k][1];
+              var d=Math.sqrt(dx*dx+dy*dy);
+              if(d<bestD){bestD=d;best=eruv.coords[k];}
+            }
+            if(best){
+              var cx=eruv.center?eruv.center[0]:lastIn[0];
+              var cy=eruv.center?eruv.center[1]:lastIn[1];
+              var wx=best[0]+(cx-best[0])*0.1;
+              var wy=best[1]+(cy-best[1])*0.1;
+              newWpts.push(findEruv(wx,wy)?[wx,wy]:[lastIn[0],lastIn[1]]);
+              added=true;
+            }
+          }
+          break;
+        }
+      }
+      if(added)fetchRoute(sc,ec,newWpts,attempt+1);
+      else drawRoute(route,sc,ec);
+    }
+    fetch(mbUrl).then(function(r){return r.json();}).then(function(d){
+      if(d.routes&&d.routes.length)handleRoute(d.routes[0]);
+      else tryOSRM();
+    }).catch(function(){tryOSRM();});
   }
-
 
   function drawRoute(route,sc,ec){
     var coords=route.geometry.coordinates;
