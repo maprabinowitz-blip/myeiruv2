@@ -2539,9 +2539,9 @@ function mkUserList(users,q){
       +'<span style="font-size:.68rem;font-weight:700;color:'+rc+';padding:2px 8px;border-radius:10px;background:'+rc+'18">'+role+'</span>'
       +'</div>'
       +'<div style="display:flex;gap:5px;margin-top:6px;padding-left:44px">'
-      +(role!=='Admin'?'<button onclick="adminMakeContractor(''+u.email+'')" style="border:none;background:#e8f4ec;color:#16a05a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Make Contractor</button>':'')
-      +(role!=='Admin'?'<button onclick="adminMakeAdmin(''+u.email+'')" style="border:none;background:#fef1e2;color:#c0580a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Make Admin</button>':'')
-      +'<button onclick="adminDeleteUser(''+u.email+'')" style="border:none;background:#fbeaea;color:#c0284a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Remove</button>'
+      +(role!=='Admin'?'<button onclick="adminMakeContractor(\x27'+u.email+'\x27)" style="border:none;background:#e8f4ec;color:#16a05a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Make Contractor</button>':'')
+      +(role!=='Admin'?'<button onclick="adminMakeAdmin(\x27'+u.email+'\x27)" style="border:none;background:#fef1e2;color:#c0580a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Make Admin</button>':'')
+      +'<button onclick="adminDeleteUser(\x27'+u.email+'\x27)" style="border:none;background:#fbeaea;color:#c0284a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Remove</button>'
       +'</div>'
       +'</div>';
   }).join('');
