@@ -1517,9 +1517,30 @@ function planRoute(){
     function tryOSRM(){
       var osUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true';
       fetch(osUrl).then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length){handleRoute(d.routes[0]);}
+        if(d.code==='Ok'&&d.routes&&d.routes.length)handleRoute(d.routes[0]);
         else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+    }
+    function sampleInsideEruv(eruv,nearLng,nearLat){
+      // Sample a grid of points inside eiruv polygon, return closest to target
+      if(!eruv||!eruv.coords)return null;
+      var lngs=eruv.coords.map(function(c){return c[0];});
+      var lats=eruv.coords.map(function(c){return c[1];});
+      var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
+      var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
+      var best=null,bestD=Infinity;
+      var steps=8;
+      for(var gi=0;gi<=steps;gi++){
+        for(var gj=0;gj<=steps;gj++){
+          var lng=minLng+(maxLng-minLng)*gi/steps;
+          var lat=minLat+(maxLat-minLat)*gj/steps;
+          if(findEruv(lng,lat)){
+            var d=Math.sqrt(Math.pow(lng-nearLng,2)+Math.pow(lat-nearLat,2));
+            if(d<bestD){bestD=d;best=[lng,lat];}
+          }
+        }
+      }
+      return best;
     }
     function handleRoute(route){
       if(attempt>=3){drawRoute(route,sc,ec);return;}
@@ -1527,41 +1548,43 @@ function planRoute(){
       var dense=[];
       for(var i=0;i<coords.length-1;i++){
         dense.push(coords[i]);
-        for(var j=1;j<15;j++)dense.push([coords[i][0]+(coords[i+1][0]-coords[i][0])*j/15,coords[i][1]+(coords[i+1][1]-coords[i][1])*j/15]);
+        for(var j=1;j<20;j++)dense.push([
+          coords[i][0]+(coords[i+1][0]-coords[i][0])*j/20,
+          coords[i][1]+(coords[i+1][1]-coords[i][1])*j/20
+        ]);
       }
       dense.push(coords[coords.length-1]);
       var inEruv=dense.map(function(c){return findEruv(c[0],c[1])!==null;});
       var pct=inEruv.filter(Boolean).length/dense.length;
       if(pct>=0.97){drawRoute(route,sc,ec);return;}
-      // Find first exit and add a waypoint inside the eiruv near it
-      var newWpts=waypoints?waypoints.slice():[];
-      var added=false;
+      // Find exit and re-enter points
+      var exits=[];
       for(var i=1;i<dense.length;i++){
-        if(inEruv[i-1]&&!inEruv[i]){
-          var lastIn=dense[i-1];
-          var eruv=findEruv(lastIn[0],lastIn[1]);
-          if(eruv&&eruv.coords){
-            var exitPt=dense[i];
-            var best=null,bestD=Infinity;
-            for(var k=0;k<eruv.coords.length;k++){
-              var dx=exitPt[0]-eruv.coords[k][0],dy=exitPt[1]-eruv.coords[k][1];
-              var d=Math.sqrt(dx*dx+dy*dy);
-              if(d<bestD){bestD=d;best=eruv.coords[k];}
-            }
-            if(best){
-              var cx=eruv.center?eruv.center[0]:lastIn[0];
-              var cy=eruv.center?eruv.center[1]:lastIn[1];
-              var wx=best[0]+(cx-best[0])*0.1;
-              var wy=best[1]+(cy-best[1])*0.1;
-              newWpts.push(findEruv(wx,wy)?[wx,wy]:[lastIn[0],lastIn[1]]);
-              added=true;
-            }
-          }
-          break;
-        }
+        if(inEruv[i-1]&&!inEruv[i])exits.push({type:'exit',pt:dense[i-1],idx:i});
+        else if(!inEruv[i-1]&&inEruv[i])exits.push({type:'enter',pt:dense[i],idx:i});
       }
-      if(added)fetchRoute(sc,ec,newWpts,attempt+1);
-      else drawRoute(route,sc,ec);
+      if(!exits.length){drawRoute(route,sc,ec);return;}
+      var newWpts=waypoints?waypoints.slice():[];
+      // For each exit/re-enter pair, find a road inside the eiruv to route through
+      exits.forEach(function(ex){
+        var eruv=findEruv(ex.pt[0],ex.pt[1])||
+          (ex.idx>0?findEruv(dense[Math.max(0,ex.idx-2)][0],dense[Math.max(0,ex.idx-2)][1]):null);
+        if(!eruv){
+          // Find any eiruv near this point
+          S.eruvin.forEach(function(z){if(!eruv&&z.center){
+            var d=Math.sqrt(Math.pow(ex.pt[0]-z.center[0],2)+Math.pow(ex.pt[1]-z.center[1],2));
+            if(d<0.05)eruv=z;
+          }});
+        }
+        if(eruv){
+          var wp=sampleInsideEruv(eruv,ex.pt[0],ex.pt[1]);
+          if(wp)newWpts.push(wp);
+        }
+      });
+      if(newWpts.length>waypoints.length||(!waypoints&&newWpts.length))
+        fetchRoute(sc,ec,newWpts,attempt+1);
+      else
+        drawRoute(route,sc,ec);
     }
     fetch(mbUrl).then(function(r){return r.json();}).then(function(d){
       if(d.routes&&d.routes.length)handleRoute(d.routes[0]);
