@@ -1564,9 +1564,9 @@ function planRoute(){
         else if(!inEruv[i-1]&&inEruv[i])exits.push({type:'enter',pt:dense[i],idx:i});
       }
       if(!exits.length){drawRoute(route,sc,ec);return;}
-      var newWpts=waypoints?waypoints.slice():[];
-      // For each exit/re-enter pair, find a road inside the eiruv to route through
-      exits.forEach(function(ex){
+      var newWpts=(waypoints||[]).slice();
+      var origLen=newWpts.length;
+      exits.slice(0,2).forEach(function(ex){
         var eruv=findEruv(ex.pt[0],ex.pt[1])||
           (ex.idx>0?findEruv(dense[Math.max(0,ex.idx-2)][0],dense[Math.max(0,ex.idx-2)][1]):null);
         if(!eruv){
@@ -1581,7 +1581,7 @@ function planRoute(){
           if(wp)newWpts.push(wp);
         }
       });
-      if(newWpts.length>waypoints.length||(!waypoints&&newWpts.length))
+      if(newWpts.length>origLen)
         fetchRoute(sc,ec,newWpts,attempt+1);
       else
         drawRoute(route,sc,ec);
@@ -1961,7 +1961,7 @@ function showEruvDetail(id){
 }
 function sendMsgToContractor(email,eruvName){
   if(!S.user){toast('Please sign in first','err');openModal('vMain');return;}
-  var msg=prompt('Message to the '+eruvName+' contractor:\n\n⚠️ The contractor will see your name, email, and phone number in order to contact you back.');
+  var msg=prompt('Message to '+eruvName+' contractor:');
   if(!msg)return;
   // Save to Firestore so contractor sees it in their dashboard
   var msgDoc={
@@ -2388,6 +2388,24 @@ function admDel(id){
   toast('Zone deleted','ok');
 }
 
+function adminMakeContractor(email){
+  if(!confirm('Make '+email+' a contractor?'))return;
+  if(window._db){window._db.patchUser(email,{role:'contractor',contractorStatus:'approved'});window._db.patchContractor(email,{email:email,name:email,status:'approved',approvedAt:new Date().toISOString()});}
+  (window._fsUsers||[]).forEach(function(u){if(u.email===email){u.role='contractor';u.contractorStatus='approved';}});
+  renderAdmin('users');toast(email+' is now a contractor','ok');
+}
+function adminMakeAdmin(email){
+  if(!confirm('Make '+email+' an admin?'))return;
+  if(window._db)window._db.patchUser(email,{role:'admin'});
+  (window._fsUsers||[]).forEach(function(u){if(u.email===email)u.role='admin';});
+  renderAdmin('users');toast(email+' is now admin','ok');
+}
+function adminDeleteUser(email){
+  if(!confirm('Remove user '+email+'? This cannot be undone.'))return;
+  if(window._db)window._db.deleteUser(email);
+  window._fsUsers=(window._fsUsers||[]).filter(function(u){return u.email!==email;});
+  renderAdmin('users');toast('User removed','ok');
+}
 function adminAddContractor(){
   var email=(document.getElementById('adminAddCtEmail')&&document.getElementById('adminAddCtEmail').value.trim().toLowerCase())||'';
   if(!email){toast('Enter an email','err');return;}
@@ -2510,14 +2528,21 @@ function mkUserList(users,q){
     var role=u.role==='admin'?'Admin':u.role==='contractor'||u.contractorStatus==='approved'?'Contractor':u.contractorStatus==='pending'?'Pending':'Member';
     var rc={Admin:'#c0284a',Contractor:'#16a05a',Pending:'#d97706',Member:'#6b7a99'}[role]||'#6b7a99';
     var av=(u.avatar||u.name&&u.name[0]||u.email&&u.email[0]||'?').toUpperCase();
-    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border)">'
+    return '<div style="padding:9px 4px;border-bottom:1px solid var(--border)">'
+      +'<div style="display:flex;align-items:center;gap:10px">'
       +'<div style="width:34px;height:34px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;flex-shrink:0">'+av+'</div>'
       +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:.83rem;font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(u.name||'—')+'</div>'
-      +'<div style="font-size:.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+u.email+'</div>'
+      +'<div style="font-size:.83rem;font-weight:600;color:var(--navy);">'+(u.name||'—')+'</div>'
+      +'<div style="font-size:.7rem;color:var(--muted);">'+u.email+'</div>'
       +(u.phone?'<div style="font-size:.68rem;color:var(--muted2)">'+u.phone+'</div>':'')
       +'</div>'
-      +'<span style="font-size:.68rem;font-weight:700;color:'+rc+';white-space:nowrap;padding:2px 8px;border-radius:10px;background:'+rc+'18">'+role+'</span>'
+      +'<span style="font-size:.68rem;font-weight:700;color:'+rc+';padding:2px 8px;border-radius:10px;background:'+rc+'18">'+role+'</span>'
+      +'</div>'
+      +'<div style="display:flex;gap:5px;margin-top:6px;padding-left:44px">'
+      +(role!=='Admin'?'<button onclick="adminMakeContractor(''+u.email+'')" style="border:none;background:#e8f4ec;color:#16a05a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Make Contractor</button>':'')
+      +(role!=='Admin'?'<button onclick="adminMakeAdmin(''+u.email+'')" style="border:none;background:#fef1e2;color:#c0580a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Make Admin</button>':'')
+      +'<button onclick="adminDeleteUser(''+u.email+'')" style="border:none;background:#fbeaea;color:#c0284a;padding:3px 9px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">Remove</button>'
+      +'</div>'
       +'</div>';
   }).join('');
 }
@@ -2719,7 +2744,7 @@ function replyToMsg(btn){
   var toEmail=btn.dataset.email;
   var toName=btn.dataset.name;
   var eruvName=btn.dataset.eruv;
-  var msg=prompt('Reply to '+toName+':\n(Your name and email will be included)');
+  var msg=prompt('Reply to '+toName+':');
   if(!msg)return;
   fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
     body:JSON.stringify({to:toEmail,toName:toName,
@@ -4313,6 +4338,10 @@ window._db = {
       await setDoc(ref, {...fields, email:email.toLowerCase()}, {merge:true});
       return true;
     } catch(e) { console.error("patchContractor:",e); return false; }
+  },
+  async deleteUser(email) {
+    try { await deleteDoc(doc(db,"users",email.toLowerCase())); return true; }
+    catch(e) { console.error("deleteUser:",e); return false; }
   },
   async deleteContractor(email) {
     try { await deleteDoc(doc(db,"contractors",email.toLowerCase())); return true; }
