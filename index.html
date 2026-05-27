@@ -1548,38 +1548,28 @@ function planRoute(){
     // Find real road intersections inside eiruv near a point
     // Uses Mapbox matrix/isochrone — actually just snaps grid points to roads
     function findRoadInside(eruv,nearPt,cb){
-      var lngs=eruv.coords.map(function(c){return c[0];});
-      var lats=eruv.coords.map(function(c){return c[1];});
-      var w=Math.min.apply(null,lngs),e2=Math.max.apply(null,lngs);
-      var s2=Math.min.apply(null,lats),n=Math.max.apply(null,lats);
-      // Generate dense grid candidates inside eiruv, sorted by distance to exit point
-      var cands=[];
-      for(var gi=1;gi<=6;gi++)for(var gj=1;gj<=6;gj++){
-        var lng=w+(e2-w)*gi/7, lat=s2+(n-s2)*gj/7;
-        if(findEruv(lng,lat)){
-          var d=Math.sqrt(Math.pow(lng-nearPt[0],2)+Math.pow(lat-nearPt[1],2));
-          cands.push({lng:lng,lat:lat,d:d});
-        }
-      }
-      cands.sort(function(a,b){return a.d-b.d;});
-      if(!cands.length){cb(null);return;}
-      // Try each candidate — snap to nearest road via Mapbox geocode
-      var tried=0;
-      function tryNext(){
-        if(tried>=Math.min(5,cands.length)){cb(null);return;}
-        var c=cands[tried++];
-        fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+c.lng+','+c.lat
-          +'.json?types=address,street&access_token='+TOKEN+'&limit=1&proximity='+c.lng+','+c.lat)
-        .then(function(r){return r.json();}).then(function(d){
-          if(d.features&&d.features.length){
-            var f=d.features[0];
-            var rl=f.geometry.coordinates[0],rb=f.geometry.coordinates[1];
-            if(findEruv(rl,rb)){cb([rl,rb]);}
-            else tryNext();
-          } else tryNext();
-        }).catch(function(){tryNext();});
-      }
-      tryNext();
+      if(!eruv||!eruv.coords){cb(null);return;}
+      // Ask Claude to find a street intersection inside the eiruv near the exit
+      var prompt='The following is an eiruv boundary polygon in GeoJSON coordinates (lng,lat): '
+        +JSON.stringify(eruv.coords.slice(0,20))
+        +'. A walking route exits this eiruv near the point ['+nearPt[0].toFixed(5)+','+nearPt[1].toFixed(5)+'].'
+        +' Suggest ONE real street intersection that is clearly inside this polygon that a walking router can use as a waypoint.'
+        +' Respond with ONLY a JSON object: {"lng": number, "lat": number, "intersection": "Street A and Street B"}';
+      fetch('https://api.myeiruv.org',{method:'POST',
+        headers:{'Content-Type':'application/json','X-Action':'anthropic'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:100,
+          messages:[{role:'user',content:prompt}]})
+      }).then(function(r){return r.json();}).then(function(d){
+        try{
+          var txt=d.content&&d.content[0]&&d.content[0].text||'';
+          var m=txt.match(/\{[^}]+\}/);
+          if(!m)throw new Error('no json');
+          var obj=JSON.parse(m[0]);
+          if(obj.lng&&obj.lat&&findEruv(obj.lng,obj.lat)){
+            cb([obj.lng,obj.lat]);
+          } else cb(null);
+        }catch(e){cb(null);}
+      }).catch(function(){cb(null);});
     }
 
     // Re-route through waypoints
