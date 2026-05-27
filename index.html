@@ -1513,94 +1513,65 @@ function planRoute(){
     if(waypoints&&waypoints.length)waypoints.forEach(function(w){pts.push(w[0]+','+w[1]);});
     pts.push(ec.lng+','+ec.lat);
 
-    function scoreRoute(coords){
-      // Dense interpolation then check each point
-      var dense=[];
-      for(var i=0;i<coords.length-1;i++){
-        dense.push(coords[i]);
-        for(var j=1;j<20;j++)dense.push([
-          coords[i][0]+(coords[i+1][0]-coords[i][0])*j/20,
-          coords[i][1]+(coords[i+1][1]-coords[i][1])*j/20]);
-      }
-      dense.push(coords[coords.length-1]);
-      var inside=dense.filter(function(c){return findEruv(c[0],c[1])!==null;}).length;
-      return {pct:inside/dense.length, dense:dense};
-    }
-
-    function pickBest(routes){
-      var best=null,bestPct=0;
+    function scoreAndDraw(routes){
+      // Pick route with highest % inside eiruv
+      var best=null,bestPct=-1;
       routes.forEach(function(r){
-        var s=scoreRoute(r.geometry.coordinates);
-        if(s.pct>bestPct){bestPct=s.pct;best={route:r,pct:s.pct,dense:s.dense};}
+        var coords=r.geometry.coordinates;
+        var dense=[];
+        for(var i=0;i<coords.length-1;i++){
+          dense.push(coords[i]);
+          for(var j=1;j<20;j++)dense.push([
+            coords[i][0]+(coords[i+1][0]-coords[i][0])*j/20,
+            coords[i][1]+(coords[i+1][1]-coords[i][1])*j/20]);
+        }
+        dense.push(coords[coords.length-1]);
+        var pct=dense.filter(function(c){return findEruv(c[0],c[1])!==null;}).length/dense.length;
+        if(pct>bestPct){bestPct=pct;best={r:r,pct:pct,dense:dense};}
       });
-      return best;
-    }
+      if(!best){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
 
-    function handleRoutes(routes){
-      if(!routes||!routes.length){
-        toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;
-      }
-      var best=pickBest(routes);
-      if(best.pct>=0.96||attempt>=2){
-        drawRoute(best.route,sc,ec);return;
-      }
-      // Find exit point and add a waypoint inside eiruv
-      var dense=best.dense;
-      var inEruv=dense.map(function(c){return findEruv(c[0],c[1])!==null;});
-      var newWpts=(waypoints||[]).slice();
-      for(var i=1;i<dense.length;i++){
-        if(inEruv[i-1]&&!inEruv[i]){
-          // Find eiruv the route was just inside
-          var eruv=findEruv(dense[i-1][0],dense[i-1][1]);
-          if(!eruv)break;
-          // Sample grid inside eiruv near exit
-          var lngs=eruv.coords.map(function(c){return c[0];});
-          var lats=eruv.coords.map(function(c){return c[1];});
-          var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
-          var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
-          var exitPt=dense[i];
-          var best2=null,bestD=Infinity;
-          for(var gi=0;gi<=10;gi++){
-            for(var gj=0;gj<=10;gj++){
-              var lng=minLng+(maxLng-minLng)*gi/10;
-              var lat=minLat+(maxLat-minLat)*gj/10;
-              if(findEruv(lng,lat)){
-                var d=Math.sqrt(Math.pow(lng-exitPt[0],2)+Math.pow(lat-exitPt[1],2));
-                if(d<bestD){bestD=d;best2=[lng,lat];}
-              }
-            }
+      // If exits and we haven't tried rerouting yet
+      if(best.pct<0.96&&attempt<3){
+        // Find first exit point
+        var dense=best.dense;
+        var exitPt=null;
+        for(var i=1;i<dense.length;i++){
+          if(findEruv(dense[i-1][0],dense[i-1][1])&&!findEruv(dense[i][0],dense[i][1])){
+            exitPt=dense[i-1]; // last point inside
+            break;
           }
-          if(best2){newWpts.push(best2);break;}
+        }
+        if(exitPt){
+          // Find eiruv and pick a point deep inside it near the exit
+          var eruv=findEruv(exitPt[0],exitPt[1]);
+          if(eruv&&eruv.center){
+            // Interpolate between exit point and center - go 30% toward center
+            var wx=exitPt[0]+(eruv.center[0]-exitPt[0])*0.3;
+            var wy=exitPt[1]+(eruv.center[1]-exitPt[1])*0.3;
+            var newWpts=(waypoints||[]).concat([[wx,wy]]);
+            fetchRoute(sc,ec,newWpts,attempt+1);
+            return;
+          }
         }
       }
-      if(newWpts.length>(waypoints||[]).length)
-        fetchRoute(sc,ec,newWpts,attempt+1);
-      else
-        drawRoute(best.route,sc,ec);
+      drawRoute(best.r,sc,ec);
     }
 
-    // Try Mapbox with alternatives
-    var mbUrl='https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')
-      +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN;
-    fetch(mbUrl).then(function(r){return r.json();}).then(function(d){
-      if(d.routes&&d.routes.length)handleRoutes(d.routes);
-      else{
-        // Fallback OSRM
-        var osUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')
-          +'?overview=full&geometries=geojson&steps=true';
-        fetch(osUrl).then(function(r){return r.json();}).then(function(d){
-          if(d.code==='Ok'&&d.routes&&d.routes.length)handleRoutes(d.routes);
-          else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-        }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
-      }
-    }).catch(function(){
-      var osUrl='https://router.project-osrm.org/route/v1/foot/'+pts.join(';')
-        +'?overview=full&geometries=geojson&steps=true';
-      fetch(osUrl).then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length)handleRoutes(d.routes);
+    function tryOSRM(){
+      fetch('https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true')
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.code==='Ok'&&d.routes&&d.routes.length)scoreAndDraw(d.routes);
         else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
-    });
+    }
+
+    fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')
+      +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.routes&&d.routes.length)scoreAndDraw(d.routes);
+      else tryOSRM();
+    }).catch(function(){tryOSRM();});
   }
 
   function drawRoute(route,sc,ec){
