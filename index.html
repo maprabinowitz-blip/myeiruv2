@@ -1508,10 +1508,8 @@ function planRoute(){
   if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
   function fetchRoute(sc,ec){
-    var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
-
     function scoreRoute(r){
-      var coords=r.geometry.coordinates;
+      var coords=r.geometry?r.geometry.coordinates:decodePolyline(r.polyline.encodedPolyline);
       var dense=[];
       for(var i=0;i<coords.length-1;i++){
         dense.push(coords[i]);
@@ -1523,32 +1521,62 @@ function planRoute(){
       return dense.filter(function(c){return findEruv(c[0],c[1])!==null;}).length/dense.length;
     }
 
-    function handleRoutes(routes){
-      if(!routes||!routes.length){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      // Pick route with highest % inside eiruv
-      var best=routes[0];
-      var bestPct=scoreRoute(best);
+    function pickBest(routes,isGoogle){
+      var best=null,bestPct=-1;
       routes.forEach(function(r){
         var p=scoreRoute(r);
         if(p>bestPct){bestPct=p;best=r;}
       });
-      drawRoute(best,sc,ec);
+      return {route:best,pct:bestPct,isGoogle:isGoogle};
+    }
+
+    function useResult(res){
+      var r=res.route;
+      if(res.isGoogle){
+        // Convert Google route to standard format
+        var coords=decodePolyline(r.polyline.encodedPolyline);
+        var steps=(r.legs&&r.legs[0]&&r.legs[0].steps)||[];
+        var stdRoute={geometry:{coordinates:coords},distance:r.distanceMeters||0,duration:parseInt(r.duration)||0,legs:[{steps:steps.map(function(s){return {maneuver:{instruction:s.navigationInstruction&&s.navigationInstruction.instructions||''},distance:s.distanceMeters||0};})}]};
+        drawRoute(stdRoute,sc,ec);
+      } else {
+        drawRoute(r,sc,ec);
+      }
+    }
+
+    function tryMapbox(fallback){
+      var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
+      fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts
+        +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.routes&&d.routes.length)useResult(pickBest(d.routes,false));
+        else fallback();
+      }).catch(function(){fallback();});
     }
 
     function tryOSRM(){
+      var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
       fetch('https://router.project-osrm.org/route/v1/foot/'+pts+'?overview=full&geometries=geojson&steps=true')
       .then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length)handleRoutes(d.routes);
+        if(d.code==='Ok'&&d.routes&&d.routes.length)useResult(pickBest(d.routes,false));
         else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
 
-    fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts
-      +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
-    .then(function(r){return r.json();}).then(function(d){
-      if(d.routes&&d.routes.length)handleRoutes(d.routes);
-      else tryOSRM();
-    }).catch(function(){tryOSRM();});
+    // Try Google Routes first (best pedestrian routing)
+    fetch('https://api.myeiruv.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Action':'google-routes'},
+      body:JSON.stringify({
+        origin:{location:{latLng:{latitude:sc.lat,longitude:sc.lng}}},
+        destination:{location:{latLng:{latitude:ec.lat,longitude:ec.lng}}},
+        travelMode:'WALK',
+        computeAlternativeRoutes:true,
+        polylineQuality:'HIGH_QUALITY'
+      })
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.routes&&d.routes.length)useResult(pickBest(d.routes,true));
+      else tryMapbox(tryOSRM);
+    }).catch(function(){tryMapbox(tryOSRM);});
   }
 
   function drawRoute(route,sc,ec){
