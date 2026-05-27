@@ -1507,13 +1507,11 @@ function planRoute(){
   if(startVal&&(!sc||sc.label!==startVal))sc=null;
   if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
-  function fetchRoute(sc,ec,waypoints,attempt){
-    attempt=attempt||0;
-    var pts=[sc.lng+','+sc.lat];
-    if(waypoints&&waypoints.length)waypoints.forEach(function(w){pts.push(w[0]+','+w[1]);});
-    pts.push(ec.lng+','+ec.lat);
+  function fetchRoute(sc,ec){
+    var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
 
-    function scoreRoute(coords){
+    function scoreRoute(r){
+      var coords=r.geometry.coordinates;
       var dense=[];
       for(var i=0;i<coords.length-1;i++){
         dense.push(coords[i]);
@@ -1522,89 +1520,30 @@ function planRoute(){
           coords[i][1]+(coords[i+1][1]-coords[i][1])*j/20]);
       }
       dense.push(coords[coords.length-1]);
-      var inside=dense.filter(function(c){return findEruv(c[0],c[1])!==null;}).length;
-      return {pct:inside/dense.length,dense:dense};
-    }
-
-    function findStreetInsideEruv(eruv,nearLng,nearLat,cb){
-      // Try multiple candidate points inside eiruv, snap each to nearest road via Mapbox geocoding
-      var lngs=eruv.coords.map(function(c){return c[0];});
-      var lats=eruv.coords.map(function(c){return c[1];});
-      var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
-      var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
-      // Generate 5x5 grid, keep only points inside eiruv
-      var candidates=[];
-      for(var gi=1;gi<=4;gi++){
-        for(var gj=1;gj<=4;gj++){
-          var lng=minLng+(maxLng-minLng)*gi/5;
-          var lat=minLat+(maxLat-minLat)*gj/5;
-          if(findEruv(lng,lat)){
-            var d=Math.sqrt(Math.pow(lng-nearLng,2)+Math.pow(lat-nearLat,2));
-            candidates.push({lng:lng,lat:lat,d:d});
-          }
-        }
-      }
-      // Sort by distance to exit point, take closest 3
-      candidates.sort(function(a,b){return a.d-b.d;});
-      var top=candidates.slice(0,3);
-      if(!top.length){cb(null);return;}
-      // Snap first candidate to nearest road via Mapbox reverse geocode
-      var c=top[0];
-      fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+c.lng+','+c.lat
-        +'.json?types=address&access_token='+TOKEN+'&limit=1')
-      .then(function(r){return r.json();}).then(function(d){
-        if(d.features&&d.features.length){
-          var f=d.features[0];
-          var rlng=f.geometry.coordinates[0];
-          var rlat=f.geometry.coordinates[1];
-          // Only use if snapped address is inside eiruv
-          if(findEruv(rlng,rlat))cb([rlng,rlat]);
-          else cb([c.lng,c.lat]); // fall back to raw grid point
-        } else cb([c.lng,c.lat]);
-      }).catch(function(){cb([c.lng,c.lat]);});
+      return dense.filter(function(c){return findEruv(c[0],c[1])!==null;}).length/dense.length;
     }
 
     function handleRoutes(routes){
-      var best=null,bestPct=-1;
+      if(!routes||!routes.length){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      // Pick route with highest % inside eiruv
+      var best=routes[0];
+      var bestPct=scoreRoute(best);
       routes.forEach(function(r){
-        var s=scoreRoute(r.geometry.coordinates);
-        if(s.pct>bestPct){bestPct=s.pct;best={r:r,s:s};}
+        var p=scoreRoute(r);
+        if(p>bestPct){bestPct=p;best=r;}
       });
-      if(!best){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      if(best.s.pct>=0.96||attempt>=3){drawRoute(best.r,sc,ec);return;}
-
-      // Find exit point and the eiruv it exits from
-      var dense=best.s.dense;
-      var exitPt=null,exitEruv=null;
-      for(var i=1;i<dense.length;i++){
-        var prev=findEruv(dense[i-1][0],dense[i-1][1]);
-        if(prev&&!findEruv(dense[i][0],dense[i][1])){
-          exitPt=dense[i-1];exitEruv=prev;break;
-        }
-      }
-      if(!exitPt||!exitEruv){drawRoute(best.r,sc,ec);return;}
-
-      // Find a real street address inside the eiruv near exit point
-      findStreetInsideEruv(exitEruv,exitPt[0],exitPt[1],function(wp){
-        if(wp){
-          var newWpts=(waypoints||[]).concat([wp]);
-          fetchRoute(sc,ec,newWpts,attempt+1);
-        } else {
-          drawRoute(best.r,sc,ec);
-        }
-      });
+      drawRoute(best,sc,ec);
     }
 
     function tryOSRM(){
-      fetch('https://router.project-osrm.org/route/v1/foot/'+pts.join(';')
-        +'?overview=full&geometries=geojson&steps=true')
+      fetch('https://router.project-osrm.org/route/v1/foot/'+pts+'?overview=full&geometries=geojson&steps=true')
       .then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length)handleRoutes(d.routes);
         else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
 
-    fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')
+    fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts
       +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
     .then(function(r){return r.json();}).then(function(d){
       if(d.routes&&d.routes.length)handleRoutes(d.routes);
