@@ -125,7 +125,7 @@ export const scheduled = {
     const hour = now.getUTCHours() - 4; // rough EST
     
     // Load all active alerts from Firestore via REST API
-    const fsUrl = `https://firestore.googleapis.com/v1/projects/myeiruv-a9b88/databases/(default)/documents/alerts?pageSize=200&key=${env.FIREBASE_KEY}`;
+    const fsUrl = `https://firestore.googleapis.com/v1/projects/myer-b23f6/databases/(default)/documents/alerts?pageSize=200&key=${env.FIREBASE_KEY}`;
     const alertsRes = await fetch(fsUrl);
     const alertsData = await alertsRes.json();
     const alerts = (alertsData.documents||[]).map(d => {
@@ -144,7 +144,7 @@ export const scheduled = {
     }).filter(a => a.active && a.userEmail);
 
     // Load zones to get current status
-    const zonesRes = await fetch(`https://firestore.googleapis.com/v1/projects/myeiruv-a9b88/databases/(default)/documents/zones?pageSize=100&key=${env.FIREBASE_KEY}`);
+    const zonesRes = await fetch(`https://firestore.googleapis.com/v1/projects/myer-b23f6/databases/(default)/documents/zones?pageSize=100&key=${env.FIREBASE_KEY}`);
     const zonesData = await zonesRes.json();
     const zones = {};
     (zonesData.documents||[]).forEach(d => {
