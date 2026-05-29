@@ -1576,12 +1576,12 @@ function planRoute(){
       });
 
       if(fullyInside){
-        // Best case: route stays fully inside eiruv
+        // Found a route that stays fully inside eiruv!
+        if(routes.length>1)toast('Found a route within the eiruv ✓','ok');
         drawRoute(toStdRoute(fullyInside),sc,ec);
       } else if(bestPartial){
-        // Step 4b: No fully-inside route found — show best with warning
+        // No fully-inside route — show best available
         drawRoute(toStdRoute(bestPartial),sc,ec);
-        // Warning will be shown by drawRoute's own eiruv check
       } else {
         osrmFallback();
       }

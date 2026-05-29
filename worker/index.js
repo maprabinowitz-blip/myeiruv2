@@ -32,7 +32,7 @@ export default {
         method:'POST', headers:{
           'Content-Type':'application/json',
           'X-Goog-Api-Key': env.GOOGLE_ROUTES_KEY,
-          'X-Goog-FieldMask': 'routes.polyline,routes.distanceMeters,routes.duration,routes.legs.steps'
+          'X-Goog-FieldMask': 'routes.polyline,routes.distanceMeters,routes.duration,routes.legs.steps,routes.routeLabels'
         },
         body:JSON.stringify(body)
       });
