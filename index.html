@@ -1497,6 +1497,20 @@ function planRoute(){
   if(startVal&&(!sc||sc.label!==startVal))sc=null;
   if(endVal&&(!ec||ec.label!==endVal))ec=null;
 
+  // Decode Google encoded polyline -> [[lng,lat],...]
+  function decodePolyline(encoded){
+    var coords=[],idx=0,lat=0,lng=0;
+    while(idx<encoded.length){
+      var b,shift=0,result=0;
+      do{b=encoded.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);
+      lat+=(result&1)?~(result>>1):(result>>1);
+      shift=0;result=0;
+      do{b=encoded.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5;}while(b>=0x20);
+      lng+=(result&1)?~(result>>1):(result>>1);
+      coords.push([lng/1e5,lat/1e5]); // Google gives lat,lng - return as [lng,lat] for Mapbox
+    }
+    return coords;
+  }
   function fetchRoute(sc,ec){
 
     // Point-in-polygon check using the existing pip function
@@ -2016,7 +2030,7 @@ function updateAlertEruv(){
   if(zones.length===1)s.value=zones[0].id;
 }
 var alertOpen=false;
-function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);}
+function toggleAlertForm(){if(!S.user){openModal('vMain');return;}alertOpen=!alertOpen;document.getElementById('alertForm').classList.toggle('on',alertOpen);if(alertOpen)populateAlertCities();}
 function saveAlert(){
   var city=document.getElementById('alertCity').value,eruvSel=document.getElementById('alertEruv'),eruv=eruvSel.value,eruvName=eruvSel.options[eruvSel.selectedIndex]&&eruvSel.options[eruvSel.selectedIndex].text||eruv;
   if(!city||!eruv||eruv.indexOf('Select')>=0||eruv.indexOf('No ')>=0){toast('Select city and eiruv','err');return;}
@@ -2380,7 +2394,7 @@ function admStatus(id,status){
   if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked});
   // Send status update notification
   sendEruvEmailAlerts(e,status,note);
-  renderEruvList();renderStatus();renderAdmin('overview');checkHereStatus();
+  renderEruvList();renderStatus();renderAdmin('overview');checkHereStatus();populateAlertCities();
 }
 function admDel(id){
   if(!confirm('Delete this zone permanently?'))return;
