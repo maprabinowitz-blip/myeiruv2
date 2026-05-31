@@ -1591,20 +1591,59 @@ function planRoute(){
       }
     }
 
-    function osrmFallback(){
-      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true&alternatives=3')
+    function osrmRequest(pts,cb){
+      fetch('https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true&alternatives=3')
       .then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length){
-          var best=null,bestPct=0;
-          d.routes.forEach(function(r,ri){
-            var coords=r.geometry.coordinates;
-            var pct=scoreCoverage(coords);
-            if(pct>bestPct){bestPct=pct;best=r;}
-          });
-          drawRoute(best,sc,ec);
+        if(d.code==='Ok'&&d.routes&&d.routes.length)cb(d.routes);
+        else cb(null);
+      }).catch(function(){cb(null);});
+    }
+    function bestOsrm(routes){
+      var best=null,bestPct=0;
+      (routes||[]).forEach(function(r){
+        var pct=scoreCoverage(r.geometry.coordinates);
+        if(pct>bestPct){bestPct=pct;best=r;}
+      });
+      return {route:best,pct:bestPct};
+    }
+    function osrmFallback(){
+      var direct=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
+      osrmRequest([sc.lng+','+sc.lat,ec.lng+','+ec.lat],function(routes){
+        if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+        var b=bestOsrm(routes);
+        if(b.pct>=0.97){drawRoute(b.route,sc,ec);return;}
+        // Try routing via eiruv center to stay inside
+        var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat)||S.eruvin[0];
+        if(!eruv||!eruv.center){drawRoute(b.route,sc,ec);return;}
+        // Try 5 candidate waypoints inside eiruv
+        var lngs=eruv.coords.map(function(c){return c[0];});
+        var lats=eruv.coords.map(function(c){return c[1];});
+        var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
+        var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
+        var candidates=[];
+        for(var gi=1;gi<=4;gi++)for(var gj=1;gj<=4;gj++){
+          var lng=minLng+(maxLng-minLng)*gi/5;
+          var lat=minLat+(maxLat-minLat)*gj/5;
+          if(pip(lng,lat,eruv.coords)){
+            var d=Math.abs(lng-(sc.lng+ec.lng)/2)+Math.abs(lat-(sc.lat+ec.lat)/2);
+            candidates.push({lng:lng,lat:lat,d:d});
+          }
         }
-        else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+        candidates.sort(function(a,z){return a.d-z.d;});
+        var tried=0;
+        function tryNext(){
+          if(tried>=candidates.length){drawRoute(b.route,sc,ec);return;}
+          var wp=candidates[tried++];
+          osrmRequest([sc.lng+','+sc.lat,wp.lng+','+wp.lat,ec.lng+','+ec.lat],function(r2){
+            if(!r2){tryNext();return;}
+            var b2=bestOsrm(r2);
+            if(b2.pct>b.pct+0.02){
+              drawRoute(b2.route,sc,ec);
+            } else tryNext();
+          });
+        }
+        tryNext();
+      });
     }
     if(S.eruvin[0]&&S.eruvin[0].coords){
       var ec2=S.eruvin[0].coords;
