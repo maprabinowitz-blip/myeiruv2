@@ -1568,25 +1568,32 @@ function planRoute(){
       var bestPartial=null;
       var bestPct=0;
 
-      routes.forEach(function(r){
+      routes.forEach(function(r,ri){
         var coords=decodePolyline(r.polyline.encodedPolyline);
+        console.log('[ROUTE] Route',ri,'has',coords.length,'points');
+        // Sample first 5 points through pip
+        coords.slice(0,5).forEach(function(c,ci){
+          console.log('[ROUTE]   point',ci,'['+c[0].toFixed(5)+','+c[1].toFixed(5)+'] inEiruv:',pointInEiruv(c[0],c[1]));
+        });
         if(routeStaysInside(coords)){
-          // Step 4a: Found a route fully inside!
+          console.log('[ROUTE] Route',ri,'FULLY INSIDE eiruv ✅');
           if(!fullyInside)fullyInside=r;
         } else {
           var pct=scoreCoverage(coords);
+          console.log('[ROUTE] Route',ri,'exits eiruv, coverage:',Math.round(pct*100)+'%');
           if(pct>bestPct){bestPct=pct;bestPartial=r;}
         }
       });
 
       if(fullyInside){
-        // Found a route that stays fully inside eiruv!
+        console.log('[ROUTE] Selected: fully-inside route ✅');
         if(routes.length>1)toast('Found a route within the eiruv ✓','ok');
         drawRoute(toStdRoute(fullyInside),sc,ec);
       } else if(bestPartial){
-        // No fully-inside route — show best available
+        console.log('[ROUTE] Selected: best partial route ('+Math.round(bestPct*100)+'% inside) ⚠️');
         drawRoute(toStdRoute(bestPartial),sc,ec);
       } else {
+        console.log('[ROUTE] No routes passed — falling back to OSRM');
         osrmFallback();
       }
     }
@@ -1599,6 +1606,8 @@ function planRoute(){
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
 
+    console.log('[ROUTE] Starting route check. Eruvin loaded:',S.eruvin.length);
+    console.log('[ROUTE] From:',[sc.lng,sc.lat],'To:',[ec.lng,ec.lat]);
     // Step 2: Call Google Directions with alternatives:true
     fetch('https://api.myeiruv.org',{
       method:'POST',
@@ -1613,10 +1622,12 @@ function planRoute(){
     })
     .then(function(r){return r.json();})
     .then(function(d){
+      console.log('[ROUTE] Google raw response:', JSON.stringify(d).slice(0,500));
+      console.log('[ROUTE] Routes returned:', d.routes ? d.routes.length : 0);
       if(d.routes&&d.routes.length)processRoutes(d.routes);
-      else osrmFallback();
+      else{console.log('[ROUTE] No Google routes, falling back to OSRM');osrmFallback();}
     })
-    .catch(function(){osrmFallback();});
+    .catch(function(e){console.log('[ROUTE] Google fetch error:',e);osrmFallback();});
   }
 
   function drawRoute(route,sc,ec){
