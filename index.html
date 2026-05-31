@@ -1672,7 +1672,8 @@ function planRoute(){
   function drawRoute(route,sc,ec){
     var coords=route.geometry.coordinates;
     var dist=route.distance>=1000?(route.distance/1000).toFixed(1)+' km':Math.round(route.distance)+' m';
-    var mins=Math.round(route.duration/60);
+    // Always calculate walk time from distance at 5 km/h walking pace
+    var mins=Math.round(route.distance/1000/5*60);
     var time=mins>60?Math.floor(mins/60)+'h '+(mins%60)+'m':mins+' min';
 
     clearRouteLayer();
