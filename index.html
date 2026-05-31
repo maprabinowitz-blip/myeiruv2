@@ -1570,30 +1570,23 @@ function planRoute(){
 
       routes.forEach(function(r,ri){
         var coords=decodePolyline(r.polyline.encodedPolyline);
-        console.log('[ROUTE] Route',ri,'has',coords.length,'points');
         // Sample first 5 points through pip
         coords.slice(0,5).forEach(function(c,ci){
-          console.log('[ROUTE]   point',ci,'['+c[0].toFixed(5)+','+c[1].toFixed(5)+'] inEiruv:',pointInEiruv(c[0],c[1]));
         });
         if(routeStaysInside(coords)){
-          console.log('[ROUTE] Route',ri,'FULLY INSIDE eiruv ✅');
           if(!fullyInside)fullyInside=r;
         } else {
           var pct=scoreCoverage(coords);
-          console.log('[ROUTE] Route',ri,'exits eiruv, coverage:',Math.round(pct*100)+'%');
           if(pct>bestPct){bestPct=pct;bestPartial=r;}
         }
       });
 
       if(fullyInside){
-        console.log('[ROUTE] Selected: fully-inside route ✅');
         if(routes.length>1)toast('Found a route within the eiruv ✓','ok');
         drawRoute(toStdRoute(fullyInside),sc,ec);
       } else if(bestPartial){
-        console.log('[ROUTE] Selected: best partial route ('+Math.round(bestPct*100)+'% inside) ⚠️');
         drawRoute(toStdRoute(bestPartial),sc,ec);
       } else {
-        console.log('[ROUTE] No routes passed — falling back to OSRM');
         osrmFallback();
       }
     }
@@ -1602,29 +1595,20 @@ function planRoute(){
       fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true&alternatives=3')
       .then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes&&d.routes.length){
-          console.log('[ROUTE] OSRM returned',d.routes.length,'alternatives');
           var best=null,bestPct=0;
           d.routes.forEach(function(r,ri){
             var coords=r.geometry.coordinates;
             var pct=scoreCoverage(coords);
-            console.log('[ROUTE] OSRM route',ri,'coverage:',Math.round(pct*100)+'%');
             if(pct>bestPct){bestPct=pct;best=r;}
           });
-          console.log('[ROUTE] OSRM selected route with',Math.round(bestPct*100)+'% inside eiruv');
           drawRoute(best,sc,ec);
         }
         else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
-
-    console.log('[ROUTE] Starting route check. Eruvin loaded:',S.eruvin.length);
-    console.log('[ROUTE] From:',[sc.lng,sc.lat],'To:',[ec.lng,ec.lat]);
     if(S.eruvin[0]&&S.eruvin[0].coords){
       var ec2=S.eruvin[0].coords;
       var lngs2=ec2.map(function(c){return c[0];}),lats2=ec2.map(function(c){return c[1];});
-      console.log('[ROUTE] Eiruv bounds: lng',Math.min.apply(null,lngs2).toFixed(4),'to',Math.max.apply(null,lngs2).toFixed(4),'lat',Math.min.apply(null,lats2).toFixed(4),'to',Math.max.apply(null,lats2).toFixed(4));
-      console.log('[ROUTE] Eiruv coords sample:',ec2[0],ec2[1]);
-      console.log('[ROUTE] pip test on sc:',pip(sc.lng,sc.lat,ec2));
     }
     // Step 2: Call Google Directions with alternatives:true
     fetch('https://api.myeiruv.org',{
@@ -1640,8 +1624,6 @@ function planRoute(){
     })
     .then(function(r){return r.json();})
     .then(function(d){
-      console.log('[ROUTE] Google raw response:', JSON.stringify(d).slice(0,500));
-      console.log('[ROUTE] Routes returned:', d.routes ? d.routes.length : 0);
       if(d.routes&&d.routes.length)processRoutes(d.routes);
       else{console.log('[ROUTE] No Google routes, falling back to OSRM');osrmFallback();}
     })
