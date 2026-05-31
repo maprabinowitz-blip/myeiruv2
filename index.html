@@ -1619,6 +1619,13 @@ function planRoute(){
 
     console.log('[ROUTE] Starting route check. Eruvin loaded:',S.eruvin.length);
     console.log('[ROUTE] From:',[sc.lng,sc.lat],'To:',[ec.lng,ec.lat]);
+    if(S.eruvin[0]&&S.eruvin[0].coords){
+      var ec2=S.eruvin[0].coords;
+      var lngs2=ec2.map(function(c){return c[0];}),lats2=ec2.map(function(c){return c[1];});
+      console.log('[ROUTE] Eiruv bounds: lng',Math.min.apply(null,lngs2).toFixed(4),'to',Math.max.apply(null,lngs2).toFixed(4),'lat',Math.min.apply(null,lats2).toFixed(4),'to',Math.max.apply(null,lats2).toFixed(4));
+      console.log('[ROUTE] Eiruv coords sample:',ec2[0],ec2[1]);
+      console.log('[ROUTE] pip test on sc:',pip(sc.lng,sc.lat,ec2));
+    }
     // Step 2: Call Google Directions with alternatives:true
     fetch('https://api.myeiruv.org',{
       method:'POST',
