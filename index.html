@@ -1599,9 +1599,20 @@ function planRoute(){
     }
 
     function osrmFallback(){
-      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true')
+      fetch('https://router.project-osrm.org/route/v1/foot/'+sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat+'?overview=full&geometries=geojson&steps=true&alternatives=3')
       .then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length)drawRoute(d.routes[0],sc,ec);
+        if(d.code==='Ok'&&d.routes&&d.routes.length){
+          console.log('[ROUTE] OSRM returned',d.routes.length,'alternatives');
+          var best=null,bestPct=0;
+          d.routes.forEach(function(r,ri){
+            var coords=r.geometry.coordinates;
+            var pct=scoreCoverage(coords);
+            console.log('[ROUTE] OSRM route',ri,'coverage:',Math.round(pct*100)+'%');
+            if(pct>bestPct){bestPct=pct;best=r;}
+          });
+          console.log('[ROUTE] OSRM selected route with',Math.round(bestPct*100)+'% inside eiruv');
+          drawRoute(best,sc,ec);
+        }
         else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
       }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
     }
