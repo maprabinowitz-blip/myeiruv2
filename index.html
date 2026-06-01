@@ -1521,7 +1521,7 @@ function planRoute(){
           var lng=coords[i][0]+(coords[i+1][0]-coords[i][0])*t;
           var lat=coords[i][1]+(coords[i+1][1]-coords[i][1])*t;
           total++;
-          if(pip(lng,lat,(findEruv(lng,lat)||{coords:[]}).coords)||findEruv(lng,lat))inside++;
+          if(findEruv(lng,lat))inside++;
         }
       }
       return total?inside/total:0;
@@ -1536,32 +1536,65 @@ function planRoute(){
       return {route:best,pct:bestPct};
     }
 
-    function done(routes){
+    function tryWithWaypoint(b,attempt){
+      if(attempt>=3){drawRoute(b.route,sc,ec);return;}
+
+      // Find first exit point
+      var coords=b.route.geometry.coordinates;
+      var exitPt=null;
+      for(var i=1;i<coords.length;i++){
+        if(findEruv(coords[i-1][0],coords[i-1][1])&&!findEruv(coords[i][0],coords[i][1])){
+          exitPt=coords[i-1];break;
+        }
+      }
+      if(!exitPt){drawRoute(b.route,sc,ec);return;}
+
+      // Find a point inside eiruv near the exit using grid
+      var eruv=findEruv(exitPt[0],exitPt[1]);
+      if(!eruv){drawRoute(b.route,sc,ec);return;}
+      var lngs=eruv.coords.map(function(c){return c[0];});
+      var lats=eruv.coords.map(function(c){return c[1];});
+      var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
+      var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
+      var best2=null,bestD=Infinity;
+      for(var gi=1;gi<=6;gi++)for(var gj=1;gj<=6;gj++){
+        var lng=minLng+(maxLng-minLng)*gi/7;
+        var lat=minLat+(maxLat-minLat)*gj/7;
+        if(findEruv(lng,lat)){
+          var d=Math.sqrt(Math.pow(lng-exitPt[0],2)+Math.pow(lat-exitPt[1],2));
+          if(d<bestD){bestD=d;best2=[lng,lat];}
+        }
+      }
+      if(!best2){drawRoute(b.route,sc,ec);return;}
+
+      // Re-route via waypoint using OSRM foot
+      var pts=sc.lng+','+sc.lat+';'+best2[0]+','+best2[1]+';'+ec.lng+','+ec.lat;
+      fetch('https://router.project-osrm.org/route/v1/foot/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=3')
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.code==='Ok'&&d.routes&&d.routes.length){
+          var b2=pickBest(d.routes);
+          if(b2.pct>b.pct)tryWithWaypoint(b2,attempt+1);
+          else drawRoute(b.route,sc,ec);
+        } else drawRoute(b.route,sc,ec);
+      }).catch(function(){drawRoute(b.route,sc,ec);});
+    }
+
+    function handleRoutes(routes){
       if(!routes||!routes.length){
         toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;
       }
       var b=pickBest(routes);
-      if(b.pct<0.97 && routes.length>1){
-        toast('Showing best available route ('+Math.round(b.pct*100)+'% inside eiruv)','warn');
-      }
-      drawRoute(b.route,sc,ec);
+      if(b.pct>=0.97)drawRoute(b.route,sc,ec);
+      else tryWithWaypoint(b,0);
     }
 
-    // 1. Try Mapbox walking with alternatives
+    // OSRM foot walking with 3 alternatives
     var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
-    fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts
-      +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
+    fetch('https://router.project-osrm.org/route/v1/foot/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=3')
     .then(function(r){return r.json();}).then(function(d){
-      if(d.routes&&d.routes.length){done(d.routes);return;}
-      throw new Error('no routes');
-    }).catch(function(){
-      // 2. Fallback: OSRM foot
-      fetch('https://router.project-osrm.org/route/v1/foot/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=3')
-      .then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length)done(d.routes);
-        else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
-    });
+      if(d.code==='Ok'&&d.routes&&d.routes.length)handleRoutes(d.routes);
+      else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
+    }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
 
   function drawRoute(route,sc,ec){
