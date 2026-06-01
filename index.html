@@ -1720,17 +1720,21 @@ function planRoute(){
       }
     }
 
-    // Steps - only show if fully inside eiruv
+    // Steps - show always when steps available
     var steps=[];
     if(route.legs)route.legs.forEach(function(leg){if(leg.steps)leg.steps.forEach(function(s){steps.push(s);});});
     var stepsHtml='';
-    if(allIn&&steps.length){
+    if(steps.length){
       var sid='steps-'+Date.now();
-      var rows=steps.filter(function(s){return s.maneuver&&s.maneuver.instruction;}).map(function(s){
+      var rows=steps.filter(function(s){
+        // Support both OSRM (maneuver.instruction) and Google (maneuver.instruction or just instruction)
+        return (s.maneuver&&s.maneuver.instruction)||s.instruction;
+      }).map(function(s){
+        var instruction=(s.maneuver&&s.maneuver.instruction)||s.instruction||'';
         var d=s.distance>=1000?(s.distance/1000).toFixed(1)+' km':Math.round(s.distance)+' m';
-        return '<div class="step-row"><span class="step-ic">›</span><div class="step-txt"><div>'+s.maneuver.instruction+'</div><div class="step-d">'+d+'</div></div></div>';
+        return '<div class="step-row"><span class="step-ic">›</span><div class="step-txt"><div>'+instruction+'</div><div class="step-d">'+d+'</div></div></div>';
       }).join('');
-      stepsHtml='<div style="margin-top:10px"><button data-sid="'+sid+'" onclick="toggleSteps(this)" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button><div id="'+sid+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+rows+'</div></div>';
+      if(rows)stepsHtml='<div style="margin-top:10px"><button data-sid="'+sid+'" onclick="toggleSteps(this)" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button><div id="'+sid+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+rows+'</div></div>';
     }
 
     document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>🚶 Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alertHtml+stepsHtml;
