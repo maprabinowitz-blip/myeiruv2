@@ -1593,18 +1593,18 @@ function planRoute(){
 
     function osrmRequest(pts,cb){
       // Try Mapbox walking first (better pedestrian paths), fall back to OSRM foot
-      var mbPts=pts.join(';');
-      fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+mbPts+'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
+      fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
       .then(function(r){return r.json();}).then(function(d){
-        if(d.routes&&d.routes.length){cb(d.routes);return;}
-        throw new Error('no routes');
-      }).catch(function(){
+        if(d.routes&&d.routes.length)cb(d.routes);
+        else tryOsrm();
+      }).catch(function(){tryOsrm();});
+      function tryOsrm(){
         fetch('https://router.project-osrm.org/route/v1/foot/'+pts.join(';')+'?overview=full&geometries=geojson&steps=true&alternatives=3')
         .then(function(r){return r.json();}).then(function(d){
           if(d.code==='Ok'&&d.routes&&d.routes.length)cb(d.routes);
           else cb(null);
         }).catch(function(){cb(null);});
-      });
+      }
     }
     function bestOsrm(routes){
       var best=null,bestPct=0;
