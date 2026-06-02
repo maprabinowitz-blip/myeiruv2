@@ -1549,7 +1549,7 @@ function planRoute(){
       if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
       var b=pickBest(routes);
       console.log('[ROUTE] Got',routes.length,'alternatives, best:',Math.round(b.pct*100)+'%');
-      if(b.pct>=0.97){drawRoute(b.route,sc,ec);return;}
+      if(b.pct>=1.0){drawRoute(b.route,sc,ec);return;}
 
       // Route exits eiruv — compute eiruv centroid and try routing via it
       var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat)||S.eruvin[0];
