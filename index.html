@@ -1550,21 +1550,46 @@ function planRoute(){
       var b=pickBest(routes);
       console.log('[ROUTE] Got',routes.length,'alternatives, best:',Math.round(b.pct*100)+'%');
 
-      // Always try via-centroid to see if we can do better
+      // Try routing via several interior points, pick the best result
       var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat)||S.eruvin[0];
       if(!eruv||!eruv.coords||!eruv.coords.length){drawRoute(b.route,sc,ec);return;}
+
+      // Generate candidate interior points: centroid + points between sc/ec and centroid
       var cx=0,cy=0,n=eruv.coords.length;
       eruv.coords.forEach(function(c){cx+=c[0];cy+=c[1];});
       cx/=n;cy/=n;
 
-      console.log('[ROUTE] Trying via centroid:',cx.toFixed(4),cy.toFixed(4));
-      var pts2=sc.lng+','+sc.lat+';'+cx+','+cy+';'+ec.lng+','+ec.lat;
-      mbRoute(pts2,function(routes2){
-        if(!routes2){drawRoute(b.route,sc,ec);return;}
-        var b2=pickBest(routes2);
-        console.log('[ROUTE] Via-centroid:',Math.round(b2.pct*100)+'% vs direct:',Math.round(b.pct*100)+'%');
-        drawRoute(b2.pct>b.pct?b2.route:b.route,sc,ec);
-      });
+      var candidates=[
+        [cx,cy],
+        [(sc.lng+cx)/2,(sc.lat+cy)/2],
+        [(ec.lng+cx)/2,(ec.lat+cy)/2],
+        [(sc.lng+ec.lng)/2+0.001,(sc.lat+ec.lat)/2],
+        [(sc.lng+ec.lng)/2-0.001,(sc.lat+ec.lat)/2],
+        [(sc.lng+ec.lng)/2,(sc.lat+ec.lat)/2+0.001],
+        [(sc.lng+ec.lng)/2,(sc.lat+ec.lat)/2-0.001]
+      ].filter(function(p){return findEruv(p[0],p[1]);});
+
+      if(!candidates.length){drawRoute(b.route,sc,ec);return;}
+
+      var best=b,tried=0;
+      function tryNext(){
+        if(tried>=candidates.length){
+          console.log('[ROUTE] Best found:',Math.round(best.pct*100)+'%');
+          drawRoute(best.route,sc,ec);return;
+        }
+        var wp=candidates[tried++];
+        var pts2=sc.lng+','+sc.lat+';'+wp[0]+','+wp[1]+';'+ec.lng+','+ec.lat;
+        mbRoute(pts2,function(routes2){
+          if(routes2){
+            var b2=pickBest(routes2);
+            console.log('[ROUTE] Candidate',tried,':',Math.round(b2.pct*100)+'%');
+            if(b2.pct>best.pct)best=b2;
+            if(best.pct>=0.97){drawRoute(best.route,sc,ec);return;}
+          }
+          tryNext();
+        });
+      }
+      tryNext();
     });
   }
 
