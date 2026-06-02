@@ -1549,13 +1549,10 @@ function planRoute(){
       if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
       var b=pickBest(routes);
       console.log('[ROUTE] Got',routes.length,'alternatives, best:',Math.round(b.pct*100)+'%');
-      if(b.pct>=1.0){drawRoute(b.route,sc,ec);return;}
 
-      // Route exits eiruv — compute eiruv centroid and try routing via it
+      // Always try via-centroid to see if we can do better
       var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat)||S.eruvin[0];
       if(!eruv||!eruv.coords||!eruv.coords.length){drawRoute(b.route,sc,ec);return;}
-
-      // Compute centroid from coords
       var cx=0,cy=0,n=eruv.coords.length;
       eruv.coords.forEach(function(c){cx+=c[0];cy+=c[1];});
       cx/=n;cy/=n;
