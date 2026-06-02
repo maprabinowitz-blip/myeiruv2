@@ -1447,13 +1447,12 @@ function clearRouteLayer(){
   (S.noteMarkers||[]).forEach(function(m){m.remove();});S.noteMarkers=[];
   if(S.routeLayerId){
     var rid=S.routeLayerId;
-    // Remove all possible layer/source name variants
     [rid+'-in-case',rid+'-in-line',rid+'-out-case',rid+'-out-line',
-     rid+'-line',rid+'-case',rid].forEach(function(l){try{map.removeLayer(l);}catch(_){}});
-    [rid+'-in',rid+'-out',rid].forEach(function(s){try{map.removeSource(s);}catch(_){}});
+     rid+'-line',rid+'-case',rid].forEach(function(l){if(map.getLayer(l))map.removeLayer(l);});
+    [rid+'-in',rid+'-out',rid].forEach(function(s){if(map.getSource(s))map.removeSource(s);});
     S.routeLayerId=null;
   }
-  (S.exitLayerIds||[]).forEach(function(id){try{map.removeLayer(id);}catch(_){}try{map.removeSource(id);}catch(_){};});S.exitLayerIds=[];
+  (S.exitLayerIds||[]).forEach(function(id){if(map.getLayer(id))map.removeLayer(id);if(map.getSource(id))map.removeSource(id);});S.exitLayerIds=[];
   document.getElementById('routeResult').innerHTML='';
 }
 function geocodeOne(val,cb){
