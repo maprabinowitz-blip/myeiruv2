@@ -1695,7 +1695,7 @@ function planRoute(){
         var d=s.distance>=1000?(s.distance/1000).toFixed(1)+' km':Math.round(s.distance)+' m';
         return '<div class="step-row"><span class="step-ic">›</span><div class="step-txt"><div>'+instruction+'</div><div class="step-d">'+d+'</div></div></div>';
       }).join('');
-            if(rows)stepsHtml='<div style="margin-top:10px"><button onclick="toggleSteps(&quot;'+sid+'&quot;)" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button><div id="'+sid+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+rows+'</div></div>';
+            if(rows)stepsHtml='<div style="margin-top:10px"><button data-sid="'+sid+'" onclick="toggleSteps(this.dataset.sid)" style="width:100%;padding:7px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:600;color:var(--navy);cursor:pointer;font-family:inherit;text-align:left;">🚶 Step-by-step directions ▾</button><div id="'+sid+'" style="display:none;margin-top:4px;max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0 8px">'+rows+'</div></div>';
     }
 
     document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>🚶 Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alertHtml+stepsHtml;
