@@ -1552,9 +1552,10 @@ function planRoute(){
     fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts
       +'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
     .then(function(r){return r.json();}).then(function(d){
+      console.log('[MB] routes:',d.routes&&d.routes.length,'error:',d.message);
       if(d.routes&&d.routes.length)done(d.routes);
       else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-    }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+    }).catch(function(e){console.log('[MB] catch:',e);toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
 
   function drawRoute(route,sc,ec){
