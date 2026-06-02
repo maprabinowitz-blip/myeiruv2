@@ -1535,12 +1535,35 @@ function planRoute(){
       return {route:best,pct:bestPct};
     }
 
-    function handleRoutes(routes){
+    function handleRoutes(routes,isRetry){
       if(!routes||!routes.length){
         toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;
       }
       var b=pickBest(routes);
-      drawRoute(b.route,sc,ec);
+      if(b.pct>=0.99||isRetry){drawRoute(b.route,sc,ec);return;}
+
+      // Find where route first exits the eiruv
+      var coords=b.route.geometry.coordinates;
+      var exitPt=null,lastEruv=null;
+      for(var i=1;i<coords.length;i++){
+        var prev=findEruv(coords[i-1][0],coords[i-1][1]);
+        if(prev&&!findEruv(coords[i][0],coords[i][1])){exitPt=coords[i-1];lastEruv=prev;break;}
+      }
+      if(!exitPt||!lastEruv){drawRoute(b.route,sc,ec);return;}
+
+      // Pull the waypoint 20% toward eiruv center from exit point
+      var lngs=lastEruv.coords.map(function(c){return c[0];});
+      var lats=lastEruv.coords.map(function(c){return c[1];});
+      var cx=lngs.reduce(function(a,v){return a+v;},0)/lngs.length;
+      var cy=lats.reduce(function(a,v){return a+v;},0)/lats.length;
+      var wx=exitPt[0]+(cx-exitPt[0])*0.2;
+      var wy=exitPt[1]+(cy-exitPt[1])*0.2;
+
+      getRoutes(sc.lng+','+sc.lat+';'+wx+','+wy+';'+ec.lng+','+ec.lat,function(r2){
+        if(!r2){drawRoute(b.route,sc,ec);return;}
+        var b2=pickBest(r2);
+        drawRoute(b2.pct>b.pct?b2.route:b.route,sc,ec);
+      });
     }
 
     function getRoutes(pts,cb){
