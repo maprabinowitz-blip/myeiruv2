@@ -1548,6 +1548,7 @@ function planRoute(){
     mbRoute(pts,function(routes){
       if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
       var b=pickBest(routes);
+      console.log('[ROUTE] Got',routes.length,'alternatives, best:',Math.round(b.pct*100)+'%');
       if(b.pct>=0.97){drawRoute(b.route,sc,ec);return;}
 
       // Route exits eiruv — compute eiruv centroid and try routing via it
@@ -1559,10 +1560,12 @@ function planRoute(){
       eruv.coords.forEach(function(c){cx+=c[0];cy+=c[1];});
       cx/=n;cy/=n;
 
+      console.log('[ROUTE] Trying via centroid:',cx.toFixed(4),cy.toFixed(4));
       var pts2=sc.lng+','+sc.lat+';'+cx+','+cy+';'+ec.lng+','+ec.lat;
       mbRoute(pts2,function(routes2){
         if(!routes2){drawRoute(b.route,sc,ec);return;}
         var b2=pickBest(routes2);
+        console.log('[ROUTE] Via-centroid:',Math.round(b2.pct*100)+'% vs direct:',Math.round(b.pct*100)+'%');
         drawRoute(b2.pct>b.pct?b2.route:b.route,sc,ec);
       });
     });
