@@ -1527,97 +1527,37 @@ function planRoute(){
       return total?inside/total:0;
     }
 
-    function pickBest(routes){
+    function handleRoutes(routes){
+      if(!routes||!routes.length){
+        toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;
+      }
       var best=routes[0],bestPct=scoreCoverage(routes[0].geometry.coordinates);
       routes.forEach(function(r){
         var pct=scoreCoverage(r.geometry.coordinates);
         if(pct>bestPct){bestPct=pct;best=r;}
       });
-      return {route:best,pct:bestPct};
-    }
-
-    function tryWithWaypoint(b,attempt){
-      if(attempt>=3){drawRoute(b.route,sc,ec);return;}
-      var coords=b.route.geometry.coordinates;
-      var exitPt=null;
-      for(var i=1;i<coords.length;i++){
-        if(findEruv(coords[i-1][0],coords[i-1][1])&&!findEruv(coords[i][0],coords[i][1])){
-          exitPt=coords[i-1];break;
-        }
-      }
-      if(!exitPt){drawRoute(b.route,sc,ec);return;}
-      var eruv=findEruv(exitPt[0],exitPt[1]);
-      if(!eruv){drawRoute(b.route,sc,ec);return;}
-      var lngs=eruv.coords.map(function(c){return c[0];});
-      var lats=eruv.coords.map(function(c){return c[1];});
-      var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
-      var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
-      // Try multiple waypoint candidates, pick the one that gives best coverage
-      var candidates=[];
-      for(var gi=1;gi<=5;gi++)for(var gj=1;gj<=5;gj++){
-        var lng=minLng+(maxLng-minLng)*gi/6;
-        var lat=minLat+(maxLat-minLat)*gj/6;
-        if(findEruv(lng,lat)){
-          var d=Math.sqrt(Math.pow(lng-exitPt[0],2)+Math.pow(lat-exitPt[1],2));
-          candidates.push({lng:lng,lat:lat,d:d});
-        }
-      }
-      candidates.sort(function(a,z){return a.d-z.d;});
-      var top=candidates.slice(0,3);
-      if(!top.length){drawRoute(b.route,sc,ec);return;}
-      var tried=0,bestResult=b;
-      function tryNext(){
-        if(tried>=top.length){
-          if(bestResult.pct>b.pct)tryWithWaypoint(bestResult,attempt+1);
-          else drawRoute(b.route,sc,ec);
-          return;
-        }
-        var wp=top[tried++];
-        var pts2=sc.lng+','+sc.lat+';'+wp.lng+','+wp.lat+';'+ec.lng+','+ec.lat;
-        getRoutes(pts2,function(routes){
-          if(routes){
-            var b2=pickBest(routes);
-            if(b2.pct>bestResult.pct)bestResult=b2;
-          }
-          tryNext();
-        });
-      }
-      tryNext();
-    }
-
-    function handleRoutes(routes){
-      if(!routes||!routes.length){
-        toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;
-      }
-      var b=pickBest(routes);
-      if(b.pct>=0.97)drawRoute(b.route,sc,ec);
-      else tryWithWaypoint(b,0);
-    }
-
-    // Get walking routes via Worker (keeps Mapbox key server-side), fallback to direct
-    function getRoutes(pts,cb){
-      fetch('https://api.myeiruv.org',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-Action':'mapbox-directions'},
-        body:JSON.stringify({pts:pts})
-      }).then(function(r){return r.json();}).then(function(d){
-        if(d.routes&&d.routes.length)cb(d.routes);
-        else tryDirect();
-      }).catch(function(){tryDirect();});
-      function tryDirect(){
-        fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
-        .then(function(r){return r.json();}).then(function(d){
-          if(d.routes&&d.routes.length)cb(d.routes);
-          else cb(null);
-        }).catch(function(){cb(null);});
-      }
+      drawRoute(best,sc,ec);
     }
 
     var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
-    getRoutes(pts,function(routes){
-      if(routes)handleRoutes(routes);
-      else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-    });
+
+    // Try Worker first (key server-side), fallback to direct Mapbox
+    fetch('https://api.myeiruv.org',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Action':'mapbox-directions'},
+      body:JSON.stringify({pts:pts})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.routes&&d.routes.length)handleRoutes(d.routes);
+      else tryDirect();
+    }).catch(function(){tryDirect();});
+
+    function tryDirect(){
+      fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
+      .then(function(r){return r.json();}).then(function(d){
+        if(d.routes&&d.routes.length)handleRoutes(d.routes);
+        else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
+      }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+    }
   }
 
   function drawRoute(route,sc,ec){
