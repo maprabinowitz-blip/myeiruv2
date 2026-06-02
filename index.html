@@ -1538,8 +1538,6 @@ function planRoute(){
 
     function tryWithWaypoint(b,attempt){
       if(attempt>=3){drawRoute(b.route,sc,ec);return;}
-
-      // Find first exit point
       var coords=b.route.geometry.coordinates;
       var exitPt=null;
       for(var i=1;i<coords.length;i++){
@@ -1548,8 +1546,6 @@ function planRoute(){
         }
       }
       if(!exitPt){drawRoute(b.route,sc,ec);return;}
-
-      // Find a point inside eiruv near the exit using grid
       var eruv=findEruv(exitPt[0],exitPt[1]);
       if(!eruv){drawRoute(b.route,sc,ec);return;}
       var lngs=eruv.coords.map(function(c){return c[0];});
@@ -1566,17 +1562,13 @@ function planRoute(){
         }
       }
       if(!best2){drawRoute(b.route,sc,ec);return;}
-
-      // Re-route via waypoint using OSRM foot
       var pts=sc.lng+','+sc.lat+';'+best2[0]+','+best2[1]+';'+ec.lng+','+ec.lat;
-      fetch('https://router.project-osrm.org/route/v1/foot/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=3')
-      .then(function(r){return r.json();}).then(function(d){
-        if(d.code==='Ok'&&d.routes&&d.routes.length){
-          var b2=pickBest(d.routes);
-          if(b2.pct>b.pct)tryWithWaypoint(b2,attempt+1);
-          else drawRoute(b.route,sc,ec);
-        } else drawRoute(b.route,sc,ec);
-      }).catch(function(){drawRoute(b.route,sc,ec);});
+      getRoutes(pts,function(routes){
+        if(!routes){drawRoute(b.route,sc,ec);return;}
+        var b2=pickBest(routes);
+        if(b2.pct>b.pct)tryWithWaypoint(b2,attempt+1);
+        else drawRoute(b.route,sc,ec);
+      });
     }
 
     function handleRoutes(routes){
@@ -1588,13 +1580,23 @@ function planRoute(){
       else tryWithWaypoint(b,0);
     }
 
-    // OSRM foot walking with 3 alternatives
+    // Get walking routes via Worker (keeps Mapbox key server-side)
+    function getRoutes(pts,cb){
+      fetch('https://api.myeiruv.org',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Action':'mapbox-directions'},
+        body:JSON.stringify({pts:pts})
+      }).then(function(r){return r.json();}).then(function(d){
+        if(d.routes&&d.routes.length)cb(d.routes);
+        else cb(null);
+      }).catch(function(){cb(null);});
+    }
+
     var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
-    fetch('https://router.project-osrm.org/route/v1/foot/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=3')
-    .then(function(r){return r.json();}).then(function(d){
-      if(d.code==='Ok'&&d.routes&&d.routes.length)handleRoutes(d.routes);
+    getRoutes(pts,function(routes){
+      if(routes)handleRoutes(routes);
       else{toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;}
-    }).catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+    });
   }
 
   function drawRoute(route,sc,ec){

@@ -27,6 +27,13 @@ export default {
       return cors(await res.text(), res.status, allow);
     }
 
+    if (action === 'mapbox-directions') {
+      const {pts} = body;
+      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${pts}?overview=full&geometries=geojson&steps=true&alternatives=true&access_token=${env.MAPBOX_KEY}`;
+      const res = await fetch(url);
+      return cors(await res.text(), res.status, allow);
+    }
+
     if (action === 'google-routes') {
       const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes',{
         method:'POST', headers:{
