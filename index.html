@@ -1555,21 +1555,25 @@ function planRoute(){
       if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
 
       var b=bestOf(routes);
+      console.log('[ROUTE] Got',routes.length,'routes, best coverage:',Math.round(b.pct*100)+'%');
       if(b.pct>=0.97){drawRoute(b.r,sc,ec);return;}
 
       // Direct route exits eiruv — try routing via eiruv center
       var startEruv=findEruv(sc.lng,sc.lat);
       var endEruv=findEruv(ec.lng,ec.lat);
       var eruv=startEruv||endEruv||S.eruvin[0];
-      if(!eruv||!eruv.center){drawRoute(b.r,sc,ec);return;}
+      console.log('[ROUTE] eruv:',eruv&&eruv.name,'center:',eruv&&eruv.center);
+      if(!eruv||!eruv.center){console.log('[ROUTE] No center, using direct');drawRoute(b.r,sc,ec);return;}
 
       var viaPts=sc.lng+','+sc.lat+';'+eruv.center[0]+','+eruv.center[1]+';'+ec.lng+','+ec.lat;
+      console.log('[ROUTE] Trying via center:',eruv.center);
       getWalkingRoutes(viaPts,function(viaRoutes){
         if(!viaRoutes){drawRoute(b.r,sc,ec);return;}
         var b2=bestOf(viaRoutes);
         // Use via-center route only if meaningfully better
-        if(b2.pct>b.pct+0.05)drawRoute(b2.r,sc,ec);
-        else drawRoute(b.r,sc,ec);
+        console.log('[ROUTE] Via-center coverage:',Math.round(b2.pct*100)+'% vs direct:',Math.round(b.pct*100)+'%');
+        if(b2.pct>b.pct+0.05){console.log('[ROUTE] Using via-center route');drawRoute(b2.r,sc,ec);}
+        else{console.log('[ROUTE] Using direct route');drawRoute(b.r,sc,ec);}
       });
     });
   }
