@@ -1594,7 +1594,7 @@ function planRoute(){
       else tryWithWaypoint(b,0);
     }
 
-    // Get walking routes via Worker (keeps Mapbox key server-side)
+    // Get walking routes via Worker (keeps Mapbox key server-side), fallback to direct
     function getRoutes(pts,cb){
       fetch('https://api.myeiruv.org',{
         method:'POST',
@@ -1602,8 +1602,15 @@ function planRoute(){
         body:JSON.stringify({pts:pts})
       }).then(function(r){return r.json();}).then(function(d){
         if(d.routes&&d.routes.length)cb(d.routes);
-        else cb(null);
-      }).catch(function(){cb(null);});
+        else tryDirect();
+      }).catch(function(){tryDirect();});
+      function tryDirect(){
+        fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts+'?overview=full&geometries=geojson&steps=true&alternatives=true&access_token='+TOKEN)
+        .then(function(r){return r.json();}).then(function(d){
+          if(d.routes&&d.routes.length)cb(d.routes);
+          else cb(null);
+        }).catch(function(){cb(null);});
+      }
     }
 
     var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
