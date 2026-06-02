@@ -1513,17 +1513,22 @@ function planRoute(){
   }
   function fetchRoute(sc,ec){
 
-    function scoreCoverage(coords){
-      var total=0,inside=0;
+    function denseCoords(coords){
+      var d=[];
       for(var i=0;i<coords.length-1;i++){
-        for(var j=0;j<=20;j++){
-          var t=j/20;
-          var lng=coords[i][0]+(coords[i+1][0]-coords[i][0])*t;
-          var lat=coords[i][1]+(coords[i+1][1]-coords[i][1])*t;
-          total++;if(findEruv(lng,lat))inside++;
-        }
+        d.push(coords[i]);
+        for(var j=1;j<10;j++)d.push([
+          coords[i][0]+(coords[i+1][0]-coords[i][0])*j/10,
+          coords[i][1]+(coords[i+1][1]-coords[i][1])*j/10]);
       }
-      return total?inside/total:0;
+      d.push(coords[coords.length-1]);
+      return d;
+    }
+
+    function scoreCoverage(coords){
+      var d=denseCoords(coords),inside=0;
+      d.forEach(function(c){if(findEruv(c[0],c[1]))inside++;});
+      return inside/d.length;
     }
 
     function pickBest(routes){
@@ -1543,53 +1548,58 @@ function planRoute(){
       }).catch(function(){cb(null);});
     }
 
-    var pts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
+    function findDetourPoint(route){
+      // Find exit and re-entry, return inside point nearest to midpoint of outside section
+      var dense=denseCoords(route.geometry.coordinates);
+      var zones=dense.map(function(c){return findEruv(c[0],c[1]);});
+      var exits=[],entries=[];
+      for(var i=1;i<dense.length;i++){
+        if(zones[i-1]&&!zones[i])exits.push(i-1);
+        if(!zones[i-1]&&zones[i])entries.push(i);
+      }
+      if(!exits.length)return null;
+      // Use midpoint of first outside section
+      var exitIdx=exits[0];
+      var entryIdx=entries.length?entries[0]:dense.length-1;
+      var midLng=(dense[exitIdx][0]+dense[entryIdx][0])/2;
+      var midLat=(dense[exitIdx][1]+dense[entryIdx][1])/2;
+      // Find eruv and nearest inside point to this midpoint
+      var eruv=zones[exitIdx]||S.eruvin[0];
+      if(!eruv||!eruv.coords)return null;
+      var lngs=eruv.coords.map(function(c){return c[0];});
+      var lats=eruv.coords.map(function(c){return c[1];});
+      var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
+      var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
+      // Grid search for inside point closest to midpoint of outside section
+      var best=null,bestD=Infinity;
+      for(var gi=0;gi<=10;gi++)for(var gj=0;gj<=10;gj++){
+        var lng=minLng+(maxLng-minLng)*gi/10;
+        var lat=minLat+(maxLat-minLat)*gj/10;
+        if(findEruv(lng,lat)){
+          var d=Math.sqrt(Math.pow(lng-midLng,2)+Math.pow(lat-midLat,2));
+          if(d<bestD){bestD=d;best=[lng,lat];}
+        }
+      }
+      return best;
+    }
 
-    mbRoute(pts,function(routes){
+    var directPts=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
+
+    mbRoute(directPts,function(routes){
       if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
       var b=pickBest(routes);
-      console.log('[ROUTE] Got',routes.length,'alternatives, best:',Math.round(b.pct*100)+'%');
+      if(b.pct>=0.99){drawRoute(b.route,sc,ec);return;}
 
-      // Try routing via several interior points, pick the best result
-      var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat)||S.eruvin[0];
-      if(!eruv||!eruv.coords||!eruv.coords.length){drawRoute(b.route,sc,ec);return;}
+      // Find detour point — inside eiruv nearest to where route exits
+      var wp=findDetourPoint(b.route);
+      if(!wp){drawRoute(b.route,sc,ec);return;}
 
-      // Generate candidate interior points: centroid + points between sc/ec and centroid
-      var cx=0,cy=0,n=eruv.coords.length;
-      eruv.coords.forEach(function(c){cx+=c[0];cy+=c[1];});
-      cx/=n;cy/=n;
-
-      var candidates=[
-        [cx,cy],
-        [(sc.lng+cx)/2,(sc.lat+cy)/2],
-        [(ec.lng+cx)/2,(ec.lat+cy)/2],
-        [(sc.lng+ec.lng)/2+0.001,(sc.lat+ec.lat)/2],
-        [(sc.lng+ec.lng)/2-0.001,(sc.lat+ec.lat)/2],
-        [(sc.lng+ec.lng)/2,(sc.lat+ec.lat)/2+0.001],
-        [(sc.lng+ec.lng)/2,(sc.lat+ec.lat)/2-0.001]
-      ].filter(function(p){return findEruv(p[0],p[1]);});
-
-      if(!candidates.length){drawRoute(b.route,sc,ec);return;}
-
-      var best=b,tried=0;
-      function tryNext(){
-        if(tried>=candidates.length){
-          console.log('[ROUTE] Best found:',Math.round(best.pct*100)+'%');
-          drawRoute(best.route,sc,ec);return;
-        }
-        var wp=candidates[tried++];
-        var pts2=sc.lng+','+sc.lat+';'+wp[0]+','+wp[1]+';'+ec.lng+','+ec.lat;
-        mbRoute(pts2,function(routes2){
-          if(routes2){
-            var b2=pickBest(routes2);
-            console.log('[ROUTE] Candidate',tried,':',Math.round(b2.pct*100)+'%');
-            if(b2.pct>best.pct)best=b2;
-            if(best.pct>=0.97){drawRoute(best.route,sc,ec);return;}
-          }
-          tryNext();
-        });
-      }
-      tryNext();
+      var viaPts=sc.lng+','+sc.lat+';'+wp[0]+','+wp[1]+';'+ec.lng+','+ec.lat;
+      mbRoute(viaPts,function(r2){
+        if(!r2){drawRoute(b.route,sc,ec);return;}
+        var b2=pickBest(r2);
+        drawRoute(b2.pct>b.pct?b2.route:b.route,sc,ec);
+      });
     });
   }
 
