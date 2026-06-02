@@ -3850,6 +3850,22 @@ function startSegNoteMode(){
   }
   _drawSegMarkers();
 }
+function endSegNoteMode(){
+  _segNoteMode=false;
+  _selectedSeg=null;
+  document.getElementById('segNoteModeHint').style.display='none';
+  document.getElementById('addSegNoteBtn').style.display='inline-block';
+  var form=document.getElementById('segNoteForm');
+  if(form)form.style.display='none';
+  if(drawMap){
+    drawMap.getCanvas().style.cursor='';
+    drawMap.dragPan.enable();
+    drawMap.scrollZoom.enable();
+  }
+  // Remove segment markers
+  (window._segMarkers||[]).forEach(function(m){m.remove();});
+  window._segMarkers=[];
+}
 function selectSegment(segIdx,coord){
   _selectedSeg=segIdx;
   var form=document.getElementById('segNoteForm');
