@@ -31,7 +31,9 @@ export default {
       const {pts} = body;
       const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${pts}?overview=full&geometries=geojson&steps=true&alternatives=true&access_token=${env.MAPBOX_KEY}`;
       const res = await fetch(url);
-      return cors(await res.text(), res.status, allow);
+      const data = await res.json();
+      // If only 1 route returned (waypoint suppresses alternatives), try without waypoint too
+      return cors(JSON.stringify(data), res.status, allow);
     }
 
     if (action === 'google-routes') {

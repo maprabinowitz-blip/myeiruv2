@@ -1552,23 +1552,37 @@ function planRoute(){
       var lats=eruv.coords.map(function(c){return c[1];});
       var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
       var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
-      var best2=null,bestD=Infinity;
-      for(var gi=1;gi<=6;gi++)for(var gj=1;gj<=6;gj++){
-        var lng=minLng+(maxLng-minLng)*gi/7;
-        var lat=minLat+(maxLat-minLat)*gj/7;
+      // Try multiple waypoint candidates, pick the one that gives best coverage
+      var candidates=[];
+      for(var gi=1;gi<=5;gi++)for(var gj=1;gj<=5;gj++){
+        var lng=minLng+(maxLng-minLng)*gi/6;
+        var lat=minLat+(maxLat-minLat)*gj/6;
         if(findEruv(lng,lat)){
           var d=Math.sqrt(Math.pow(lng-exitPt[0],2)+Math.pow(lat-exitPt[1],2));
-          if(d<bestD){bestD=d;best2=[lng,lat];}
+          candidates.push({lng:lng,lat:lat,d:d});
         }
       }
-      if(!best2){drawRoute(b.route,sc,ec);return;}
-      var pts=sc.lng+','+sc.lat+';'+best2[0]+','+best2[1]+';'+ec.lng+','+ec.lat;
-      getRoutes(pts,function(routes){
-        if(!routes){drawRoute(b.route,sc,ec);return;}
-        var b2=pickBest(routes);
-        if(b2.pct>b.pct)tryWithWaypoint(b2,attempt+1);
-        else drawRoute(b.route,sc,ec);
-      });
+      candidates.sort(function(a,z){return a.d-z.d;});
+      var top=candidates.slice(0,3);
+      if(!top.length){drawRoute(b.route,sc,ec);return;}
+      var tried=0,bestResult=b;
+      function tryNext(){
+        if(tried>=top.length){
+          if(bestResult.pct>b.pct)tryWithWaypoint(bestResult,attempt+1);
+          else drawRoute(b.route,sc,ec);
+          return;
+        }
+        var wp=top[tried++];
+        var pts2=sc.lng+','+sc.lat+';'+wp.lng+','+wp.lat+';'+ec.lng+','+ec.lat;
+        getRoutes(pts2,function(routes){
+          if(routes){
+            var b2=pickBest(routes);
+            if(b2.pct>bestResult.pct)bestResult=b2;
+          }
+          tryNext();
+        });
+      }
+      tryNext();
     }
 
     function handleRoutes(routes){
