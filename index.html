@@ -1593,13 +1593,10 @@ function planRoute(){
       else tryWithWaypoint(b,0);
     }
 
-    // Get walking routes via Worker (keeps Mapbox key server-side)
     function getRoutes(pts,cb){
-      fetch('https://api.myeiruv.org',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-Action':'mapbox-directions'},
-        body:JSON.stringify({pts:pts})
-      }).then(function(r){return r.json();}).then(function(d){
+      fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts
+        +'?alternatives=true&geometries=geojson&steps=true&overview=full&access_token='+TOKEN)
+      .then(function(r){return r.json();}).then(function(d){
         if(d.routes&&d.routes.length)cb(d.routes);
         else cb(null);
       }).catch(function(){cb(null);});
