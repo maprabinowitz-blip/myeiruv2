@@ -1562,15 +1562,25 @@ function planRoute(){
       var cx=lngs.reduce(function(a,v){return a+v;},0)/lngs.length;
       var cy=lats.reduce(function(a,v){return a+v;},0)/lats.length;
 
-      // Only try 9 grid points (not 36) — fewer but more meaningful
+      // Direction vector A→B
+      var dx=ec.lng-sc.lng,dy=ec.lat-sc.lat;
+      var dlen=Math.sqrt(dx*dx+dy*dy)||1;
+
+      function isBetweenAB(lng,lat){
+        // Project point onto A→B line — only keep if 10%–90% along route
+        var t=((lng-sc.lng)*dx+(lat-sc.lat)*dy)/(dlen*dlen);
+        return t>=0.1&&t<=0.9;
+      }
+
+      // 9 grid points — only those between A and B
       for(var gi=1;gi<=3;gi++)for(var gj=1;gj<=3;gj++){
         var lng=minLng+(maxLng-minLng)*gi/4;
         var lat=minLat+(maxLat-minLat)*gj/4;
-        if(findEruv(lng,lat))waypoints.push([lng,lat]);
+        if(findEruv(lng,lat)&&isBetweenAB(lng,lat))waypoints.push([lng,lat]);
       }
 
-      // Centroid
-      if(findEruv(cx,cy))waypoints.push([cx,cy]);
+      // Centroid — only if between A and B
+      if(findEruv(cx,cy)&&isBetweenAB(cx,cy))waypoints.push([cx,cy]);
     }
 
     var allResults=[];
