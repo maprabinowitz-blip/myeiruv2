@@ -1551,67 +1551,17 @@ function planRoute(){
       return {r:b,pct:bp};
     }
 
-    var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat)||S.eruvin[0];
-    var waypoints=[];
-
-    if(eruv&&eruv.coords&&eruv.coords.length){
-      var lngs=eruv.coords.map(function(c){return c[0];});
-      var lats=eruv.coords.map(function(c){return c[1];});
-      var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
-      var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
-      var cx=lngs.reduce(function(a,v){return a+v;},0)/lngs.length;
-      var cy=lats.reduce(function(a,v){return a+v;},0)/lats.length;
-
-      // Direction vector A→B
-      var dx=ec.lng-sc.lng,dy=ec.lat-sc.lat;
-      var dlen=Math.sqrt(dx*dx+dy*dy)||1;
-
-      function isBetweenAB(lng,lat){
-        // Project point onto A→B line — only keep if 10%–90% along route
-        var t=((lng-sc.lng)*dx+(lat-sc.lat)*dy)/(dlen*dlen);
-        return t>=0.1&&t<=0.9;
-      }
-
-      // 9 grid points — only those between A and B
-      for(var gi=1;gi<=3;gi++)for(var gj=1;gj<=3;gj++){
-        var lng=minLng+(maxLng-minLng)*gi/4;
-        var lat=minLat+(maxLat-minLat)*gj/4;
-        if(findEruv(lng,lat)&&isBetweenAB(lng,lat))waypoints.push([lng,lat]);
-      }
-
-      // Centroid — only if between A and B
-      if(findEruv(cx,cy)&&isBetweenAB(cx,cy))waypoints.push([cx,cy]);
-    }
-
-    var allResults=[];
     var direct=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
-    var total=1+waypoints.length,done=0;
 
-    function finish(){
-      if(++done<total)return;
-      if(!allResults.length){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+    mbFetch(direct,function(routes){
+      if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      var allResults=routes.map(function(r){return {r:r,pct:scoreCoverage(r.geometry.coordinates)};});
       allResults.sort(function(a,b){return b.pct-a.pct;});
       var winner=allResults[0];
-      if(winner.pct<0.95){
-        toast('Best available route: '+Math.round(winner.pct*100)+'% inside eiruv — no fully compliant route found','warn');
+      if(winner.pct<0.97){
+        toast('No fully eiruv-compliant route found — showing best available ('+Math.round(winner.pct*100)+'% inside)','warn');
       }
       drawRoute(winner.r,sc,ec);
-    }
-
-    // Strategy 1: direct
-    mbFetch(direct,function(routes){
-      var b=bestOf(routes);
-      if(b)allResults.push(b);
-      finish();
-    });
-
-    // Strategies 2-4: all waypoints
-    waypoints.forEach(function(wp){
-      mbFetch(sc.lng+','+sc.lat+';'+wp[0]+','+wp[1]+';'+ec.lng+','+ec.lat,function(routes){
-        var b=bestOf(routes);
-        if(b)allResults.push(b);
-        finish();
-      });
     });
   }
 
