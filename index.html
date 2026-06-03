@@ -1556,34 +1556,29 @@ function planRoute(){
       console.log('[ALT] best direct:',Math.round(b.pct*100)+'%','exitPt:',exitPt);
       if(!exitPt||!eruv){drawRoute(b.r,sc,ec);return;}
 
-      // Find boundary point closest to exit, pull slightly inward
-      var closestBnd=null,closestD=Infinity;
-      eruv.coords.forEach(function(c){
-        var d=Math.sqrt(Math.pow(c[0]-exitPt[0],2)+Math.pow(c[1]-exitPt[1],2));
-        if(d<closestD){closestD=d;closestBnd=c;}
-      });
-      if(!closestBnd){drawRoute(b.r,sc,ec);return;}
-
-      // Pull 15% inward from boundary toward opposite side
+      // Find the interior point FARTHEST from the exit — forces route through opposite side
       var lngs=eruv.coords.map(function(c){return c[0];});
       var lats=eruv.coords.map(function(c){return c[1];});
-      var cx=lngs.reduce(function(a,v){return a+v;})/lngs.length;
-      var cy=lats.reduce(function(a,v){return a+v;})/lats.length;
-      var wx=closestBnd[0]+(cx-closestBnd[0])*0.15;
-      var wy=closestBnd[1]+(cy-closestBnd[1])*0.15;
+      var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
+      var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
 
-      // Try 3 waypoints: near exit, midpoint, near destination side
-      var midx=(exitPt[0]+ec.lng)/2, midy=(exitPt[1]+ec.lat)/2;
-      var candidates=[[wx,wy],[midx,midy]].filter(function(p){return findEruv(p[0],p[1]);});
-      console.log('[ALT] wp inside eiruv:',candidates.length,'of 2');
-      if(!candidates.length){drawRoute(b.r,sc,ec);return;}
+      var farPt=null,farD=0;
+      for(var gi=1;gi<=6;gi++)for(var gj=1;gj<=6;gj++){
+        var lng=minLng+(maxLng-minLng)*gi/7;
+        var lat=minLat+(maxLat-minLat)*gj/7;
+        if(findEruv(lng,lat)){
+          var d=Math.sqrt(Math.pow(lng-exitPt[0],2)+Math.pow(lat-exitPt[1],2));
+          if(d>farD){farD=d;farPt=[lng,lat];}
+        }
+      }
+      console.log('[ALT] farthest interior pt:',farPt,'dist:',farD.toFixed(5));
+      if(!farPt){drawRoute(b.r,sc,ec);return;}
 
-      var bestResult=b,pending=candidates.length;
-      candidates.forEach(function(wp){
-        mbFetch(sc.lng+','+sc.lat+';'+wp[0]+','+wp[1]+';'+ec.lng+','+ec.lat,function(r2){
-          if(r2){var b2=best(r2);console.log('[ALT] waypoint route:',Math.round(b2.pct*100)+'%');if(b2.pct>bestResult.pct)bestResult=b2;}
-          if(--pending===0)drawRoute(bestResult.r,sc,ec);
-        });
+      mbFetch(sc.lng+','+sc.lat+';'+farPt[0]+','+farPt[1]+';'+ec.lng+','+ec.lat,function(r2){
+        if(!r2){drawRoute(b.r,sc,ec);return;}
+        var b2=best(r2);
+        console.log('[ALT] far-point route:',Math.round(b2.pct*100)+'%');
+        drawRoute(b2.pct>b.pct?b2.r:b.r,sc,ec);
       });
     });
   }
