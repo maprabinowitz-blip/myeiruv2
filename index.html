@@ -3924,17 +3924,12 @@ function saveSegNote(){
   if(!Array.isArray(_segNotes[_selectedSeg]))_segNotes[_selectedSeg]=[_segNotes[_selectedSeg]];
   _segNotes[_selectedSeg].push(val);
   txt.value='';
-  document.getElementById('segNoteForm').style.display='none';
+  var form=document.getElementById('segNoteForm');
+  if(form)form.style.display='none';
   _selectedSeg=null;
   renderSegNotes();
   _drawSegMarkers();
-  // Update hint to remind user they can click another segment
-  var hint=document.getElementById('segNoteModeHint');
-  if(hint)hint.querySelector('span').textContent='✓ Saved! Click any segment to add more notes';
-  setTimeout(function(){
-    var hint=document.getElementById('segNoteModeHint');
-    if(hint)hint.querySelector('span').textContent='👆 Click numbered segments to add notes';
-  },2000);
+  toast('Note saved — click another segment to add more','ok');
 }
 function cancelSegNote(){
   document.getElementById('segNoteForm').style.display='none';
