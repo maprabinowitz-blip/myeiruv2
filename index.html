@@ -1533,52 +1533,80 @@ function planRoute(){
       }).catch(function(){cb(null);});
     }
 
-    function best(routes){
+    function bestOf(routes){
+      if(!routes||!routes.length)return null;
       var b=routes[0],bp=scoreCoverage(routes[0].geometry.coordinates);
       routes.forEach(function(r){var p=scoreCoverage(r.geometry.coordinates);if(p>bp){bp=p;b=r;}});
       return {r:b,pct:bp};
     }
 
-    var direct=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
+    var eruv=findEruv(sc.lng,sc.lat)||findEruv(ec.lng,ec.lat)||S.eruvin[0];
+    var waypoints=[];
 
-    mbFetch(direct,function(routes){
-      if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      var b=best(routes);
-      if(b.pct>=0.99){drawRoute(b.r,sc,ec);return;}
-
-      // Find exit point and eiruv
-      var coords=b.r.geometry.coordinates;
-      var exitPt=null,eruv=null;
-      for(var i=1;i<coords.length;i++){
-        var e=findEruv(coords[i-1][0],coords[i-1][1]);
-        if(e&&!findEruv(coords[i][0],coords[i][1])){exitPt=coords[i-1];eruv=e;break;}
-      }
-      console.log('[ALT] best direct:',Math.round(b.pct*100)+'%','exitPt:',exitPt);
-      if(!exitPt||!eruv){drawRoute(b.r,sc,ec);return;}
-
-      // Find the interior point FARTHEST from the exit — forces route through opposite side
+    if(eruv&&eruv.coords&&eruv.coords.length){
       var lngs=eruv.coords.map(function(c){return c[0];});
       var lats=eruv.coords.map(function(c){return c[1];});
       var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
       var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
 
-      var farPt=null,farD=0;
+      // Strategy 2: all 36 grid interior points
       for(var gi=1;gi<=6;gi++)for(var gj=1;gj<=6;gj++){
         var lng=minLng+(maxLng-minLng)*gi/7;
         var lat=minLat+(maxLat-minLat)*gj/7;
-        if(findEruv(lng,lat)){
-          var d=Math.sqrt(Math.pow(lng-exitPt[0],2)+Math.pow(lat-exitPt[1],2));
-          if(d>farD){farD=d;farPt=[lng,lat];}
-        }
+        if(findEruv(lng,lat))waypoints.push([lng,lat]);
       }
-      console.log('[ALT] farthest interior pt:',farPt,'dist:',farD.toFixed(5));
-      if(!farPt){drawRoute(b.r,sc,ec);return;}
 
-      mbFetch(sc.lng+','+sc.lat+';'+farPt[0]+','+farPt[1]+';'+ec.lng+','+ec.lat,function(r2){
-        if(!r2){drawRoute(b.r,sc,ec);return;}
-        var b2=best(r2);
-        console.log('[ALT] far-point route:',Math.round(b2.pct*100)+'%');
-        drawRoute(b2.pct>b.pct?b2.r:b.r,sc,ec);
+      // Strategy 3: eiruv centroid
+      var cx=lngs.reduce(function(a,v){return a+v;},0)/lngs.length;
+      var cy=lats.reduce(function(a,v){return a+v;},0)/lats.length;
+      if(findEruv(cx,cy))waypoints.push([cx,cy]);
+
+      // Strategy 4: midpoint of each boundary edge closest to direct path
+      var midLng=(sc.lng+ec.lng)/2,midLat=(sc.lat+ec.lat)/2;
+      for(var k=0;k<eruv.coords.length-1;k++){
+        var ex=(eruv.coords[k][0]+eruv.coords[k+1][0])/2;
+        var ey=(eruv.coords[k][1]+eruv.coords[k+1][1])/2;
+        // Pull slightly inside
+        var wx=ex+(cx-ex)*0.1,wy=ey+(cy-ey)*0.1;
+        if(findEruv(wx,wy))waypoints.push([wx,wy]);
+      }
+
+      // Dedupe waypoints
+      var seen={};
+      waypoints=waypoints.filter(function(p){
+        var k=p[0].toFixed(4)+','+p[1].toFixed(4);
+        return seen[k]?false:(seen[k]=true);
+      });
+    }
+
+    var allResults=[];
+    var direct=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
+    var total=1+waypoints.length,done=0;
+
+    function finish(){
+      if(++done<total)return;
+      if(!allResults.length){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
+      allResults.sort(function(a,b){return b.pct-a.pct;});
+      var winner=allResults[0];
+      if(winner.pct<0.95){
+        toast('Best available route: '+Math.round(winner.pct*100)+'% inside eiruv — no fully compliant route found','warn');
+      }
+      drawRoute(winner.r,sc,ec);
+    }
+
+    // Strategy 1: direct
+    mbFetch(direct,function(routes){
+      var b=bestOf(routes);
+      if(b)allResults.push(b);
+      finish();
+    });
+
+    // Strategies 2-4: all waypoints
+    waypoints.forEach(function(wp){
+      mbFetch(sc.lng+','+sc.lat+';'+wp[0]+','+wp[1]+';'+ec.lng+','+ec.lat,function(routes){
+        var b=bestOf(routes);
+        if(b)allResults.push(b);
+        finish();
       });
     });
   }
