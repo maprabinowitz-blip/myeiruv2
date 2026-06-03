@@ -1,5 +1,5 @@
 // MyEiruv Service Worker
-const CACHE = 'myeiruv-v1';
+const CACHE = 'myeiruv-v2';
 const OFFLINE_URLS = ['/'];
 
 self.addEventListener('install', function(e){

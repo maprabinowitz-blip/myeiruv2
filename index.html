@@ -1548,35 +1548,18 @@ function planRoute(){
       var lats=eruv.coords.map(function(c){return c[1];});
       var minLng=Math.min.apply(null,lngs),maxLng=Math.max.apply(null,lngs);
       var minLat=Math.min.apply(null,lats),maxLat=Math.max.apply(null,lats);
+      var cx=lngs.reduce(function(a,v){return a+v;},0)/lngs.length;
+      var cy=lats.reduce(function(a,v){return a+v;},0)/lats.length;
 
-      // Strategy 2: all 36 grid interior points
-      for(var gi=1;gi<=6;gi++)for(var gj=1;gj<=6;gj++){
-        var lng=minLng+(maxLng-minLng)*gi/7;
-        var lat=minLat+(maxLat-minLat)*gj/7;
+      // Only try 9 grid points (not 36) — fewer but more meaningful
+      for(var gi=1;gi<=3;gi++)for(var gj=1;gj<=3;gj++){
+        var lng=minLng+(maxLng-minLng)*gi/4;
+        var lat=minLat+(maxLat-minLat)*gj/4;
         if(findEruv(lng,lat))waypoints.push([lng,lat]);
       }
 
-      // Strategy 3: eiruv centroid
-      var cx=lngs.reduce(function(a,v){return a+v;},0)/lngs.length;
-      var cy=lats.reduce(function(a,v){return a+v;},0)/lats.length;
+      // Centroid
       if(findEruv(cx,cy))waypoints.push([cx,cy]);
-
-      // Strategy 4: midpoint of each boundary edge closest to direct path
-      var midLng=(sc.lng+ec.lng)/2,midLat=(sc.lat+ec.lat)/2;
-      for(var k=0;k<eruv.coords.length-1;k++){
-        var ex=(eruv.coords[k][0]+eruv.coords[k+1][0])/2;
-        var ey=(eruv.coords[k][1]+eruv.coords[k+1][1])/2;
-        // Pull slightly inside
-        var wx=ex+(cx-ex)*0.1,wy=ey+(cy-ey)*0.1;
-        if(findEruv(wx,wy))waypoints.push([wx,wy]);
-      }
-
-      // Dedupe waypoints
-      var seen={};
-      waypoints=waypoints.filter(function(p){
-        var k=p[0].toFixed(4)+','+p[1].toFixed(4);
-        return seen[k]?false:(seen[k]=true);
-      });
     }
 
     var allResults=[];
