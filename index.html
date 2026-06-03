@@ -4044,29 +4044,23 @@ function _loadShulsForView(){
 }
 
 function _loadShulsOSM(lat,lng,radius){
-  // Use Nominatim search API - works from browsers without CORS issues
-  var searches=['synagogue','shul','chabad','yeshiva','beit knesset'];
-  var bbox_d=radius/111000; // rough degrees
-  var viewbox=(lng-bbox_d)+','+(lat+bbox_d)+','+(lng+bbox_d)+','+(lat-bbox_d);
-  
-  searches.forEach(function(term,i){
-    setTimeout(function(){
-      fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(term)+'&format=json&limit=50&viewbox='+viewbox+'&bounded=1&addressdetails=1',{
-        headers:{'Accept-Language':'en','User-Agent':'MyEiruv/1.0'}
-      }).then(function(r){return r.json();}).then(function(data){
-        if(!data||!data.length)return;
-        var added=0;
-        data.forEach(function(p){
-          if(!p.lat||!p.lon)return;
-          var id='nom-'+p.place_id;
-          if(_shulMarkers.find(function(m){return m.id===id;}))return;
-          var name=p.display_name.split(',')[0];
-          addShulToMap({id:id,name:name,city:p.address&&(p.address.city||p.address.town||p.address.suburb)||'',lat:parseFloat(p.lat),lng:parseFloat(p.lon)});
-          added++;
-        });
-  
-      }).catch(function(e){console.warn('[MyEiruv] Nominatim error:',e.message);});
-    },i*1000); // stagger requests to respect rate limit
+  // Use Mapbox Geocoding API to find synagogues/shuls nearby
+  var searches=['synagogue','shul','chabad','yeshiva'];
+  var done={};
+  searches.forEach(function(term){
+    var url='https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(term)+'.json'
+      +'?proximity='+lng+','+lat
+      +'&bbox='+(lng-0.03)+','+(lat-0.03)+','+(lng+0.03)+','+(lat+0.03)
+      +'&limit=10&types=poi&access_token='+TOKEN;
+    fetch(url).then(function(r){return r.json();}).then(function(data){
+      if(!data||!data.features)return;
+      data.features.forEach(function(f){
+        var id='mb-'+f.id;
+        if(done[id])return;done[id]=true;
+        var coords=f.geometry.coordinates;
+        addShulToMap({id:id,name:f.text||f.place_name.split(',')[0],city:'',lat:coords[1],lng:coords[0]});
+      });
+    }).catch(function(){});
   });
 }
 
