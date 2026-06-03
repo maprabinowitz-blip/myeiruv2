@@ -3423,9 +3423,6 @@ function initDrawMap(mode,editId){
         if(d<minDist){minDist=d;bestSeg=i;}
       }
       if(minDist<0.003&&_segNoteMode){
-        _segNoteMode=false;
-        document.getElementById('segNoteModeHint').style.display='none';
-        if(drawMap)drawMap.getCanvas().style.cursor='';
         selectSegment(bestSeg,pt);
       }
     });
