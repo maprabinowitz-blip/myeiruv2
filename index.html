@@ -1667,8 +1667,31 @@ function planRoute(){
     // Check if start/end are inside eiruv
     var startIn=findEruv(sc.lng,sc.lat)!==null;
     var endIn=findEruv(ec.lng,ec.lat)!==null;
+    // Detect original zone (start zone)
+    var originZone=findEruv(sc.lng,sc.lat);
+    // Detect if route uses adjacent zones
+    var usesAdjacent=originZone&&routeZones.size>1;
     var alertHtml='';
-    if(allIn) alertHtml='<div class="route-alert ra-ok">✅ Route is fully within the eiruv — carrying is permitted.</div>';
+    if(allIn){
+      if(usesAdjacent){
+        // Find adjacent zone names used
+        var adjNames=[];
+        routeZones.forEach(function(id){
+          if(id!==originZone.id){var z=S.eruvin.find(function(x){return x.id===id;});if(z)adjNames.push(z.name);}
+        });
+        // Find where user first exits their original zone
+        var exitOrigPt=null;
+        for(var i=1;i<dense.length;i++){
+          var z=findEruv(dense[i][0],dense[i][1]);
+          var wasInOrig=findEruv(dense[i-1][0],dense[i-1][1])&&findEruv(dense[i-1][0],dense[i-1][1]).id===originZone.id;
+          var nowInAdj=z&&z.id!==originZone.id;
+          if(wasInOrig&&nowInAdj){exitOrigPt=dense[i];break;}
+        }
+        alertHtml='<div class="route-alert ra-ok">✅ Carrying permitted — route uses <strong>'+adjNames.join(' & ')+'</strong> (adjacent zone).'+(exitOrigPt?' You exit <strong>'+originZone.name+'</strong> partway through but remain in an adjacent permitted zone.':'')+'</div>';
+      } else {
+        alertHtml='<div class="route-alert ra-ok">✅ Route is fully within the eiruv — carrying is permitted.</div>';
+      }
+    }
     else if(allOut) alertHtml='<div class="route-alert ra-err">❌ '+(startIn?'Destination':'Starting point')+' is outside the eiruv. This route cannot be done while carrying.</div>';
     else {
       alertHtml='<div class="route-alert ra-warn" id="eruvExitAlert">⚠️ Route exits the eiruv — see red section on map. Carrying not permitted on that portion.</div>';
@@ -1678,8 +1701,7 @@ function planRoute(){
         if(inEruv[i-1]&&!inEruv[i]){firstExitPt=dense[i];break;}
       }
       if(firstExitPt){
-        reverseGeocode(firstExitPt[0],firstExitPt[1],function(label){
-          var el=document.getElementById('eruvExitAlert');
+        reverseGeocode(firstExitPt[0],firstExitPt[1],function(label){\n          var el=document.getElementById('eruvExitAlert');
           if(el&&label){
             var street=label.split(',')[0];
             el.innerHTML='⚠️ Route exits the eiruv near <strong>'+street+'</strong>. Carrying is not permitted on that portion of the route.';
