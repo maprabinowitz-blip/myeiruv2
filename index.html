@@ -1873,7 +1873,7 @@ function showEruvDetail(id){
           new mapboxgl.Popup({closeButton:true,maxWidth:'220px',offset:5})
             .setLngLat([lng,lat])
             .setHTML('<div style="font-size:.82rem;line-height:1.6;max-width:220px;padding:2px">'
-            +(Array.isArray(n)?n.map(function(t,i){return (n.length>1?'<div style="font-size:.68rem;color:#888;margin-bottom:2px">Note '+(i+1)+':</div>':'')+t;}).join('<div style="border-top:1px solid #eee;margin:6px 0"></div>')
+            +(Array.isArray(n)?n.map(function(t){return t;}).join('<div style="border-top:1px solid #eee;margin:6px 0"></div>')
             :n)
             +'</div>')
             .addTo(map);
@@ -1893,7 +1893,8 @@ function showEruvDetail(id){
     segNotesHtml='<div style="margin-bottom:10px;padding:10px;background:#f0f4ff;border-radius:8px;border-left:3px solid var(--blue)">'
       +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Boundary Notes</div>'
       +Object.keys(e.segNotes).map(function(k){
-        return '<div style="margin-bottom:5px;padding:5px 7px;background:#fff;border-radius:5px;font-size:.78rem"><span style="font-size:.65rem;color:var(--muted);margin-right:4px">Seg '+(parseInt(k)+1)+':</span>'+e.segNotes[k]+'</div>';
+        var notes=Array.isArray(e.segNotes[k])?e.segNotes[k]:[e.segNotes[k]];
+        return notes.map(function(n){return '<div style="margin-bottom:5px;padding:5px 7px;background:#fff;border-radius:5px;font-size:.78rem">'+n+'</div>';}).join('');
       }).join('')
       +(e.boundaryNotes?'<div style="font-size:.78rem;margin-top:6px;color:var(--text);line-height:1.5;white-space:pre-wrap">'+e.boundaryNotes+'</div>':'')
       +'</div>';
