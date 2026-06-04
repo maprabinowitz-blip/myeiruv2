@@ -1701,7 +1701,8 @@ function planRoute(){
         if(inEruv[i-1]&&!inEruv[i]){firstExitPt=dense[i];break;}
       }
       if(firstExitPt){
-        reverseGeocode(firstExitPt[0],firstExitPt[1],function(label){\n          var el=document.getElementById('eruvExitAlert');
+        reverseGeocode(firstExitPt[0],firstExitPt[1],function(label){
+          var el=document.getElementById('eruvExitAlert');
           if(el&&label){
             var street=label.split(',')[0];
             el.innerHTML='⚠️ Route exits the eiruv near <strong>'+street+'</strong>. Carrying is not permitted on that portion of the route.';
