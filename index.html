@@ -1552,7 +1552,7 @@ function planRoute(){
       });
       if(bestPct<0.5){
         toast('No eiruv compliant route found','err');
-      } else if(bestPct<0.95){
+      } else if(bestPct<1.0){
         toast('Route partially exits the eiruv','warn');
       }
       drawRoute(best,sc,ec);
