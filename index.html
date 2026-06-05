@@ -1536,33 +1536,28 @@ function planRoute(){
       return total?inside/total:0;
     }
 
-    function mbFetch(pts,cb){
-      fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'+pts
-        +'?alternatives=true&geometries=geojson&steps=true&overview=full&access_token='+TOKEN)
-      .then(function(r){return r.json();}).then(function(d){
-        cb(d.routes&&d.routes.length?d.routes:null);
-      }).catch(function(){cb(null);});
-    }
-
-    function bestOf(routes){
-      if(!routes||!routes.length)return null;
-      var b=routes[0],bp=scoreCoverage(routes[0].geometry.coordinates);
-      routes.forEach(function(r){var p=scoreCoverage(r.geometry.coordinates);if(p>bp){bp=p;b=r;}});
-      return {r:b,pct:bp};
-    }
-
-    var direct=sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat;
-
-    mbFetch(direct,function(routes){
-      if(!routes){toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;}
-      var allResults=routes.map(function(r){return {r:r,pct:scoreCoverage(r.geometry.coordinates)};});
-      allResults.sort(function(a,b){return b.pct-a.pct;});
-      var winner=allResults[0];
-      if(winner.pct<0.97){
-        toast('No fully eiruv-compliant route found — showing best available ('+Math.round(winner.pct*100)+'% inside)','warn');
+    fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'
+      +sc.lng+','+sc.lat+';'+ec.lng+','+ec.lat
+      +'?alternatives=true&geometries=geojson&steps=true&overview=full&access_token='+TOKEN)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.routes||!d.routes.length){
+        toast('No route found','err');btn.innerHTML='Check Route';btn.disabled=false;return;
       }
-      drawRoute(winner.r,sc,ec);
-    });
+      // Pick route with highest eiruv coverage
+      var best=d.routes[0],bestPct=scoreCoverage(d.routes[0].geometry.coordinates);
+      d.routes.forEach(function(r){
+        var pct=scoreCoverage(r.geometry.coordinates);
+        if(pct>bestPct){bestPct=pct;best=r;}
+      });
+      if(bestPct<0.5){
+        toast('No eiruv compliant route found','err');
+      } else if(bestPct<0.95){
+        toast('Route partially exits the eiruv','warn');
+      }
+      drawRoute(best,sc,ec);
+    })
+    .catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
   }
 
   function drawRoute(route,sc,ec){
