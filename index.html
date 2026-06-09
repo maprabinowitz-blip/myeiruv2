@@ -2366,6 +2366,20 @@ function admStatus(id,status){
   sendEruvEmailAlerts(e,status,note);
   renderEruvList();renderStatus();renderAdmin('overview');checkHereStatus();populateAlertCities();
 }
+function adminAssignContractor(zoneId,zoneName){
+  var email=prompt('Enter contractor email to assign to "'+zoneName+'":');
+  if(!email||!email.trim())return;
+  email=email.trim().toLowerCase();
+  var contractor=(window._fsContractors||[]).find(function(c){return c.email===email;});
+  if(!contractor){if(!confirm('No contractor found for '+email+'. Assign anyway?'))return;}
+  if(window._db){
+    window._db.saveZone(Object.assign({},S.eruvin.find(function(z){return z.id===zoneId;}),{contractorEmail:email}));
+  }
+  var z=S.eruvin.find(function(x){return x.id===zoneId;});
+  if(z)z.contractorEmail=email;
+  renderAdmin('eruvin');
+  toast('Assigned '+email+' to '+zoneName,'ok');
+}
 function admDel(id){
   if(!confirm('Delete this zone permanently?'))return;
   // Remove from memory immediately
@@ -2603,7 +2617,14 @@ function renderAdmin(sec){
     body.innerHTML=html;
   }else if(sec==='eruvin'){
     var html='<span class="adm-sec">All Eiruvin</span>';
-    S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ap" onclick="flyTo(['+e.center+'],\''+e.name+'\');closeAdmin()">View</button><button class="act-btn ao" onclick="closeAdmin();openDraw(\'edit\',\''+e.id+'\')">Edit</button><button class="act-btn ar" onclick="admDel(\''+e.id+'\')">Delete</button></div></div>';});
+    S.eruvin.forEach(function(e){
+      var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];
+      var isAdminZone=!e.contractorEmail;
+      var assignBtn=isAdminZone
+        ?'<button class="act-btn ao" onclick="adminAssignContractor(\''+e.id+'\',\''+e.name+'\')">Assign</button>'
+        :'<span style="font-size:.68rem;color:var(--muted)">👷 '+e.contractorEmail+'</span>';
+      html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ap" onclick="flyTo(['+e.center+'],\''+e.name+'\');closeAdmin()">View</button><button class="act-btn ao" onclick="closeAdmin();openDraw(\'edit\',\''+e.id+'\')">Edit</button>'+assignBtn+'<button class="act-btn ar" onclick="admDel(\''+e.id+'\')">Delete</button></div></div>';
+    });
     body.innerHTML=html;
   }else if(sec==='users'){
     // Always reload fresh from Firestore
