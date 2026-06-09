@@ -2359,26 +2359,59 @@ function admStatus(id,status){
   var e=S.eruvin.find(function(x){return x.id===id;});if(!e)return;
   var note=status!=='up'?(prompt('Note (optional):','')||''):'';
   e.status=status;e.note=note;e.lastChecked=getEruvTimestamp();
+  // Log status history
+  if(!e.statusHistory)e.statusHistory=[];
+  e.statusHistory.unshift({status:status,note:note,by:(S.user&&S.user.name)||'Admin',timestamp:new Date().toISOString()});
+  if(e.statusHistory.length>50)e.statusHistory=e.statusHistory.slice(0,50);
   try{map.setPaintProperty('eruv-'+id+'-line','line-color',SCOL[status]);}catch(_){}
   try{map.setPaintProperty('eruv-'+id+'-fill','fill-color',SCOL[status]);}catch(_){}
-  if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked});
-  // Send status update notification
+  if(window._db)window._db.patchZone(id,{status:status,note:note,lastChecked:e.lastChecked,statusHistory:e.statusHistory});
   sendEruvEmailAlerts(e,status,note);
   renderEruvList();renderStatus();renderAdmin('overview');checkHereStatus();populateAlertCities();
 }
 function adminAssignContractor(zoneId,zoneName){
-  var email=prompt('Enter contractor email to assign to "'+zoneName+'":');
+  var z=S.eruvin.find(function(x){return x.id===zoneId;});
+  if(!z)return;
+  var current=(z.contractors||[z.contractorEmail].filter(Boolean));
+  var msg='Assign contractor to "'+zoneName+'"'+(current.length?'\nCurrent: '+current.join(', '):'')+'\n\nEnter contractor email:';
+  var email=prompt(msg);
   if(!email||!email.trim())return;
   email=email.trim().toLowerCase();
-  var contractor=(window._fsContractors||[]).find(function(c){return c.email===email;});
-  if(!contractor){if(!confirm('No contractor found for '+email+'. Assign anyway?'))return;}
-  if(window._db){
-    window._db.saveZone(Object.assign({},S.eruvin.find(function(z){return z.id===zoneId;}),{contractorEmail:email}));
-  }
-  var z=S.eruvin.find(function(x){return x.id===zoneId;});
-  if(z)z.contractorEmail=email;
+  if(current.indexOf(email)>=0){toast(email+' already assigned','warn');return;}
+  current.push(email);
+  z.contractors=current;z.contractorEmail=current[0];
+  if(window._db)window._db.saveZone(Object.assign({},z,{contractors:current,contractorEmail:current[0]}));
   renderAdmin('eruvin');
   toast('Assigned '+email+' to '+zoneName,'ok');
+}
+function adminRemoveContractor(zoneId,email){
+  if(!confirm('Remove '+email+' from this zone?'))return;
+  var z=S.eruvin.find(function(x){return x.id===zoneId;});
+  if(!z)return;
+  z.contractors=(z.contractors||[z.contractorEmail].filter(Boolean)).filter(function(c){return c!==email;});
+  z.contractorEmail=z.contractors[0]||'';
+  if(window._db)window._db.patchZone(zoneId,{contractors:z.contractors,contractorEmail:z.contractorEmail});
+  renderAdmin('eruvin');toast('Removed '+email,'ok');
+}
+function adminShowHistory(zoneId,zoneName){
+  var z=S.eruvin.find(function(x){return x.id===zoneId;});
+  if(!z||!z.statusHistory||!z.statusHistory.length){alert(zoneName+': No status history yet.');return;}
+  alert(zoneName+' — Status History\n\n'+z.statusHistory.map(function(h){
+    return new Date(h.timestamp).toLocaleDateString()+' '+new Date(h.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' — '+h.status.toUpperCase()+(h.note?' ('+h.note+')':'')+(h.by?' by '+h.by:'');
+  }).join('\n'));
+}
+function adminSetSchedule(zoneId,zoneName){
+  var z=S.eruvin.find(function(x){return x.id===zoneId;});
+  if(!z)return;
+  var current=z.inspectionDay?z.inspectionDay+' at '+z.inspectionTime:'Not set';
+  var day=prompt('Inspection reminder day for "'+zoneName+'":\nCurrent: '+current+'\n\nEnter day (e.g. Friday):','Friday');
+  if(!day)return;
+  var time=prompt('Inspection time (24h, e.g. 08:00):','08:00');
+  if(!time)return;
+  z.inspectionDay=day;z.inspectionTime=time;
+  if(window._db)window._db.patchZone(zoneId,{inspectionDay:day,inspectionTime:time});
+  toast('Reminder set: '+day+' at '+time,'ok');
+  renderAdmin('eruvin');
 }
 function admDel(id){
   if(!confirm('Delete this zone permanently?'))return;
@@ -2619,11 +2652,13 @@ function renderAdmin(sec){
     var html='<span class="adm-sec">All Eiruvin</span>';
     S.eruvin.forEach(function(e){
       var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];
-      var isAdminZone=!e.contractorEmail;
-      var assignBtn=isAdminZone
-        ?'<button class="act-btn ao" onclick="adminAssignContractor(\''+e.id+'\',\''+e.name+'\')">Assign</button>'
-        :'<span style="font-size:.68rem;color:var(--muted)">👷 '+e.contractorEmail+'</span>';
-      html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ap" onclick="flyTo(['+e.center+'],\''+e.name+'\');closeAdmin()">View</button><button class="act-btn ao" onclick="closeAdmin();openDraw(\'edit\',\''+e.id+'\')">Edit</button>'+assignBtn+'<button class="act-btn ar" onclick="admDel(\''+e.id+'\')">Delete</button></div></div>';
+      var contractors=e.contractors||(e.contractorEmail?[e.contractorEmail]:[]);
+      var isAdminZone=!contractors.length;
+      var assignBtn='<button class="act-btn ao" onclick="adminAssignContractor(\''+e.id+'\',\''+e.name+'\')">+ Assign</button>';
+      var ctDisplay=contractors.length
+        ?contractors.map(function(c){return '<span style="font-size:.68rem;color:var(--muted);margin-right:4px">👷 '+c+'<button onclick="adminRemoveContractor(\''+e.id+'\',\''+c+'\')" style="border:none;background:none;color:#c0284a;cursor:pointer;margin-left:2px;font-size:.75rem">✕</button></span>';}).join('')
+        :'';
+      html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div>'+(ctDisplay?'<div style="margin-top:3px">'+ctDisplay+'</div>':'')+'</div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ap" onclick="flyTo(['+e.center+'],\''+e.name+'\');closeAdmin()">View</button><button class="act-btn ao" onclick="closeAdmin();openDraw(\'edit\',\''+e.id+'\')">Edit</button>'+assignBtn+'<button class="act-btn ao" onclick="adminShowHistory(\''+e.id+'\',\''+e.name+'\')">History</button><button class="act-btn ao" onclick="adminSetSchedule(\''+e.id+'\',\''+e.name+'\')">Schedule</button><button class="act-btn ar" onclick="admDel(\''+e.id+'\')">Delete</button></div></div>';
     });
     body.innerHTML=html;
   }else if(sec==='users'){
@@ -2713,7 +2748,7 @@ function _mkCtZoneCard(e){
   return '<div class="ct-zone">'
     +'<div style="flex:1">'
     +'<div class="ct-zone-nm">'+e.name+'</div>'
-    +'<div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+'</div>'
+    +'<div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+(e.inspectionDay?' · 🔔 '+e.inspectionDay+' '+e.inspectionTime:'')+'</div>'
     +((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')
     +'<div style="margin:6px 0 4px">'
     +'<input class="fi" type="url" value="'+(e.donateUrl||'')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px" data-id="'+id+'" data-field="donateUrl" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
@@ -2725,6 +2760,7 @@ function _mkCtZoneCard(e){
     +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27up\x27)">✓ Up</button>'
     +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27review\x27)">Under Review</button>'
     +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27down\x27)">Down</button>'
+    +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" onclick="adminShowHistory(\''+id+'\',\''+e.name+'\')">📋 History</button>'
     +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" data-id="'+id+'" onclick="ctDelZone(this.dataset.id)">🗑 Delete Zone</button>'
     +'</div>'
     +'</div>'
