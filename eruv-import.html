@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Eruv KML Importer</title>
+<style>
+  body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+  h1 { color: #4a90d9; }
+  .zone { background: #1a1a2e; border: 1px solid #4a90d9; border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .zone h2 { color: #4a90d9; margin-top: 0; }
+  pre { background: #000; padding: 12px; border-radius: 4px; overflow: auto; max-height: 200px; font-size: 11px; color: #0f0; }
+  button { background: #4a90d9; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; margin: 5px; }
+  button:disabled { background: #555; cursor: not-allowed; }
+  button.danger { background: #c0284a; }
+  .status { padding: 8px; border-radius: 4px; margin: 8px 0; }
+  .ok { background: #1a4a1a; color: #0f0; }
+  .err { background: #4a1a1a; color: #f66; }
+  .warn { background: #4a3a1a; color: #fa0; }
+  .coords-preview { color: #8af; }
+  #log { background: #000; padding: 12px; border-radius: 4px; min-height: 100px; max-height: 300px; overflow-y: auto; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>🗺 Eruv KML Importer</h1>
+<p style="color:#aaa">Run this page while signed in as admin on myeiruv.org — or open in a separate tab at <code>myeiruv.org/eruv-import.html</code> after uploading.</p>
+
+<div id="log"></div>
+
+<div class="zone" id="zone-hp">
+  <h2>Highland Park / New Brunswick Eruv</h2>
+  <div id="hp-status" class="status warn">⏳ Not fetched yet</div>
+  <pre id="hp-coords">—</pre>
+  <button onclick="fetchZone('hp')">1. Fetch & Parse KML</button>
+  <button id="hp-save" onclick="saveZone('hp')" disabled>2. Save to Firestore ✓</button>
+</div>
+
+<div class="zone" id="zone-ft">
+  <h2>Five Towns Eruv</h2>
+  <div id="ft-status" class="status warn">⏳ Not fetched yet</div>
+  <pre id="ft-coords">—</pre>
+  <button onclick="fetchZone('ft')">1. Fetch & Parse KML</button>
+  <button id="ft-save" onclick="saveZone('ft')" disabled>2. Save to Firestore ✓</button>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDb-IDT2L4EVq8MiL4rG08IwevrZ4_Fd14",
+  authDomain: "myer-b23f6.firebaseapp.com",
+  projectId: "myer-b23f6",
+  storageBucket: "myeiruv-a9b88.firebasestorage.app",
+  messagingSenderId: "609731050951",
+  appId: "1:609731050951:web:5b9ee43c154dcbfd606de2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const ZONES = {
+  hp: {
+    id: 'highland-park-nb-eruv',
+    name: 'Highland Park / New Brunswick Eruv',
+    city: 'Highland Park, NJ',
+    url: 'https://www.google.com/maps/d/kml?mid=1xoVjPr-xjEdWLns4l5rdxSEoxJ4',
+    source: 'Google My Maps',
+    coords: null
+  },
+  ft: {
+    id: 'five-towns-eruv',
+    name: 'Five Towns Eruv',
+    city: 'Five Towns, NY',
+    url: 'https://www.google.com/maps/d/kml?mid=1uh_hbGmyful743HBD5E7HNj7fc4',
+    source: 'fivetownseruv.org',
+    coords: null
+  }
+};
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.innerHTML += `<div style="color:#8af">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function parseKMLCoords(kmlText) {
+  // Try <coordinates> tag
+  const matches = [...kmlText.matchAll(/<coordinates[^>]*>([\s\S]*?)<\/coordinates>/gi)];
+  let bestCoords = null, bestLen = 0;
+  for (const m of matches) {
+    const raw = m[1].trim();
+    const pts = [];
+    // Each point is "lng,lat,alt" separated by whitespace
+    for (const pt of raw.split(/\s+/)) {
+      const parts = pt.split(',');
+      if (parts.length >= 2) {
+        const lng = parseFloat(parts[0]);
+        const lat = parseFloat(parts[1]);
+        if (!isNaN(lng) && !isNaN(lat)) pts.push([lng, lat]);
+      }
+    }
+    if (pts.length > bestLen) { bestLen = pts.length; bestCoords = pts; }
+  }
+  return bestCoords;
+}
+
+async function fetchZone(key) {
+  const z = ZONES[key];
+  const statusEl = document.getElementById(`${key}-status`);
+  const coordsEl = document.getElementById(`${key}-coords`);
+  statusEl.className = 'status warn';
+  statusEl.textContent = '⏳ Trying proxies...';
+  log(`Fetching ${z.name}...`);
+
+  const proxies = [
+    `https://corsproxy.io/?${encodeURIComponent(z.url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(z.url)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(z.url)}`,
+    `https://thingproxy.freeboard.io/fetch/${z.url}`
+  ];
+
+  let kml = null;
+  for (const proxy of proxies) {
+    try {
+      log(`Trying: ${proxy.split('?')[0]}...`);
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+      const text = await res.text();
+      if (text.includes('<coordinates') || text.includes('Placemark')) {
+        kml = text; log(`✅ Got KML via ${proxy.split('?')[0]}`); break;
+      } else {
+        log(`❌ No coordinates in response (got: ${text.slice(0,80)})`);
+      }
+    } catch(e) { log(`❌ ${proxy.split('?')[0]}: ${e.message}`); }
+  }
+
+  if (!kml) {
+    statusEl.className = 'status err';
+    statusEl.innerHTML = `❌ All proxies failed.<br><br>
+      <strong>Manual fallback:</strong><br>
+      1. Open <a href="${z.url}" target="_blank" style="color:#4a90d9">this URL</a> in Chrome<br>
+      2. View Source (Ctrl+U)<br>
+      3. Copy all text, paste in the box below<br><br>
+      <textarea id="${key}-manual" style="width:100%;height:100px;background:#000;color:#0f0;font-size:11px" 
+        placeholder="Paste raw KML XML here..."></textarea><br>
+      <button onclick="parseManual('${key}')">Parse pasted KML</button>`;
+    return;
+  }
+
+  const coords = parseKMLCoords(kml);
+  if (!coords || coords.length < 3) {
+    statusEl.className = 'status err';
+    statusEl.textContent = `❌ Could not parse coordinates (got ${coords?.length ?? 0} points)`;
+    coordsEl.textContent = kml.slice(0, 500);
+    return;
+  }
+
+  z.coords = coords;
+  statusEl.className = 'status ok';
+  statusEl.textContent = `✅ Parsed ${coords.length} boundary points`;
+  coordsEl.innerHTML = `<span class="coords-preview">First 5 points:\n${coords.slice(0,5).map(c=>`  [${c[0].toFixed(6)}, ${c[1].toFixed(6)}]`).join('\n')}\n  ...\nLast point: [${coords[coords.length-1][0].toFixed(6)}, ${coords[coords.length-1][1].toFixed(6)}]</span>`;
+
+  // Compute center
+  const cx = coords.reduce((a,c) => a+c[0], 0) / coords.length;
+  const cy = coords.reduce((a,c) => a+c[1], 0) / coords.length;
+  coordsEl.innerHTML += `\n\nCenter: [${cx.toFixed(6)}, ${cy.toFixed(6)}]`;
+
+  document.getElementById(`${key}-save`).disabled = false;
+  log(`✅ ${z.name}: ${coords.length} points, center [${cx.toFixed(4)}, ${cy.toFixed(4)}]`);
+}
+
+window.parseManual = function(key) {
+  const z = ZONES[key];
+  const textarea = document.getElementById(`${key}-manual`);
+  if (!textarea) return;
+  const coords = parseKMLCoords(textarea.value);
+  if (!coords || coords.length < 3) {
+    alert('Could not parse coordinates from pasted text. Make sure it contains <coordinates>...</coordinates> tags.');
+    return;
+  }
+  z.coords = coords;
+  const statusEl = document.getElementById(`${key}-status`);
+  const coordsEl = document.getElementById(`${key}-coords`);
+  statusEl.className = 'status ok';
+  statusEl.textContent = `✅ Parsed ${coords.length} boundary points from manual paste`;
+  coordsEl.textContent = `First 5:\n${coords.slice(0,5).map(c=>`  [${c[0].toFixed(6)}, ${c[1].toFixed(6)}]`).join('\n')}\n...`;
+  document.getElementById(`${key}-save`).disabled = false;
+  log(`✅ Manual parse for ${z.name}: ${coords.length} points`);
+};
+
+window.fetchZone = fetchZone;
+
+window.saveZone = async function(key) {
+  const z = ZONES[key];
+  if (!z.coords) { alert('No coordinates loaded yet!'); return; }
+  const btn = document.getElementById(`${key}-save`);
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving...';
+  log(`Saving ${z.name} to Firestore...`);
+
+  const cx = z.coords.reduce((a,c) => a+c[0], 0) / z.coords.length;
+  const cy = z.coords.reduce((a,c) => a+c[1], 0) / z.coords.length;
+
+  const zone = {
+    id: z.id,
+    name: z.name,
+    city: z.city,
+    status: 'review',
+    note: 'Imported from Google My Maps — awaiting contractor assignment',
+    // Store as {g: lng, a: lat} to match site's Firestore format
+    coords: z.coords.map(c => ({ g: c[0], a: c[1] })),
+    center: [cx, cy],
+    source: z.source,
+    lastChecked: new Date().toLocaleDateString(),
+    checkedBy: 'Import',
+    owner: '', contractorEmail: '', contractors: [],
+    exclusions: [], adjacency: [], segNotes: {}, boundaryNotes: ''
+  };
+
+  try {
+    await setDoc(doc(db, 'eruvin', z.id), zone);
+    btn.textContent = '✅ Saved!';
+    btn.style.background = '#1a7040';
+    document.getElementById(`${key}-status`).textContent += ' → ✅ Saved to Firestore!';
+    log(`✅ ${z.name} saved to Firestore with ${z.coords.length} points`);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '2. Save to Firestore ✓';
+    document.getElementById(`${key}-status`).className = 'status err';
+    document.getElementById(`${key}-status`).textContent = `❌ Firestore error: ${e.message}`;
+    log(`❌ Error: ${e.message}`);
+  }
+};
+</script>
+</body>
+</html>
