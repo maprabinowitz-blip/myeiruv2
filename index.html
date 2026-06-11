@@ -1880,6 +1880,33 @@ function showEruvDetail(id){
     });
   }
 
+  // Show locationNotes as colored teardrop pins
+  if(e.locationNotes&&e.locationNotes.length){
+    e.locationNotes.forEach(function(n){
+      var color=n.color||'#0288D1';
+      // SVG teardrop pin matching Google Maps style
+      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="36" viewBox="0 0 24 36">'
+        +'<path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24s12-15 12-24C24 5.373 18.627 0 12 0z" fill="'+color+'"/>'
+        +'<circle cx="12" cy="12" r="5" fill="white" opacity="0.85"/>'
+        +'</svg>';
+      var el=document.createElement('div');
+      el.style.cssText='width:24px;height:36px;cursor:pointer;';
+      el.innerHTML=svg;
+      (function(note){
+        el.addEventListener('click',function(ev){
+          ev.stopPropagation();
+          new mapboxgl.Popup({closeButton:true,maxWidth:'240px',offset:[0,-30]})
+            .setLngLat([note.lng,note.lat])
+            .setHTML('<div style="font-size:.82rem;line-height:1.5"><b style="font-size:.88rem">'+note.name+'</b>'
+              +(note.note?'<div style="margin-top:5px;color:#444">'+note.note+'</div>':'')+'</div>')
+            .addTo(map);
+        },true);
+      })(n);
+      S.noteMarkers=S.noteMarkers||[];
+      S.noteMarkers.push(new mapboxgl.Marker({element:el,anchor:'bottom'}).setLngLat([n.lng,n.lat]).addTo(map));
+    });
+  }
+
   var dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
   var lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[e.status]||e.status;
   var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
