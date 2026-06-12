@@ -888,9 +888,19 @@ header{
     <!-- Tool palette — left side of map -->
     <div class="draw-palette" id="drawPalette">
 
+      <button class="dp-btn" id="dBtn-kml" onclick="document.getElementById('kmlFileIn').click()" title="Import KML or KMZ boundary file">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>
+        <div class="dp-btn-label">Import KML<span>.kml or .kmz file</span></div>
+      </button>
+      <input type="file" id="kmlFileIn" accept=".kml,.kmz" style="display:none" onchange="importKmlFile(this)">
+      <div class="dp-div"></div>
       <button class="dp-btn" id="dBtn-edit" onclick="setDMode('direct_select')" style="opacity:.3;pointer-events:none" title="Draw a boundary first">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/><line x1="5" y1="19" x2="19" y2="19"/></svg>
         <div class="dp-btn-label">Move points<span>Drag point · click line to add</span></div>
+      </button>
+      <button class="dp-btn" id="dBtn-delpt" onclick="deleteSelectedPoint()" style="opacity:.3;pointer-events:none" title="Select a point in edit mode, then click to delete it">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+        <div class="dp-btn-label">Delete point<span>Select point first</span></div>
       </button>
       <div class="dp-div"></div>
       <button class="dp-btn" id="dBtn-excl" onclick="toggleExclMode()">
@@ -3582,6 +3592,145 @@ function _updateCdLayers(){
   drawMap.getSource('cd-pts').setData({type:'FeatureCollection',features:pts.map(function(p,i){return {type:'Feature',geometry:{type:'Point',coordinates:p},properties:{idx:i,first:i===0,count:pts.length}};})});
 }
 
+// ── KML Import ──────────────────────────────────────────────────────────────
+async function importKmlFile(input){
+  var file=input.files[0];if(!file)return;
+  input.value='';
+  toast('Parsing KML…','ok');
+  var kmlText;
+  try{
+    if(file.name.toLowerCase().endsWith('.kmz')){
+      // KMZ = zip — need JSZip
+      var buf=await file.arrayBuffer();
+      // inline minimal zip parser for single doc.kml
+      var arr=new Uint8Array(buf);
+      // find local file header for doc.kml (PK\x03\x04)
+      var text=null;
+      for(var i=0;i<arr.length-4;i++){
+        if(arr[i]===0x50&&arr[i+1]===0x4b&&arr[i+2]===0x03&&arr[i+3]===0x04){
+          var fnLen=(arr[i+26])|(arr[i+27]<<8);
+          var exLen=(arr[i+28])|(arr[i+29]<<8);
+          var fn=String.fromCharCode.apply(null,arr.slice(i+30,i+30+fnLen));
+          if(fn.endsWith('.kml')){
+            var dataStart=i+30+fnLen+exLen;
+            var compSize=(arr[i+18])|(arr[i+19]<<8)|(arr[i+20]<<16)|(arr[i+21]<<24);
+            var method=(arr[i+8])|(arr[i+9]<<8);
+            if(method===0){text=new TextDecoder().decode(arr.slice(dataStart,dataStart+compSize));break;}
+            // deflate — use DecompressionStream if available
+            if(typeof DecompressionStream!=='undefined'){
+              var ds=new DecompressionStream('deflate-raw');
+              var w=ds.writable.getWriter(),r=ds.readable.getReader();
+              w.write(arr.slice(dataStart,dataStart+compSize));w.close();
+              var chunks=[],done=false;
+              while(!done){var res=await r.read();if(res.done){done=true;}else{chunks.push(res.value);}}
+              var total=chunks.reduce(function(a,c){return a+c.length;},0);
+              var flat=new Uint8Array(total);var off=0;
+              chunks.forEach(function(c){flat.set(c,off);off+=c.length;});
+              text=new TextDecoder().decode(flat);break;
+            }
+          }
+        }
+      }
+      if(!text){toast('Could not extract KML from KMZ','err');return;}
+      kmlText=text;
+    } else {
+      kmlText=await file.text();
+    }
+  }catch(e){toast('Error reading file: '+e.message,'err');return;}
+
+  if(kmlText.includes('<NetworkLink>')&&!kmlText.includes('<coordinates')){
+    toast('This KMZ is a NetworkLink stub — the actual KML must be downloaded from Google Maps','err');return;
+  }
+
+  _parseAndLoadKml(kmlText, file.name.replace(/\.[^.]+$/,'').replace(/_/g,' '));
+}
+
+function _parseAndLoadKml(kmlText, suggestedName){
+  var parser=new DOMParser();
+  var xml=parser.parseFromString(kmlText,'text/xml');
+
+  // 1. Extract boundary coords from all LineStrings (biggest set = main boundary)
+  var lineEls=xml.querySelectorAll('LineString coordinates, Polygon LinearRing coordinates');
+  var allCoords=[];
+  lineEls.forEach(function(el){
+    el.textContent.trim().split(/\s+/).forEach(function(pt){
+      var p=pt.split(',');if(p.length>=2){var lng=parseFloat(p[0]),lat=parseFloat(p[1]);if(!isNaN(lng)&&!isNaN(lat))allCoords.push([lng,lat]);}
+    });
+  });
+
+  if(allCoords.length<3){toast('No usable coordinates found in KML','err');return;}
+
+  // 2. Extract Point placemarks as locationNotes
+  var pms=xml.querySelectorAll('Placemark');
+  var locNotes=[];
+  pms.forEach(function(pm){
+    var ptEl=pm.querySelector('Point coordinates');
+    if(!ptEl)return;
+    var pName=(pm.querySelector('name')||{textContent:''}).textContent.trim();
+    var pDesc=(pm.querySelector('description')||{textContent:''}).textContent.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,400);
+    var coords=ptEl.textContent.trim().split(',');
+    var lng=parseFloat(coords[0]),lat=parseFloat(coords[1]);
+    if(isNaN(lng)||isNaN(lat)||!pName)return;
+    // Get color from styleUrl
+    var styleUrl=(pm.querySelector('styleUrl')||{textContent:''}).textContent;
+    var colorMatch=styleUrl.match(/-([0-9A-Fa-f]{6})(?:-|$)/);
+    var color=colorMatch?'#'+colorMatch[1].toUpperCase():'#0288D1';
+    locNotes.push({name:pName,note:pDesc,lng:lng,lat:lat,color:color});
+  });
+
+  // 3. Load into draw tool — start fresh draw with these coords
+  var kmlDocName=(xml.querySelector('Document > name')||{textContent:''}).textContent.trim();
+  var zoneName=kmlDocName||suggestedName;
+  if(zoneName&&!document.getElementById('zoneName').value)
+    document.getElementById('zoneName').value=zoneName;
+
+  // Store notes for save
+  window._kmlImportedNotes=locNotes;
+
+  // Load coords into Draw engine
+  _pushUndo();
+  _stopCustomDraw(true);
+  try{Draw.deleteAll();}catch(_){}
+
+  var closed=allCoords.slice();if(closed.length>0)closed.push(closed[0]);
+  var fid='kml-'+Date.now();
+  try{
+    Draw.add({type:'Feature',id:fid,geometry:{type:'Polygon',coordinates:[closed]},properties:{isExcl:'0'}});
+    Draw.changeMode('direct_select',{featureId:fid});
+  }catch(e){
+    // fallback: load into _cd
+    _cd.pts=allCoords.slice();_cd.active=false;_cd.excl=false;
+    _updateCdLayers();
+  }
+
+  // Fit map
+  var lngs=allCoords.map(function(c){return c[0];}),lats=allCoords.map(function(c){return c[1];});
+  drawMap.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:60,duration:800});
+
+  document.getElementById('dBtn-edit').style.opacity='1';
+  document.getElementById('dBtn-edit').style.pointerEvents='auto';
+  _updateUndoBtn();updateVtxCount();checkSaveReady();
+
+  var msg='Loaded '+allCoords.length+' boundary points';
+  if(locNotes.length)msg+=', '+locNotes.length+' location notes';
+  toast(msg,'ok');
+}
+
+// ── Delete selected point ───────────────────────────────────────────────────
+function deleteSelectedPoint(){
+  if(!Draw)return;
+  // MapboxDraw: trash() deletes selected vertices in direct_select mode
+  try{Draw.trash();}catch(_){}
+  _pushUndo();updateVtxCount();checkSaveReady();
+  toast('Point deleted','ok');
+}
+
+// Enable/disable delete point button based on draw mode
+function _updateDelPtBtn(on){
+  var btn=document.getElementById('dBtn-delpt');
+  if(btn){btn.style.opacity=on?'1':'0.3';btn.style.pointerEvents=on?'auto':'none';}
+}
+
 function _startCustomDraw(isExcl){
   _undoStack=[];
   _cd.pts=[];_cd.active=true;_cd.excl=!!isExcl;_cd.dblPending=false;
@@ -3760,6 +3909,7 @@ function setDMode(mode,fid){
     if(id){
       try{Draw.changeMode('direct_select',{featureId:id});
         document.getElementById('dBtn-edit').classList.add('act');updateStatusBar('edit');
+        _updateDelPtBtn(true);
       }catch(err){console.warn(err);}
     }else toast('Draw a zone first','err');
   }
@@ -4030,8 +4180,8 @@ function saveZone(){
   var excls=S.curExcl.slice();
   feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
   var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
-  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
-  else{var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){var kmlNotes=window._kmlImportedNotes||null;Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});if(kmlNotes&&kmlNotes.length)e.locationNotes=kmlNotes;addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
+  else{var kmlNotesNew=window._kmlImportedNotes||null;var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};if(kmlNotesNew&&kmlNotesNew.length)zone.locationNotes=kmlNotesNew;window._kmlImportedNotes=null;S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
   saveCustomZones();renderEruvList();renderStatus();closeDraw();
 }
 
