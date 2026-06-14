@@ -3363,6 +3363,8 @@ function _setDrawStep(step){
     // Move Points disabled until zone is closed
     var editBtn=document.getElementById('dBtn-edit');
     if(editBtn){editBtn.style.opacity='.3';editBtn.style.pointerEvents='none';editBtn.title='Draw a boundary first';}
+    var delBtn1=document.getElementById('dBtn-delpt');
+    if(delBtn1){delBtn1.style.opacity='.3';delBtn1.style.pointerEvents='none';}
   }else if(step===2){
     if(guide)guide.style.display='none';
     if(details)details.style.display='flex';
@@ -3376,6 +3378,8 @@ function _setDrawStep(step){
     if(saveBtn){saveBtn.style.opacity='.4';saveBtn.style.pointerEvents='none';}
     var editBtn=document.getElementById('dBtn-edit');
     if(editBtn){editBtn.style.opacity='';editBtn.style.pointerEvents='';editBtn.title='';}
+    var delBtn2=document.getElementById('dBtn-delpt');
+    if(delBtn2){delBtn2.style.opacity='';delBtn2.style.pointerEvents='';}
     updateVtxCount();
     // Auto-focus zone name
     setTimeout(function(){
@@ -3707,9 +3711,13 @@ function _parseAndLoadKml(kmlText, suggestedName){
   var lngs=allCoords.map(function(c){return c[0];}),lats=allCoords.map(function(c){return c[1];});
   drawMap.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:60,duration:800});
 
-  document.getElementById('dBtn-edit').style.opacity='1';
-  document.getElementById('dBtn-edit').style.pointerEvents='auto';
-  _updateUndoBtn();updateVtxCount();checkSaveReady();
+  // Advance draw panel to step 2 (details + save enabled)
+  setTimeout(function(){
+    _setDrawStep(2);
+    checkSaveReady();
+    _updateUndoBtn();
+    updateVtxCount();
+  }, 150);
 
   var msg='Loaded '+allCoords.length+' boundary points';
   if(locNotes.length)msg+=', '+locNotes.length+' location notes';
@@ -3719,9 +3727,18 @@ function _parseAndLoadKml(kmlText, suggestedName){
 // ── Delete selected point ───────────────────────────────────────────────────
 function deleteSelectedPoint(){
   if(!Draw)return;
-  // MapboxDraw: trash() deletes selected vertices in direct_select mode
+  // Ensure we're in direct_select mode on the main feature
+  var mode=Draw.getMode&&Draw.getMode();
+  if(mode!=='direct_select'){
+    var main=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
+    if(!main){toast('Draw a boundary first','err');return;}
+    try{Draw.changeMode('direct_select',{featureId:main.id});}catch(_){}
+    toast('Now click a point on the boundary, then press Delete point again','warn');
+    return;
+  }
+  _pushUndo();
   try{Draw.trash();}catch(_){}
-  _pushUndo();updateVtxCount();checkSaveReady();
+  updateVtxCount();checkSaveReady();
   toast('Point deleted','ok');
 }
 
