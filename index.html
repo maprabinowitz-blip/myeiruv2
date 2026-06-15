@@ -2682,6 +2682,8 @@ function renderAdmin(sec){
         var html=fsWarn+'<span class="adm-sec">Overview</span><div class="adm-stats"><div class="sbox"><div class="sbox-n">'+S.eruvin.length+'</div><div class="sbox-l">Zones</div></div><div class="sbox"><div class="sbox-n" style="color:var(--green)">'+up+'</div><div class="sbox-l">Up</div></div><div class="sbox"><div class="sbox-n" style="color:var(--amber)">'+rv+'</div><div class="sbox-l">Review</div></div><div class="sbox"><div class="sbox-n" style="color:var(--red)">'+dn+'</div><div class="sbox-l">Down</div></div></div>';
     html+='<div class="adm-stats" style="margin-top:6px"><div class="sbox"><div class="sbox-n">'+(S.shuls||[]).length+'</div><div class="sbox-l">Shuls</div></div><div class="sbox"><div class="sbox-n">'+users.length+'</div><div class="sbox-l">Users</div></div><div class="sbox"><div class="sbox-n">'+conts.length+'</div><div class="sbox-l">Contractors</div></div></div>';
     if(pend.length){html+='<span class="adm-sec">Pending Applications</span>';pend.forEach(function(u){html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge b-rv">Pending</span></div><div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div></div>';});}
+    html+='<span class="adm-sec" style="margin-top:10px">Tools</span>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Location Notes</div><div class="acard-mt">Seed HP &amp; NB pin notes to Firestore</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedLocationNotes()">📌 Seed Notes</button></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -3746,6 +3748,60 @@ function deleteSelectedPoint(){
 function _updateDelPtBtn(on){
   var btn=document.getElementById('dBtn-delpt');
   if(btn){btn.style.opacity=on?'1':'0.3';btn.style.pointerEvents=on?'auto':'none';}
+}
+
+function seedLocationNotes(){
+  if(!window._db||!window._db.db){toast('Not connected to Firestore','err');return;}
+  var HP=[
+    {name:'River Road',color:'#880E4F',lng:-74.4362488,lat:40.4978511,note:'The eruv only goes down the east side of River Road. The Environmental Center on the west side is outside the eruv. The sidewalk on the east side is inside the eruv.'},
+    {name:'Sidewalk on River Road — Partially Outside Eruv',color:'#C2185B',lng:-74.4374371,lat:40.4994991,note:'The sidewalk from Raritan to Walter Avenue is extra wide. The part closest to the street is outside the Highland Park Eruv. About 1/3 is inside the New Brunswick Eruv; the rest is outside both eruvs.'},
+    {name:'Northeast Corridor Railroad Tracks',color:'#01579B',lng:-74.4380915,lat:40.5032845,note:'The eruv follows the eastern side of the catenary wires.'},
+    {name:'Edison Train Station',color:'#F9A825',lng:-74.4128814,lat:40.517861,note:'The eruv wires come off the catenary wire on the very south side of the parking lot and follow the utility poles outside the parking lot. At Reed Street the eruv crosses Central Avenue. Train platforms and parking spaces are outside the eruv.'},
+    {name:'Plainfield Avenue',color:'#817717',lng:-74.4088742,lat:40.5183993,note:'The eruv follows the utility poles down Plainfield Avenue. The sidewalk on both sides is inside the eruv. Only one side of Central Avenue is inside the eruv.'},
+    {name:'Stelton Community Center Playground',color:'#757575',lng:-74.4068652,lat:40.5159117,note:'The eruv boundary has changed — this playground is now inside the eruv.'},
+    {name:'Plainfield Ave & Lincoln Highway — Eruv Jogs',color:'#E65100',lng:-74.4038021,lat:40.5142722,note:'The eruv does not reach the corner of Plainfield Ave and Lincoln Highway but jogs to avoid it. Cross at Sutton Lane to cross Lincoln Hwy safely.'},
+    {name:'Loring Avenue — No Sidewalk',color:'#A52714',lng:-74.4046819,lat:40.5126083,note:'The eruv goes down the south side of Loring where there is no sidewalk. The street itself is outside the eruv.'},
+    {name:'Plainfield & Jefferson — Sidewalk NOT in Eruv',color:'#E65100',lng:-74.3991458,lat:40.5060663,note:'The sidewalk at the corner of Plainfield and Jefferson is NOT in the eruv.'},
+    {name:'Fox Road — No Sidewalk',color:'#F9A825',lng:-74.4119829,lat:40.5000131,note:'Only the west side sidewalk is in the eruv. No sidewalk in front of 14, 16, 18 Fox Road; the street is outside the eruv. Sidewalk resumes on the other side of Foyer Street.'},
+    {name:'Fox Road — Corner of Edmund Out of Eruv',color:'#C2185B',lng:-74.4122833,lat:40.4983447,note:'The wheelchair ramp sidewalk on the SW corner of Edmund and Fox Road is outside the eruv. Stay right of the storm drain. Past the curb cut the sidewalk is back inside.'},
+    {name:'Fox Road',color:'#F57C00',lng:-74.4139677,lat:40.495171,note:'The eruv switches sides on Fox Road toward Valley Manor Apartments (not in eruv). Just before the entrance it cuts east through the woods to Donaldson St / Crowells Rd.'},
+    {name:'Donaldson Street & Footpath 7th–5th Avenues',color:'#FFEA00',lng:-74.418608,lat:40.4941756,note:'Eruv goes down the south side of Donaldson St — the street itself is inside. The pathway between 7th and 5th Avenues is inside. The Meadows pathway is not.'},
+    {name:'Park View Terrace',color:'#AFB42B',lng:-74.4220023,lat:40.4926692,note:'The Donaldson Park extension normally keeps this area in the eruv. If the extension is down, the last two houses on Park View Terrace will be outside.'},
+    {name:'Donaldson Park Eruv',color:'#0F9D58',lng:-74.4221485,lat:40.4887456,note:'The eruv follows close to the Raritan River shore. Paved footpath, fields, dog park, and courts are inside. Boat launch, shore, and river are outside. In Groves 3A and 2 use only tables by the asphalt path.'},
+    {name:'Playground — Down if Park Extension Down',color:'#0097A7',lng:-74.4254744,lat:40.4907691,note:'This playground is NOT in the eruv if the Donaldson Park extension is down.'},
+    {name:'Skyview Terrace Fence Line',color:'#0288D1',lng:-74.4308232,lat:40.4896907,note:'The eruv boundary follows the backyard fences of the houses on Skyview Terrace.',size:'large'},
+    {name:'Raritan River',color:'#3949AB',lng:-74.4356775,lat:40.4937228,note:'The eruv follows the fence line and steep slope back to Raritan Avenue where it connects to the fence on the south side of Raritan Avenue.'},
+    {name:'Shabbos Park',color:'#0288D1',lng:-74.4230819,lat:40.5103896,note:'"Shabbos Park" — the community playground on North 4th Avenue.'},
+    {name:'Valentine Street Sidewalk — Outside Eruv',color:'#FF5252',lng:-74.4244686,lat:40.4923663,note:'Houses on the south side of Valentine by 3rd Avenue are OUTSIDE the eruv. The sidewalk on both sides of Braun and Valentine is OUTSIDE the eruv.'},
+    {name:'Ovington Avenue — No Sidewalk',color:'#A52714',lng:-74.4033301,lat:40.5123799,note:'No sidewalk on Ovington, but the street is inside the eruv.'}
+  ];
+  var NB=[
+    {name:'Devonshire Arms',color:'#0F9D58',lng:-74.4369649,lat:40.4982754,note:'The eruv crosses River Road from the east side, follows the utility wire into the Devonshire Arms, wraps to the southern corner, then follows a wire to the bridge and down to the Raritan River Pathway.'},
+    {name:'Landing Lane',color:'#AFB42B',lng:-74.4661474,lat:40.5056421,note:'The eruv follows the utility poles down the west side of Landing Lane Bridge, jumps to Old Landing Lane Bridge, crosses Easton Avenue, then follows Mile Run.'},
+    {name:'Mile Run',color:'#FBC02D',lng:-74.4657183,lat:40.5022158,note:"The eruv follows the northern shore of Mile Run to the St. Peter's Hospital fence. Few access points. End of New York Ave is private property. Jefferson Ave has access."},
+    {name:'Duke Street – Louis Street',color:'#F57C00',lng:-74.4559121,lat:40.4958033,note:"The eruv runs from the St. Peter's fence to a tree south of the gate on Duke Street, then follows utility poles down Duke and Louis Streets to the Northeast Corridor tracks."},
+    {name:'Northeast Corridor Tracks',color:'#FF5252',lng:-74.4524843,lat:40.4907019,note:'Eruv goes down Suydam St north side, jumps to south before the railroad tracks, follows the tracks down Suydam and Railroad Ave.'},
+    {name:'Baldwin Street — Sidewalk Outside Eruv',color:'#C2185B',lng:-74.4508186,lat:40.4885375,note:'The eruv follows the fence line and front of houses on Baldwin St. The sidewalk and lawns on both sides are OUTSIDE the eruv.'},
+    {name:'Remsen Avenue – Tabernacle Way',color:'#F9A825',lng:-74.4425869,lat:40.489688,note:'The eruv follows the utility poles. The sidewalk on the east side is generally inside — watch where the utility poles are.'},
+    {name:'Burnet Street to Raritan Bridge',color:'#BDBDBD',lng:-74.4377857,lat:40.4927682,note:'Eruv follows utility poles on Burnet St and crosses Route 18 via poles. The towpath and Boyd Park are NOT in the eruv.'},
+    {name:'Raritan River Pathway Boundary',color:'#0288D1',lng:-74.4398403,lat:40.4989852,note:'The eruv follows the shoreline slope to the spillway fence by George Street, then the fence and canal shoreline to Landing Lane. The river pathway is inside the eruv but poorly maintained.'}
+  ];
+  var tasks=[
+    {id:'highland-park-nb-eruv',notes:HP},
+    {id:'new-brunswick-eruv',notes:NB}
+  ];
+  var done=0;
+  tasks.forEach(function(t){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(function(fs){
+      fs.updateDoc(fs.doc(window._db.db,'zones',t.id),{locationNotes:t.notes}).then(function(){
+        done++;
+        toast('Saved '+t.notes.length+' notes to '+t.id+' ('+done+'/'+tasks.length+')','ok');
+        // Update in memory too
+        var z=S.eruvin.find(function(e){return e.id===t.id;});
+        if(z)z.locationNotes=t.notes;
+      }).catch(function(e){toast('Error '+t.id+': '+e.message,'err');});
+    });
+  });
 }
 
 function _startCustomDraw(isExcl){
