@@ -594,6 +594,7 @@ header{
         </div>
         <button class="btn btn-navy btn-full" onclick="planRoute()" id="routeBtn" style="margin-top:6px">Check Route</button>
         <div id="routeResult"></div>
+        <div id="nearbyNotes" style="display:none;margin-top:6px"></div>
       </div>
     </div>
     <div class="panel" id="panel-status">
@@ -1348,6 +1349,103 @@ function showLocationStatus(lng,lat){
 }
 function inExcl(lng,lat,e){return(e.exclusions||[]).some(function(ex){return pip(lng,lat,ex.coords);});}
 function findEruv(lng,lat){for(var i=0;i<S.eruvin.length;i++){var e=S.eruvin[i];if(pip(lng,lat,e.coords)&&!inExcl(lng,lat,e))return e;}return null;}
+
+function _ptDist(a,b){
+  var dx=(a[0]-b[0])*111320*Math.cos((a[1]+b[1])*Math.PI/360);
+  var dy=(a[1]-b[1])*111320;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+
+function showNearbyNotes(lng,lat,zone){
+  var MILE=1609;var SHOW=3;
+  var notes=[];
+  (S.eruvin||[]).forEach(function(e){
+    if(!e.locationNotes)return;
+    e.locationNotes.forEach(function(n){
+      var d=_ptDist([lng,lat],[n.lng,n.lat]);
+      if(d<=MILE)notes.push({note:n,dist:d,zone:e});
+    });
+  });
+  notes.sort(function(a,b){return a.dist-b.dist;});
+
+  var el=document.getElementById('nearbyNotes');
+  if(!el)return;
+  if(!notes.length){el.style.display='none';return;}
+
+  // Always show contractor update first
+  var ctHtml='';
+  if(zone&&zone.note){
+    ctHtml='<div style="background:var(--navy);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--blue)">'
+      +'<div style="font-size:.7rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">📋 Contractor Update</div>'
+      +'<div style="font-size:.78rem;color:var(--text);line-height:1.45">'+zone.note+'</div>'
+      +'</div>';
+  }
+
+  function renderNotes(all){
+    var rows=all.map(function(item){
+      var n=item.note;
+      var color=n.color||'#0288D1';
+      var pin='<svg xmlns="http://www.w3.org/2000/svg" width="14" height="20" viewBox="0 0 24 36" style="flex-shrink:0;margin-top:2px">'
+        +'<path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24s12-15 12-24C24 5.373 18.627 0 12 0z" fill="'+color+'"/>'
+        +'<circle cx="12" cy="12" r="5" fill="white" opacity="0.85"/></svg>';
+      var d=item.dist<100?'<50m':item.dist<1000?Math.round(item.dist)+'m':(item.dist/1609).toFixed(1)+' mi';
+      return '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +pin
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:.78rem;font-weight:600;color:var(--text)">'+n.name+'</div>'
+        +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px;line-height:1.4">'+n.note.slice(0,120)+(n.note.length>120?'…':'')+'</div>'
+        +'</div>'
+        +'<div style="font-size:.68rem;color:var(--muted);flex-shrink:0;padding-top:2px">'+d+'</div>'
+        +'</div>';
+    }).join('');
+    return rows;
+  }
+
+  var preview=notes.slice(0,SHOW);
+  var rest=notes.slice(SHOW);
+  var html='<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px">'
+    +'<div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">📌 Notes near you</div>'
+    +ctHtml
+    +renderNotes(preview);
+  if(rest.length){
+    var mid='more-'+Date.now();
+    html+='<button id="'+mid+'" onclick="expandNearby(''+mid+'',''+JSON.stringify(rest).replace(/'/g,"&#39;")+'','+JSON.stringify(rest)+')" style="width:100%;margin-top:8px;padding:6px;background:var(--navy);color:var(--blue);border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit">Show '+rest.length+' more ▾</button>';
+    // store rest data on window for retrieval
+    window['_nearbyRest_'+mid]=rest;
+    html=html.replace('''+JSON.stringify(rest).replace(/'/g,"&#39;")+''','''+mid+''');
+  }
+  html+='</div>';
+  el.style.display='block';
+  el.innerHTML=html;
+  // re-attach expand handler after render
+  if(rest.length){
+    var btn=el.querySelector('button[id]');
+    if(btn){
+      var mid2=btn.id;
+      btn.onclick=function(){
+        var more=window['_nearbyRest_'+mid2]||[];
+        btn.outerHTML=renderNotes(more);
+      };
+    }
+  }
+}
+
+// Route warnings: find notes near any point on the route coords
+function routeNoteWarnings(routeCoords){
+  var CORRIDOR=150; // metres
+  var found=[];
+  var seen={};
+  (S.eruvin||[]).forEach(function(e){
+    if(!e.locationNotes)return;
+    e.locationNotes.forEach(function(n){
+      if(seen[n.name])return;
+      var hit=routeCoords.some(function(pt){return _ptDist([pt[0],pt[1]],[n.lng,n.lat])<CORRIDOR;});
+      if(hit){found.push(n);seen[n.name]=1;}
+    });
+  });
+  return found;
+}
+
 function checkPoint(lng,lat,label){
   S.lastCoords=[lng,lat];
   if(addrMarker){addrMarker.remove();addrMarker=null;}
@@ -1375,6 +1473,8 @@ function checkPoint(lng,lat,label){
   }
   document.getElementById('seeFullBtn').style.display=inside?'flex':'none';
   document.getElementById('planRouteBtn').style.display=inside?'flex':'none';
+  // Show nearby notes
+  showNearbyNotes(lng,lat,inside);
 }
 function seeFullZone(){if(!S.resultEruv)return;var b=S.resultEruv.coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(S.resultEruv.coords[0],S.resultEruv.coords[0]));map.fitBounds(b,{padding:60,duration:800});}
 function startRoute(){
@@ -1733,7 +1833,25 @@ function planRoute(){
             if(rows)stepsHtml='<div style="margin-top:10px"><button data-sid="'+sid+'" onclick="toggleSteps(this.dataset.sid)" style="width:100%;padding:9px 12px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;justify-content:space-between;">🚶 Step-by-step directions <span>▾</span></button><div id="'+sid+'" style="display:none;margin-top:4px;border:1px solid var(--border);border-radius:8px;overflow:hidden">'+rows+'</div></div>';
     }
 
-    document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>🚶 Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alertHtml+stepsHtml;
+    // Route note warnings
+  var routeWarnHtml='';
+  var nearNotes=routeNoteWarnings(dense||coords);
+  if(nearNotes.length){
+    var wRows=nearNotes.map(function(n){
+      var color=n.color||'#0288D1';
+      return '<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06)">'
+        +'<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"18\" viewBox=\"0 0 24 36\" style=\"flex-shrink:0;margin-top:2px\">'
+        +'<path d=\"M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24s12-15 12-24C24 5.373 18.627 0 12 0z\" fill=\"'+color+'\"/>'
+        +'<circle cx=\"12\" cy=\"12\" r=\"4.5\" fill=\"white\" opacity=\"0.85\"/></svg>'
+        +'<div><div style=\"font-size:.75rem;font-weight:600;color:var(--text)\">'+n.name+'</div>'
+        +'<div style=\"font-size:.7rem;color:var(--muted);line-height:1.4\">'+n.note.slice(0,100)+(n.note.length>100?'…':'')+'</div></div>'
+        +'</div>';
+    }).join('');
+    routeWarnHtml='<div style=\"background:var(--navy);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px\">'
+      +'<div style=\"font-size:.7rem;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px\">📌 Notes along this route</div>'
+      +wRows+'</div>';
+  }
+  document.getElementById('routeResult').innerHTML='<div class="route-result"><div class="rstat"><span>Distance</span><span>'+dist+'</span></div><div class="rstat"><span>🚶 Walk Time</span><span>'+time+'</span></div><div class="rstat"><span>Coverage</span><span>'+covText+'</span></div></div>'+alertHtml+(routeWarnHtml||'')+stepsHtml;
 
     var bounds=coords.reduce(function(b,c){return b.extend(c);},new mapboxgl.LngLatBounds(coords[0],coords[0]));
     map.fitBounds(bounds,{padding:{top:80,bottom:120,left:60,right:60},duration:800,maxZoom:16});
