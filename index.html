@@ -2141,6 +2141,7 @@ function showEruvDetail(id){
     +(e.lastChecked?'<div style="font-size:.7rem;color:var(--muted);margin-bottom:10px">'+e.lastChecked+'</div>':'')
     // Public note
     +(e.note?'<div style="font-size:.82rem;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:10px;border:1px solid var(--border);line-height:1.5">'+e.note+'</div>':'')
+    +(e.backupStatus&&e.backupLines&&e.backupLines.length?      '<div style="padding:8px 10px;border-radius:8px;margin-bottom:10px;font-size:.78rem;line-height:1.5;border:1px solid '+(e.backupStatus==='up'?'#b2dfdb':e.backupStatus==='down'?'#ffcdd2':'#ffe082')+';background:'+(e.backupStatus==='up'?'#f0fff8':e.backupStatus==='down'?'#fff5f5':'#fffdf0')+'">'      +'<span style="font-weight:700;color:'+(e.backupStatus==='up'?'#1a7040':e.backupStatus==='down'?'var(--red)':'#7a5800')+'">'      +(e.backupStatus==='up'?'✓':e.backupStatus==='down'?'✕':'~')+' Backup Eruv (Park Terrace): '+(e.backupStatus==='up'?'Up':e.backupStatus==='down'?'Down':'Passel')+'</span>'      +(e.backupNote?'<div style="color:var(--muted);margin-top:2px;font-size:.72rem">'+e.backupNote+'</div>':'')      +'</div>':'')
     // Boundary/segment notes
     +segNotesHtml
     // Donate
@@ -2979,12 +2980,35 @@ function _mkCtZoneCard(e){
     +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27up\x27)">✓ Up</button>'
     +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27review\x27)">Under Review</button>'
     +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27down\x27)">Down</button>'
+    +(e.backupLines&&e.backupLines.length?'<div style="margin-top:8px;padding:8px;background:rgba(230,81,0,.07);border:1px solid rgba(230,81,0,.2);border-radius:8px"><div style="font-size:.67rem;font-weight:700;color:#955010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">📍 Backup Eruv</div><div style="display:flex;gap:5px"><button class="ct-act" style="background:#e3f5ec;color:#1a7040;flex:1" onclick="setBackupStatus(\''+id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fff8e1;color:#7a5800;flex:1" onclick="setBackupStatus(\''+id+'\',\'passel\')">~ Passel</button><button class="ct-act" style="background:#fbeaea;color:var(--red);flex:1" onclick="setBackupStatus(\''+id+'\',\'down\')">✕ Down</button></div>'+(e.backupStatus?'<div style="font-size:.68rem;color:var(--muted);margin-top:4px">Current: <b>'+e.backupStatus+'</b></div>':'')+'</div>':'')
     +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" onclick="adminShowHistory(\''+id+'\',\''+e.name+'\')">📋 History</button>'
     +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" data-id="'+id+'" onclick="ctDelZone(this.dataset.id)">🗑 Delete Zone</button>'
     +'</div>'
     +'</div>'
     +'<span class="badge '+bc+'" style="margin-left:10px">'+(sl[e.status]||e.status)+'</span>'
     +'</div>';
+}
+
+function setBackupStatus(id, status){
+  var e=S.eruvin.find(function(x){return x.id===id;});
+  if(!e)return;
+  e.backupStatus=status;
+  var label={up:'Up',passel:'Passel',down:'Down'}[status]||status;
+  var when=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  e.backupNote='Backup eruv: '+label+' ('+when+')';
+  if(!e.backupHistory)e.backupHistory=[];
+  e.backupHistory.unshift({status:status,by:(S.user&&S.user.name)||'Contractor',timestamp:new Date().toISOString()});
+  if(e.backupHistory.length>20)e.backupHistory=e.backupHistory.slice(0,20);
+  if(window._db)window._db.patchZone(id,{backupStatus:status,backupNote:e.backupNote,backupHistory:e.backupHistory});
+  // Update backup line color on map if visible
+  try{
+    (e.backupLines||[]).forEach(function(bl,bi){
+      var col=status==='up'?'#22a865':status==='down'?'#d94040':'#F9A825';
+      if(map.getLayer('backup-line-'+bi+'-line'))map.setPaintProperty('backup-line-'+bi+'-line','line-color',col);
+    });
+  }catch(_){}
+  toast('Backup eruv marked '+label,'ok');
+  renderCtDash();
 }
 
 function renderCtProfile(){
