@@ -1357,7 +1357,7 @@ function _ptDist(a,b){
 }
 
 function showNearbyNotes(lng,lat,zone){
-  var MILE=1609;var SHOW=3;
+  var MILE=1609,SHOW=3;
   var notes=[];
   (S.eruvin||[]).forEach(function(e){
     if(!e.locationNotes)return;
@@ -1367,12 +1367,10 @@ function showNearbyNotes(lng,lat,zone){
     });
   });
   notes.sort(function(a,b){return a.dist-b.dist;});
-
   var el=document.getElementById('nearbyNotes');
   if(!el)return;
   if(!notes.length){el.style.display='none';return;}
 
-  // Always show contractor update first
   var ctHtml='';
   if(zone&&zone.note){
     ctHtml='<div style="background:var(--navy);border-radius:8px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--blue)">'
@@ -1381,60 +1379,55 @@ function showNearbyNotes(lng,lat,zone){
       +'</div>';
   }
 
-  function renderNotes(all){
-    var rows=all.map(function(item){
-      var n=item.note;
-      var color=n.color||'#0288D1';
-      var pin='<svg xmlns="http://www.w3.org/2000/svg" width="14" height="20" viewBox="0 0 24 36" style="flex-shrink:0;margin-top:2px">'
-        +'<path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24s12-15 12-24C24 5.373 18.627 0 12 0z" fill="'+color+'"/>'
-        +'<circle cx="12" cy="12" r="5" fill="white" opacity="0.85"/></svg>';
-      var d=item.dist<100?'<50m':item.dist<1000?Math.round(item.dist)+'m':(item.dist/1609).toFixed(1)+' mi';
-      return '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
-        +pin
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:.78rem;font-weight:600;color:var(--text)">'+n.name+'</div>'
-        +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px;line-height:1.4">'+n.note.slice(0,120)+(n.note.length>120?'…':'')+'</div>'
-        +'</div>'
-        +'<div style="font-size:.68rem;color:var(--muted);flex-shrink:0;padding-top:2px">'+d+'</div>'
-        +'</div>';
-    }).join('');
-    return rows;
+  function mkNoteRow(item){
+    var n=item.note;
+    var color=n.color||'#0288D1';
+    var pin='<svg xmlns="http://www.w3.org/2000/svg" width="14" height="20" viewBox="0 0 24 36" style="flex-shrink:0;margin-top:2px">'
+      +'<path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 24 12 24s12-15 12-24C24 5.373 18.627 0 12 0z" fill="'+color+'"/>'
+      +'<circle cx="12" cy="12" r="5" fill="white" opacity="0.85"/></svg>';
+    var d=item.dist<100?'<50m':item.dist<1000?Math.round(item.dist)+'m':(item.dist/1609).toFixed(1)+' mi';
+    return '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +pin
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:.78rem;font-weight:600;color:var(--text)">'+n.name+'</div>'
+      +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px;line-height:1.4">'+n.note.slice(0,120)+(n.note.length>120?'…':'')+'</div>'
+      +'</div>'
+      +'<div style="font-size:.68rem;color:var(--muted);flex-shrink:0;padding-top:2px">'+d+'</div>'
+      +'</div>';
   }
 
-  var preview=notes.slice(0,SHOW);
-  var rest=notes.slice(SHOW);
-  var html='<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px">'
-    +'<div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">📌 Notes near you</div>'
-    +ctHtml
-    +renderNotes(preview);
+  var preview=notes.slice(0,SHOW), rest=notes.slice(SHOW);
+  var rows=preview.map(mkNoteRow).join('');
+  var moreBtn='';
   if(rest.length){
     var mid='more-'+Date.now();
-    html+='<button id="'+mid+'" onclick="expandNearby(''+mid+'',''+JSON.stringify(rest).replace(/'/g,"&#39;")+'','+JSON.stringify(rest)+')" style="width:100%;margin-top:8px;padding:6px;background:var(--navy);color:var(--blue);border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit">Show '+rest.length+' more ▾</button>';
-    // store rest data on window for retrieval
-    window['_nearbyRest_'+mid]=rest;
-    html=html.replace('''+JSON.stringify(rest).replace(/'/g,"&#39;")+''','''+mid+''');
+    window['_nrest_'+mid]=rest;
+    moreBtn='<button class="nearby-more" data-mid="'+mid+'" style="width:100%;margin-top:8px;padding:6px;background:var(--navy);color:var(--blue);border:none;border-radius:6px;font-size:.75rem;cursor:pointer;font-family:inherit">Show '+rest.length+' more \u25be</button>';
   }
-  html+='</div>';
+  var html='<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px">'
+    +'<div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">📌 Notes near you</div>'
+    +ctHtml+rows+moreBtn+'</div>';
   el.style.display='block';
   el.innerHTML=html;
-  // re-attach expand handler after render
-  if(rest.length){
-    var btn=el.querySelector('button[id]');
-    if(btn){
-      var mid2=btn.id;
-      btn.onclick=function(){
-        var more=window['_nearbyRest_'+mid2]||[];
-        btn.outerHTML=renderNotes(more);
-      };
-    }
-  }
 }
+// Nearby expand via delegation
+document.addEventListener('click',function(ev){
+  var btn=ev.target.closest('.nearby-more');
+  if(!btn)return;
+  var rest=window['_nrest_'+btn.dataset.mid]||[];
+  var rows=rest.map(function(item){
+    var n=item.note,color=n.color||'#0288D1';
+    var d=item.dist<100?'<50m':item.dist<1000?Math.round(item.dist)+'m':(item.dist/1609).toFixed(1)+' mi';
+    return '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="flex:1"><div style="font-size:.78rem;font-weight:600;color:var(--text)">'+n.name+'</div>'
+      +'<div style="font-size:.72rem;color:var(--muted);margin-top:2px">'+n.note.slice(0,120)+'</div></div>'
+      +'<div style="font-size:.68rem;color:var(--muted)">'+d+'</div></div>';
+  }).join('');
+  btn.outerHTML=rows;
+});
 
-// Route warnings: find notes near any point on the route coords
 function routeNoteWarnings(routeCoords){
-  var CORRIDOR=150; // metres
-  var found=[];
-  var seen={};
+  var CORRIDOR=150,found=[],seen={};
   (S.eruvin||[]).forEach(function(e){
     if(!e.locationNotes)return;
     e.locationNotes.forEach(function(n){
@@ -1445,6 +1438,7 @@ function routeNoteWarnings(routeCoords){
   });
   return found;
 }
+
 
 function checkPoint(lng,lat,label){
   S.lastCoords=[lng,lat];
@@ -2529,6 +2523,14 @@ function toggleDrop(){dropOpen=!dropOpen;document.getElementById('userDrop').sty
 function closeDrop(){dropOpen=false;var d=document.getElementById('userDrop');if(d)d.style.display='none';}
 document.addEventListener('click',function(e){if(!e.target.closest('#userPillWrap'))closeDrop();});
 
+// Backup eruv button delegation
+document.addEventListener('click', function(ev){
+  var btn = ev.target.closest('.ct-bu');
+  if(!btn) return;
+  var id = btn.dataset.id, st = btn.dataset.st;
+  if(id && st) setBackupStatus(id, st);
+});
+
 // ADMIN
 function openAdmin(){
   document.getElementById('adminDrawer').classList.add('on');
@@ -2980,8 +2982,7 @@ function _mkCtZoneCard(e){
     +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27up\x27)">✓ Up</button>'
     +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27review\x27)">Under Review</button>'
     +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27down\x27)">Down</button>'
-    +(e.backupLines&&e.backupLines.length?'<div style="margin-top:8px;padding:8px;background:rgba(230,81,0,.07);border:1px solid rgba(230,81,0,.2);border-radius:8px"><div style="font-size:.67rem;font-weight:700;color:#955010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">📍 Backup Eruv</div><div style="display:flex;gap:5px"><button class="ct-act" style="background:#e3f5ec;color:#1a7040;flex:1" onclick="setBackupStatus(\''+id+'\',\'up\')">✓ Up</button><button class="ct-act" style="background:#fff8e1;color:#7a5800;flex:1" onclick="setBackupStatus(\''+id+'\',\'passel\')">~ Passel</button><button class="ct-act" style="background:#fbeaea;color:var(--red);flex:1" onclick="setBackupStatus(\''+id+'\',\'down\')">✕ Down</button></div>'+(e.backupStatus?'<div style="font-size:.68rem;color:var(--muted);margin-top:4px">Current: <b>'+e.backupStatus+'</b></div>':'')+'</div>':'')
-    +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" onclick="adminShowHistory(\''+id+'\',\''+e.name+'\')">📋 History</button>'
+(e.backupLines&&e.backupLines.length      ?'<div style="margin-top:8px;padding:8px;background:rgba(230,81,0,.07);border:1px solid rgba(230,81,0,.2);border-radius:8px">'        +'<div style="font-size:.67rem;font-weight:700;color:#955010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">📍 Backup Eruv</div>'        +'<div style="display:flex;gap:5px">'        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="up" style="background:#e3f5ec;color:#1a7040;flex:1">✓ Up</button>'        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="passel" style="background:#fff8e1;color:#7a5800;flex:1">~ Passel</button>'        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="down" style="background:#fbeaea;color:var(--red);flex:1">✕ Down</button>'        +'</div>'        +(e.backupStatus?'<div style="font-size:.68rem;color:var(--muted);margin-top:4px">Current: <b>'+e.backupStatus+'</b></div>':'')        +'</div>'      :'')+'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" onclick="adminShowHistory(\''+id+'\',\''+e.name+'\')">📋 History</button>'
     +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" data-id="'+id+'" onclick="ctDelZone(this.dataset.id)">🗑 Delete Zone</button>'
     +'</div>'
     +'</div>'
