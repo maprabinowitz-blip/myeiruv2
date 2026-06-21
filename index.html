@@ -2052,7 +2052,12 @@ function showEruvDetail(id){
 
     e.locationNotes.forEach(function(n){
       var color=n.color||'#0288D1';
-      var iid=String(n.iconId||'1594');
+      // Determine icon type: prefer stored iconId, fall back to color heuristic
+  var iid=String(n.iconId||'');
+  if(!iid){
+    var wc=['#FF5252','#E65100','#A52714','#C2185B','#FF0000'];
+    iid=wc.indexOf((n.color||'').toUpperCase())>=0?'1898':'1594';
+  }
       var svg,w=28,h=28,anchor='center';
 
       if(iid==='1898'){
@@ -3968,15 +3973,27 @@ function _parseAndLoadKml(kmlText, suggestedName){
 // ── Delete selected point ───────────────────────────────────────────────────
 function deleteSelectedPoint(){
   if(!Draw)return;
-  // Ensure we're in direct_select mode on the main feature
   var mode=Draw.getMode&&Draw.getMode();
+  var main=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
+  if(!main){toast('Draw a boundary first','err');return;}
+
+  // Enter direct_select if not already in it
   if(mode!=='direct_select'){
-    var main=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
-    if(!main){toast('Draw a boundary first','err');return;}
     try{Draw.changeMode('direct_select',{featureId:main.id});}catch(_){}
-    toast('Now click a point on the boundary, then press Delete point again','warn');
+    _updateDelPtBtn(true);
+    toast('Click a vertex on the boundary then tap Delete again','ok');
     return;
   }
+
+  // Check if any vertices selected via getSelectedPoints
+  var sel=Draw.getSelectedPoints&&Draw.getSelectedPoints();
+  var hasSel=sel&&sel.features&&sel.features.length>0;
+
+  if(!hasSel){
+    toast('Tap a vertex first, then Delete','ok');
+    return;
+  }
+
   _pushUndo();
   try{Draw.trash();}catch(_){}
   updateVtxCount();checkSaveReady();
@@ -3986,7 +4003,12 @@ function deleteSelectedPoint(){
 // Enable/disable delete point button based on draw mode
 function _updateDelPtBtn(on){
   var btn=document.getElementById('dBtn-delpt');
-  if(btn){btn.style.opacity=on?'1':'0.3';btn.style.pointerEvents=on?'auto':'none';}
+  if(!btn)return;
+  btn.style.opacity=on?'1':'0.3';
+  btn.style.pointerEvents=on?'auto':'none';
+  // Update label
+  var lbl=btn.querySelector('.dp-btn-label');
+  if(lbl)lbl.innerHTML=on?'Delete point<span>Tap vertex then click</span>':'Delete point<span>Enter edit mode first</span>';
 }
 
 function seedLocationNotes(){
