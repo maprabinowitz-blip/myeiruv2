@@ -2052,7 +2052,7 @@ function showEruvDetail(id){
 
     e.locationNotes.forEach(function(n){
       var color=n.color||'#0288D1';
-      var iid=n.iconId||'1594';
+      var iid=String(n.iconId||'1594');
       var svg,w=28,h=28,anchor='center';
 
       if(iid==='1898'){
@@ -4035,7 +4035,7 @@ function seedLocationNotes(){
   var done=0;
   tasks.forEach(function(t){
     import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(function(fs){
-      var upd={locationNotes:t.notes};if(t.backupLines)upd.backupLines=t.backupLines;window._db.patchZone(t.id,upd).then(function(){
+      var upd={locationNotes:t.notes};if(t.backupLines)upd.backupLines=t.backupLines;window._db.setZone(t.id,upd).then(function(){
         done++;
         toast('Saved '+t.notes.length+' notes to '+t.id+' ('+done+'/'+tasks.length+')','ok');
         // Update in memory too
