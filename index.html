@@ -3971,33 +3971,68 @@ function _parseAndLoadKml(kmlText, suggestedName){
 }
 
 // ── Delete selected point ───────────────────────────────────────────────────
+var _delMode=false; // delete-point mode active
+
 function deleteSelectedPoint(){
   if(!Draw)return;
-  var mode=Draw.getMode&&Draw.getMode();
   var main=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
   if(!main){toast('Draw a boundary first','err');return;}
 
-  // Enter direct_select if not already in it
-  if(mode!=='direct_select'){
+  if(!_delMode){
+    // Enter delete mode — next tap on map deletes nearest vertex
+    _delMode=true;
+    var btn=document.getElementById('dBtn-delpt');
+    if(btn){btn.classList.add('act');btn.querySelector('.dp-btn-label').innerHTML='Delete mode ON<span>Tap near a point to delete it</span>';}
     try{Draw.changeMode('direct_select',{featureId:main.id});}catch(_){}
-    _updateDelPtBtn(true);
-    toast('Click a vertex on the boundary then tap Delete again','ok');
-    return;
+    toast('Tap near any boundary point to delete it','ok');
+
+    // One-time map click handler
+    function onMapClick(e){
+      drawMap.off('click',onMapClick);
+      _delMode=false;
+      var btn2=document.getElementById('dBtn-delpt');
+      if(btn2){btn2.classList.remove('act');btn2.querySelector('.dp-btn-label').innerHTML='Delete point<span>Tap vertex then click</span>';}
+
+      // Find nearest vertex to tap
+      var feat=Draw.getAll().features.find(function(f){return f.properties.isExcl!=='1';});
+      if(!feat)return;
+      var coords=feat.geometry.type==='Polygon'?feat.geometry.coordinates[0]:feat.geometry.coordinates;
+      var clickLng=e.lngLat.lng,clickLat=e.lngLat.lat;
+      var bestIdx=-1,bestD=Infinity;
+      coords.forEach(function(c,i){
+        var dx=(c[0]-clickLng)*111320*Math.cos(clickLat*Math.PI/180);
+        var dy=(c[1]-clickLat)*111320;
+        var d=Math.sqrt(dx*dx+dy*dy);
+        if(d<bestD){bestD=d;bestIdx=i;}
+      });
+      if(bestIdx<0||bestD>100){toast('No point within 100m of tap','err');return;}
+
+      _pushUndo();
+      // Remove vertex at bestIdx
+      var newCoords=coords.filter(function(_,i){return i!==bestIdx;});
+      // Re-close polygon
+      if(feat.geometry.type==='Polygon'&&newCoords.length>0){
+        if(newCoords[0][0]!==newCoords[newCoords.length-1][0]||newCoords[0][1]!==newCoords[newCoords.length-1][1])
+          newCoords.push(newCoords[0].slice());
+        feat.geometry.coordinates=[newCoords];
+      }else{
+        feat.geometry.coordinates=newCoords;
+      }
+      Draw.delete(feat.id);
+      Draw.add(feat);
+      try{Draw.changeMode('direct_select',{featureId:feat.id});}catch(_){}
+      updateVtxCount();checkSaveReady();
+      toast('Point deleted ('+Math.round(bestD)+'m from tap)','ok');
+    }
+    drawMap.on('click',onMapClick);
+  } else {
+    // Cancel delete mode
+    _delMode=false;
+    var btn3=document.getElementById('dBtn-delpt');
+    if(btn3){btn3.classList.remove('act');btn3.querySelector('.dp-btn-label').innerHTML='Delete point<span>Tap vertex then click</span>';}
+    drawMap.off('click', function(){});
+    toast('Delete mode cancelled','ok');
   }
-
-  // Check if any vertices selected via getSelectedPoints
-  var sel=Draw.getSelectedPoints&&Draw.getSelectedPoints();
-  var hasSel=sel&&sel.features&&sel.features.length>0;
-
-  if(!hasSel){
-    toast('Tap a vertex first, then Delete','ok');
-    return;
-  }
-
-  _pushUndo();
-  try{Draw.trash();}catch(_){}
-  updateVtxCount();checkSaveReady();
-  toast('Point deleted','ok');
 }
 
 // Enable/disable delete point button based on draw mode
