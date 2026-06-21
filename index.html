@@ -3085,7 +3085,19 @@ function renderCtMsgs(){
     document.getElementById('ctMsgList').innerHTML='Messages unavailable.';
   }
 }
-function openCtDash(){document.getElementById('ctDash').classList.add('on');renderCtDash();}
+function openCtDash(){
+  document.getElementById('ctDash').classList.add('on');
+  if(!S.eruvin||!S.eruvin.length){
+    // Zones still loading — show spinner and refresh when ready
+    document.getElementById('ctBody').innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">Loading zones…</div>';
+    var poll=setInterval(function(){
+      if(S.eruvin&&S.eruvin.length){clearInterval(poll);renderCtDash();}
+    },300);
+    setTimeout(function(){clearInterval(poll);renderCtDash();},8000);
+  }else{
+    renderCtDash();
+  }
+}
 function closeCtDash(){document.getElementById('ctDash').classList.remove('on');}
 function renderCtDash(){
   var myZones=S.user&&S.user.role==='admin'?S.eruvin:S.eruvin.filter(function(e){return e.owner===S.user.email;});
@@ -4988,6 +5000,9 @@ window._db = {
 
     if (window._mapLoaded) { _renderAllMapData(); }
     else                   { window._zonesReady = true; }
+    // Refresh contractor dashboard and admin panel if open after zones load
+    if(document.getElementById('ctDash')&&document.getElementById('ctDash').classList.contains('on'))renderCtDash();
+    if(document.getElementById('adminDrawer')&&document.getElementById('adminDrawer').classList.contains('on'))renderAdmin('overview');
     // Session restore is handled by onAuthStateChanged in the auth block above
   }
 };
