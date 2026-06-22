@@ -974,7 +974,22 @@ header{
               <label class="lbl" style="margin:0">Boundary Notes</label>
               <button id="addSegNoteBtn" onclick="startSegNoteMode()" style="border:none;background:#2a6db5;color:#fff;padding:6px 12px;border-radius:7px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:5px;">📍 Add Boundary Note</button>
             </div>
-            <div id="segNoteModeHint" style="display:none;background:#1a4a7a;border:1.5px solid #2a6db5;border-radius:8px;padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;"><div><div style="font-size:.77rem;font-weight:700;color:#fff;margin-bottom:2px;">📍 Boundary Note Mode</div><div style="font-size:.7rem;color:rgba(255,255,255,.7);">Click any numbered circle on the boundary to add a note there</div></div><button onclick="endSegNoteMode()" style="border:none;background:rgba(255,255,255,.2);color:#fff;padding:5px 10px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;">✓ Done</button></div>
+            <div id="kmlReviewPanel" style="display:none;position:absolute;top:0;left:0;right:0;bottom:0;background:#0a121e;z-index:10;display:none;flex-direction:column;overflow:hidden">
+  <div style="background:#0d1a2b;border-bottom:1px solid #1e3050;padding:12px 16px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:.9rem;font-weight:700;color:#58a6ff;flex:1">📦 KML Import Review</span>
+    <button onclick="cancelKmlReview()" style="background:none;border:none;color:#8b949e;cursor:pointer;font-size:1.1rem">✕</button>
+  </div>
+  <div id="kmlReviewMap" style="flex:1;min-height:0"></div>
+  <div id="kmlReviewPanel_body" style="background:#0d1a2b;border-top:1px solid #1e3050;padding:14px 16px;max-height:45vh;overflow-y:auto">
+    <div id="kmlReviewStats" style="margin-bottom:12px"></div>
+    <div id="kmlReviewGaps" style="margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px">
+      <button id="kmlReviewAccept" onclick="acceptKmlReview()" style="flex:1;background:#238636;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-weight:600;font-size:.85rem">✓ Load into Editor</button>
+      <button onclick="cancelKmlReview()" style="background:#30363d;color:#e6edf3;border:none;padding:10px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="segNoteModeHint" style="display:none;background:#1a4a7a;border:1.5px solid #2a6db5;border-radius:8px;padding:8px 12px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px;"><div><div style="font-size:.77rem;font-weight:700;color:#fff;margin-bottom:2px;">📍 Boundary Note Mode</div><div style="font-size:.7rem;color:rgba(255,255,255,.7);">Click any numbered circle on the boundary to add a note there</div></div><button onclick="endSegNoteMode()" style="border:none;background:rgba(255,255,255,.2);color:#fff;padding:5px 10px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;">✓ Done</button></div>
             <div id="segNotesList" style="margin-bottom:6px;"></div>
             <div id="segNoteForm" style="display:none;background:rgba(255,255,255,.06);border-radius:8px;padding:10px;border:1px solid rgba(255,255,255,.1);margin-bottom:6px;">
               <div style="font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:5px;" id="segNoteLabel">Note for segment:</div>
@@ -3885,80 +3900,267 @@ async function importKmlFile(input){
   _parseAndLoadKml(kmlText, file.name.replace(/\.[^.]+$/,'').replace(/_/g,' '));
 }
 
-function _parseAndLoadKml(kmlText, suggestedName){
+// ── KML Smart Importer ────────────────────────────────────────────────────
+var _kmlReviewData = null; // pending review payload
+var _kmlReviewMap  = null; // mini mapbox for review
+
+function _ptDist2(a,b){
+  var dx=(a[0]-b[0])*111320*Math.cos((a[1]+b[1])*Math.PI/360);
+  var dy=(a[1]-b[1])*111320;
+  return Math.sqrt(dx*dx+dy*dy);
+}
+
+function _smartParseKml(kmlText, suggestedName){
   var parser=new DOMParser();
   var xml=parser.parseFromString(kmlText,'text/xml');
 
-  // 1. Extract boundary coords from all LineStrings (biggest set = main boundary)
-  var lineEls=xml.querySelectorAll('LineString coordinates, Polygon LinearRing coordinates');
-  var allCoords=[];
-  lineEls.forEach(function(el){
-    el.textContent.trim().split(/\s+/).forEach(function(pt){
-      var p=pt.split(',');if(p.length>=2){var lng=parseFloat(p[0]),lat=parseFloat(p[1]);if(!isNaN(lng)&&!isNaN(lat))allCoords.push([lng,lat]);}
-    });
-  });
+  var kmlName=(xml.querySelector('Document > name')||{textContent:''}).textContent.trim();
+  var zoneName=kmlName||suggestedName;
 
-  if(allCoords.length<3){toast('No usable coordinates found in KML','err');return;}
-
-  // 2. Extract Point placemarks as locationNotes
-  var pms=xml.querySelectorAll('Placemark');
+  // Extract Point notes
   var locNotes=[];
-  pms.forEach(function(pm){
+  xml.querySelectorAll('Placemark').forEach(function(pm){
     var ptEl=pm.querySelector('Point coordinates');
     if(!ptEl)return;
-    var pName=(pm.querySelector('name')||{textContent:''}).textContent.trim();
-    var pDesc=(pm.querySelector('description')||{textContent:''}).textContent.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,400);
-    var coords=ptEl.textContent.trim().split(',');
-    var lng=parseFloat(coords[0]),lat=parseFloat(coords[1]);
-    if(isNaN(lng)||isNaN(lat)||!pName)return;
-    // Get color from styleUrl
-    var styleUrl=(pm.querySelector('styleUrl')||{textContent:''}).textContent;
-    var colorMatch=styleUrl.match(/-([0-9A-Fa-f]{6})(?:-|$)/);
-    var color=colorMatch?'#'+colorMatch[1].toUpperCase():'#0288D1';
-    locNotes.push({name:pName,note:pDesc,lng:lng,lat:lat,color:color});
+    var name=(pm.querySelector('name')||{textContent:''}).textContent.trim();
+    var desc=(pm.querySelector('description')||{textContent:''}).textContent.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,400);
+    var c=ptEl.textContent.trim().split(',');
+    var lng=parseFloat(c[0]),lat=parseFloat(c[1]);
+    if(isNaN(lng)||isNaN(lat)||!name)return;
+    var sUrl=(pm.querySelector('styleUrl')||{textContent:''}).textContent;
+    var cm=sUrl.match(/-([0-9A-Fa-f]{6})(?:-|$)/);
+    var iid=sUrl.match(/icon-(\d+)-/);
+    locNotes.push({iconId:iid?iid[1]:'1594',name:name,note:desc,lng:lng,lat:lat,color:cm?'#'+cm[1].toUpperCase():'#0288D1'});
   });
 
-  // 3. Load into draw tool — start fresh draw with these coords
-  var kmlDocName=(xml.querySelector('Document > name')||{textContent:''}).textContent.trim();
-  var zoneName=kmlDocName||suggestedName;
-  if(zoneName&&!document.getElementById('zoneName').value)
-    document.getElementById('zoneName').value=zoneName;
+  // Parse all LineString placemarks independently
+  var segs=[];
+  xml.querySelectorAll('Placemark').forEach(function(pm,idx){
+    var ls=pm.querySelector('LineString coordinates');
+    if(!ls)return;
+    var pts=[];
+    ls.textContent.trim().split(/\s+/).forEach(function(pt){
+      var p=pt.split(',');
+      if(p.length>=2){var lng=parseFloat(p[0]),lat=parseFloat(p[1]);if(!isNaN(lng)&&!isNaN(lat))pts.push([lng,lat]);}
+    });
+    if(pts.length<2)return;
+    var desc=((pm.querySelector('description')||{textContent:''}).textContent||'').toLowerCase();
+    var name=((pm.querySelector('name')||{textContent:''}).textContent||'').toLowerCase();
+    // get color from style
+    var sUrl=(pm.querySelector('styleUrl')||{textContent:''}).textContent;
+    var cm=sUrl.match(/-([0-9A-Fa-f]{6})(?:-|$)/);
+    var color=cm?'#'+cm[1].toUpperCase():'#888';
+    segs.push({id:'seg_'+idx,pts:pts,start:pts[0],end:pts[pts.length-1],
+               name:name,desc:desc,color:color,n:pts.length,
+               gap:_ptDist2(pts[0],pts[pts.length-1])});
+  });
 
-  // Store notes for save
-  window._kmlImportedNotes=locNotes;
+  if(!segs.length){toast('No LineStrings found in KML','err');return null;}
 
-  // Load coords into Draw engine
+  // Single segment — load directly
+  if(segs.length===1){
+    return {simple:true,coords:segs[0].pts,locNotes:locNotes,zoneName:zoneName};
+  }
+
+  // Multi-segment — bucket
+  var loops=[],emergency=[],open=[];
+  segs.forEach(function(s){
+    if(/emergency|cutoff/.test(s.desc)||/emergency|cutoff/.test(s.name)){
+      emergency.push(s);
+    } else if(s.gap<=5){
+      loops.push(s);
+    } else {
+      open.push(s);
+    }
+  });
+
+  // Stitch open segments (greedy nearest-endpoint)
+  var stitched=[], order=[], used={};
+  if(open.length){
+    var pool=open.slice();
+    var path=pool[0].pts.slice();
+    order.push({id:pool[0].id,rev:false,n:pool[0].n});
+    used[pool[0].id]=true;
+
+    for(var iter=0;iter<pool.length-1;iter++){
+      var cur=path[path.length-1];
+      var bestD=Infinity,bestI=-1,bestRev=false;
+      pool.forEach(function(s,i){
+        if(used[s.id])return;
+        var ds=_ptDist2(cur,s.start);
+        var de=_ptDist2(cur,s.end);
+        if(ds<bestD){bestD=ds;bestI=i;bestRev=false;}
+        if(de<bestD){bestD=de;bestI=i;bestRev=true;}
+      });
+      if(bestI<0)break;
+      var seg=pool[bestI];
+      used[seg.id]=true;
+      var pts=bestRev?seg.pts.slice().reverse():seg.pts.slice();
+      order.push({id:seg.id,rev:bestRev,n:seg.n,gap:Math.round(bestD)});
+      path=path.concat(pts.slice(1));
+    }
+    stitched=path;
+  }
+
+  // Compute gaps between stitched segments
+  var gaps=[];
+  order.forEach(function(o,i){
+    if(i>0&&o.gap>200)gaps.push({after:order[i-1].id,before:o.id,m:o.gap});
+  });
+  var closing=stitched.length>1?Math.round(_ptDist2(stitched[stitched.length-1],stitched[0])):0;
+  if(closing>200)gaps.push({after:'last',before:'first',m:closing,closing:true});
+
+  return {
+    simple:false,
+    coords:stitched,
+    locNotes:locNotes,
+    zoneName:zoneName,
+    loops:loops,
+    emergency:emergency,
+    openCount:open.length,
+    order:order,
+    gaps:gaps,
+    closing:closing
+  };
+}
+
+function _parseAndLoadKml(kmlText, suggestedName){
+  var result=_smartParseKml(kmlText,suggestedName);
+  if(!result)return;
+
+  if(result.simple){
+    _loadKmlIntoEditor(result);
+    return;
+  }
+
+  // Multi-segment: show review UI
+  _kmlReviewData=result;
+  _showKmlReview(result);
+}
+
+function _showKmlReview(r){
+  var panel=document.getElementById('kmlReviewPanel');
+  panel.style.display='flex';
+
+  // Stats
+  var statsEl=document.getElementById('kmlReviewStats');
+  statsEl.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'
+    +'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">'
+    +'<div style="font-size:1.4rem;font-weight:700;color:#58a6ff">'+r.openCount+'</div>'
+    +'<div style="font-size:.7rem;color:#8b949e">Open segments stitched</div></div>'
+    +'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">'
+    +'<div style="font-size:1.4rem;font-weight:700;color:#3fb950">'+r.loops.length+'</div>'
+    +'<div style="font-size:.7rem;color:#8b949e">Closed loops (kept separate)</div></div>'
+    +'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">'
+    +'<div style="font-size:1.4rem;font-weight:700;color:#e3b341">'+r.emergency.length+'</div>'
+    +'<div style="font-size:.7rem;color:#8b949e">Emergency/cutoff excluded</div></div>'
+    +'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:8px;text-align:center">'
+    +'<div style="font-size:1.4rem;font-weight:700;color:#e6edf3">'+r.coords.length+'</div>'
+    +'<div style="font-size:.7rem;color:#8b949e">Total boundary points</div></div>'
+    +'</div>'
+    +(r.locNotes.length?'<div style="font-size:.78rem;color:#8b949e">📌 '+r.locNotes.length+' location notes extracted</div>':'');
+
+  // Gaps
+  var gapsEl=document.getElementById('kmlReviewGaps');
+  if(r.gaps.length){
+    gapsEl.innerHTML='<div style="font-size:.75rem;font-weight:700;color:#e3b341;margin-bottom:5px">⚠ Large gaps in stitched boundary</div>'
+      +r.gaps.map(function(g){
+        return '<div style="font-size:.72rem;color:#8b949e;padding:3px 0;border-bottom:1px solid #21262d">'
+          +(g.closing?'Closing gap (last→first)':'Between segments')+': <b style="color:#e3b341">'+g.m+'m</b></div>';
+      }).join('');
+  } else {
+    gapsEl.innerHTML='<div style="font-size:.75rem;color:#3fb950">✓ All segments connect cleanly (gaps &lt;200m)</div>';
+  }
+
+  // Init mini map for preview
+  setTimeout(function(){
+    if(!_kmlReviewMap){
+      _kmlReviewMap=new mapboxgl.Map({
+        container:'kmlReviewMap',
+        style:'mapbox://styles/mapbox/streets-v12',
+        center:[-74,40],zoom:9
+      });
+      _kmlReviewMap.on('load',function(){_drawReviewLayers(r);});
+    } else {
+      _drawReviewLayers(r);
+    }
+  },100);
+}
+
+function _drawReviewLayers(r){
+  var m=_kmlReviewMap;
+  ['kml-main','kml-loops','kml-pts'].forEach(function(id){
+    if(m.getLayer(id+'-line'))m.removeLayer(id+'-line');
+    if(m.getLayer(id+'-pts'))m.removeLayer(id+'-pts');
+    if(m.getSource(id))m.removeSource(id);
+  });
+
+  // Main stitched boundary
+  if(r.coords.length>1){
+    var closed=r.coords.concat([r.coords[0]]);
+    m.addSource('kml-main',{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[closed]}}});
+    m.addLayer({id:'kml-main-line',type:'line',source:'kml-main',paint:{'line-color':'#58a6ff','line-width':2.5}});
+  }
+
+  // Loops in green
+  if(r.loops.length){
+    var loopFeats=r.loops.map(function(l){return {type:'Feature',geometry:{type:'LineString',coordinates:l.pts}};});
+    m.addSource('kml-loops',{type:'geojson',data:{type:'FeatureCollection',features:loopFeats}});
+    m.addLayer({id:'kml-loops-line',type:'line',source:'kml-loops',paint:{'line-color':'#3fb950','line-width':2,'line-dasharray':[4,2]}});
+  }
+
+  // Fit bounds
+  var allPts=r.coords.concat(r.loops.reduce(function(a,l){return a.concat(l.pts);},[]) );
+  if(allPts.length){
+    var lngs=allPts.map(function(c){return c[0];}),lats=allPts.map(function(c){return c[1];});
+    m.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:30,duration:600});
+  }
+}
+
+function cancelKmlReview(){
+  document.getElementById('kmlReviewPanel').style.display='none';
+  _kmlReviewData=null;
+}
+
+function acceptKmlReview(){
+  if(!_kmlReviewData)return;
+  document.getElementById('kmlReviewPanel').style.display='none';
+  _loadKmlIntoEditor(_kmlReviewData);
+  _kmlReviewData=null;
+}
+
+function _loadKmlIntoEditor(r){
+  var coords=r.coords;
+  if(r.zoneName&&!document.getElementById('zoneName').value)
+    document.getElementById('zoneName').value=r.zoneName;
+  window._kmlImportedNotes=r.locNotes||[];
+
   _pushUndo();
   _stopCustomDraw(true);
   try{Draw.deleteAll();}catch(_){}
 
-  var closed=allCoords.slice();if(closed.length>0)closed.push(closed[0]);
+  var closed=coords.slice();if(closed.length>0)closed.push(closed[0]);
   var fid='kml-'+Date.now();
   try{
     Draw.add({type:'Feature',id:fid,geometry:{type:'Polygon',coordinates:[closed]},properties:{isExcl:'0'}});
     Draw.changeMode('direct_select',{featureId:fid});
   }catch(e){
-    // fallback: load into _cd
-    _cd.pts=allCoords.slice();_cd.active=false;_cd.excl=false;
+    _cd.pts=coords.slice();_cd.active=false;_cd.excl=false;
     _updateCdLayers();
   }
 
-  // Fit map
-  var lngs=allCoords.map(function(c){return c[0];}),lats=allCoords.map(function(c){return c[1];});
+  var lngs=coords.map(function(c){return c[0];}),lats=coords.map(function(c){return c[1];});
   drawMap.fitBounds([[Math.min.apply(null,lngs),Math.min.apply(null,lats)],[Math.max.apply(null,lngs),Math.max.apply(null,lats)]],{padding:60,duration:800});
 
-  // Advance draw panel to step 2 (details + save enabled)
-  setTimeout(function(){
-    _setDrawStep(2);
-    checkSaveReady();
-    _updateUndoBtn();
-    updateVtxCount();
-  }, 150);
+  setTimeout(function(){_setDrawStep(2);checkSaveReady();_updateUndoBtn();updateVtxCount();},150);
 
-  var msg='Loaded '+allCoords.length+' boundary points';
-  if(locNotes.length)msg+=', '+locNotes.length+' location notes';
+  var msg='Loaded '+coords.length+' pts';
+  if(r.locNotes&&r.locNotes.length)msg+=', '+r.locNotes.length+' notes';
+  if(r.loops&&r.loops.length)msg+=', '+r.loops.length+' loops (not included in boundary)';
   toast(msg,'ok');
 }
+
 
 // ── Delete selected point ───────────────────────────────────────────────────
 
