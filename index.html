@@ -3974,9 +3974,45 @@ function _smartParseKml(kmlText, suggestedName){
     }
   });
 
+  // If the largest closed loop has more points than all open segments combined,
+  // treat it as the main boundary and demote smaller loops to sub-zones
+  var mainLoop=null;
+  if(loops.length){
+    var biggestLoop=loops.reduce(function(a,b){return b.n>a.n?b:a;},loops[0]);
+    var openTotal=open.reduce(function(a,s){return a+s.n;},0);
+    if(biggestLoop.n>openTotal||open.length===0){
+      // The big closed loop IS the main boundary — promote it
+      mainLoop=biggestLoop;
+      loops=loops.filter(function(l){return l.id!==biggestLoop.id;});
+      // Merge any open segments into it by nearest connection point
+      if(open.length){
+        var mainPts=mainLoop.pts.slice();
+        open.forEach(function(s){
+          // Find where on mainPts this segment best attaches
+          var bestPtIdx=0,bestD=Infinity;
+          mainPts.forEach(function(p,i){
+            var d1=_ptDist2(p,s.start),d2=_ptDist2(p,s.end);
+            if(Math.min(d1,d2)<bestD){bestD=Math.min(d1,d2);bestPtIdx=i;}
+          });
+          // Insert segment into mainPts at bestPtIdx
+          var insert=_ptDist2(mainPts[bestPtIdx],s.end)<_ptDist2(mainPts[bestPtIdx],s.start)
+            ?s.pts.slice().reverse():s.pts.slice();
+          var before=mainPts.slice(0,bestPtIdx+1);
+          var after=mainPts.slice(bestPtIdx+1);
+          mainPts=before.concat(insert.slice(1,insert.length-1)).concat(after);
+        });
+        open=[]; // absorbed
+      }
+      open=[]; // clear — mainLoop is the boundary
+    }
+  }
+
   // Stitch open segments (greedy nearest-endpoint)
   var stitched=[], order=[], used={};
-  if(open.length){
+  if(mainLoop){
+    stitched=mainLoop.pts.slice();
+    order=[{id:mainLoop.id,rev:false,n:mainLoop.n,promoted:true}];
+  } else if(open.length){
     var pool=open.slice();
     var path=pool[0].pts.slice();
     order.push({id:pool[0].id,rev:false,n:pool[0].n});
