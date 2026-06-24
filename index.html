@@ -503,10 +503,7 @@ header{
     <div class="hdr-brand-big">Know Before You Go</div>
   </div>
   <div class="hdr-r">
-    <button class="hbtn hbtn-ghost" id="adminTrigger" style="display:none" onclick="openAdmin()">&#9881;&#65039; Admin</button>
-    <button class="hbtn hbtn-ghost" id="ctDashTrigger" style="display:none" onclick="openCtDash()">&#128203; My Zones</button>
-    <button class="hbtn hbtn-ghost" id="editZonesTrigger" style="display:none" onclick="openZonePicker()">&#9999;&#65039; Edit Zones</button>
-    <button class="hbtn hbtn-gold" id="drawTrigger" style="display:none" onclick="openDraw('draw')">+ Create Zone</button>
+    <!-- admin/contractor actions moved into user pill dropdown -->
     <button class="signin-pill" id="signinPill" onclick="openModal('vMain')">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="rgba(255,255,255,.9)" stroke-width="1.2"/><path d="M2 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="rgba(255,255,255,.9)" stroke-width="1.2" stroke-linecap="round"/></svg>
       Sign In
@@ -533,6 +530,11 @@ header{
         </div>
         <button class="u-drop-it" onclick="goAlerts()">&#128276; My Alerts</button>
         <button class="u-drop-it" id="becomeContractorBtn" onclick="closeDrop();openContractorApply()" style="display:none">🔨 Become a Contractor</button>
+        <div class="u-drop-sep" id="dropMgrSep" style="display:none"></div>
+        <button class="u-drop-it" id="dropAdminBtn" style="display:none" onclick="closeDrop();openAdmin()">⚙️ Admin Dashboard</button>
+        <button class="u-drop-it" id="dropMyZonesBtn" style="display:none" onclick="closeDrop();openCtDash()">📋 My Zones</button>
+        <button class="u-drop-it" id="dropEditBtn" style="display:none" onclick="closeDrop();openZonePicker()">✏️ Edit Zones</button>
+        <button class="u-drop-it" id="dropCreateBtn" style="display:none" onclick="closeDrop();openDraw('draw')">➕ Create Zone</button>
         <div class="u-drop-sep"></div>
         <button class="u-drop-it red" onclick="doSignOut()">Sign Out</button>
       </div>
@@ -2539,10 +2541,10 @@ function _applyUserUI(user){
   var isCont=isApprovedCt||isAdmin;
   var ctBtn=document.getElementById('becomeContractorBtn');
   if(ctBtn)ctBtn.style.display=(isCont||isPendingCt)?'none':'block';
-  document.getElementById('adminTrigger').style.display=isAdmin?'flex':'none';
-  document.getElementById('ctDashTrigger').style.display=isCont?'flex':'none';
-  document.getElementById('editZonesTrigger').style.display=isCont?'flex':'none';
-  document.getElementById('drawTrigger').style.display=isCont?'flex':'none';
+  document.getElementById('dropAdminBtn').style.display=isAdmin?'flex':'none';
+  document.getElementById('dropMyZonesBtn').style.display=isCont?'flex':'none';
+  document.getElementById('dropEditBtn').style.display=isCont?'flex':'none';
+  document.getElementById('dropCreateBtn').style.display=isCont?'flex':'none';
   var brand=document.getElementById('hdrBrand');
   if(brand)brand.style.visibility=isCont?'hidden':'visible';
 }
@@ -3001,30 +3003,61 @@ function ctDelZone(id){
 }
 function _mkCtZoneCard(e){
   var id=e.id;
-  var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status]||'b-up';
-  var sl={up:'Up',review:'Under Review',down:'Down'};
-  return '<div class="ct-zone">'
-    +'<div style="flex:1">'
-    +'<div class="ct-zone-nm">'+e.name+'</div>'
-    +'<div class="ct-zone-mt">'+e.city+' · '+(e.lastChecked||'—')+(e.inspectionDay?' · 🔔 '+e.inspectionDay+' '+e.inspectionTime:'')+'</div>'
-    +((e.exclusions&&e.exclusions.length)?'<div style="font-size:.69rem;color:var(--amber);margin-top:2px">⚠ '+e.exclusions.length+' exclusion(s)</div>':'')
-    +'<div style="margin:6px 0 4px">'
-    +'<input class="fi" type="url" value="'+(e.donateUrl||'')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px" data-id="'+id+'" data-field="donateUrl" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
-    +'<input class="fi" type="text" value="'+(e.rov||'')+'" placeholder="Rov / Rabbi" style="font-size:.72rem;padding:4px 7px;margin-bottom:3px;margin-top:2px" data-id="'+id+'" data-field="rov" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
-    +'<input class="fi" type="text" value="'+(e.note||'')+'" placeholder="Status note" style="font-size:.72rem;padding:4px 7px;margin-top:2px" data-id="'+id+'" data-field="note" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
+  var statusColor={up:'#1a7040',review:'#955010',down:'#b91c1c'}[e.status]||'#555';
+  var statusBg={up:'#e3f5ec',review:'#fef1e2',down:'#fbeaea'}[e.status]||'#f5f5f5';
+  var statusLabel={up:'✓ Up',review:'~ Review',down:'✕ Down'}[e.status]||e.status;
+  var uid='zc-'+id.replace(/[^a-z0-9]/g,'');
+
+  return '<div class="ct-zone" style="padding:12px 14px;gap:0">'
+
+    // ── Row 1: name + status badge ──────────────────────────────────────
+    +'<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">'
+    +'<div style="flex:1"><div class="ct-zone-nm" style="font-size:.9rem">'+e.name+'</div>'
+    +'<div class="ct-zone-mt" style="margin-top:2px">'+e.city+'</div></div>'
+    +'<span style="background:'+statusBg+';color:'+statusColor+';font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:12px;white-space:nowrap">'+statusLabel+'</span>'
     +'</div>'
-    +'<div class="ct-acts">'
-    +'<button class="ct-act" style="background:var(--navy);color:#fff" data-id="'+id+'" onclick="closeCtDash();openDraw(\x27edit\x27,this.dataset.id)">✏️ Edit</button>'
-    +'<button class="ct-act" style="background:#e3f5ec;color:#1a7040" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27up\x27)">✓ Up</button>'
-    +'<button class="ct-act" style="background:#fef1e2;color:#955010" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27review\x27)">Under Review</button>'
-    +'<button class="ct-act" style="background:#fbeaea;color:var(--red)" data-id="'+id+'" onclick="admStatus(this.dataset.id,\x27down\x27)">Down</button>'
-(e.backupLines&&e.backupLines.length      ?'<div style="margin-top:8px;padding:8px;background:rgba(230,81,0,.07);border:1px solid rgba(230,81,0,.2);border-radius:8px">'        +'<div style="font-size:.67rem;font-weight:700;color:#955010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">📍 Backup Eruv</div>'        +'<div style="display:flex;gap:5px">'        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="up" style="background:#e3f5ec;color:#1a7040;flex:1">✓ Up</button>'        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="passel" style="background:#fff8e1;color:#7a5800;flex:1">~ Passel</button>'        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="down" style="background:#fbeaea;color:var(--red);flex:1">✕ Down</button>'        +'</div>'        +(e.backupStatus?'<div style="font-size:.68rem;color:var(--muted);margin-top:4px">Current: <b>'+e.backupStatus+'</b></div>':'')        +'</div>'      :'')+'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" onclick="adminShowHistory(\''+id+'\',\''+e.name+'\')">📋 History</button>'
-    +'<button class="ct-act" style="background:#f0f0f0;color:#666;margin-top:4px" data-id="'+id+'" onclick="ctDelZone(this.dataset.id)">🗑 Delete Zone</button>'
+
+    // ── Row 2: main status buttons ───────────────────────────────────────
+    +'<div style="display:flex;gap:5px;margin-bottom:8px">'
+    +'<button class="ct-act" style="flex:1;background:#e3f5ec;color:#1a7040" data-id="'+id+'" onclick="admStatus(this.dataset.id,\'up\')">✓ Up</button>'
+    +'<button class="ct-act" style="flex:1;background:#fef1e2;color:#955010" data-id="'+id+'" onclick="admStatus(this.dataset.id,\'review\')">~ Review</button>'
+    +'<button class="ct-act" style="flex:1;background:#fbeaea;color:#b91c1c" data-id="'+id+'" onclick="admStatus(this.dataset.id,\'down\')">✕ Down</button>'
+    +'</div>'
+
+    // ── Backup eruv (if applicable) ──────────────────────────────────────
+    +(e.backupLines&&e.backupLines.length
+      ?'<div style="background:rgba(230,81,0,.07);border:1px solid rgba(230,81,0,.2);border-radius:7px;padding:7px 10px;margin-bottom:8px">'
+        +'<div style="font-size:.67rem;font-weight:700;color:#955010;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">📍 Backup Eruv</div>'
+        +'<div style="display:flex;gap:5px">'
+        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="up" style="flex:1;background:#e3f5ec;color:#1a7040">✓ Up</button>'
+        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="passel" style="flex:1;background:#fff8e1;color:#7a5800">~ Passel</button>'
+        +'<button class="ct-act ct-bu" data-id="'+id+'" data-st="down" style="flex:1;background:#fbeaea;color:#b91c1c">✕ Down</button>'
+        +'</div>'
+        +(e.backupStatus?'<div style="font-size:.68rem;color:#8b949e;margin-top:4px">Current: <b>'+e.backupStatus+'</b></div>':'')
+        +'</div>'
+      :'')
+
+    // ── Details (collapsible) ────────────────────────────────────────────
+    +'<div>'
+    +'<button onclick="var d=document.getElementById(\''+uid+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\';this.textContent=d.style.display===\'none\'?\'Details ▸\':\'Details ▾\'" '
+    +'style="background:none;border:none;color:#8b949e;font-size:.72rem;cursor:pointer;padding:0;font-family:inherit;margin-bottom:4px">Details ▸</button>'
+    +'<div id="'+uid+'" style="display:none">'
+    +'<input class="fi" type="text" value="'+(e.note||'')+'" placeholder="Status note" style="font-size:.72rem;padding:4px 7px;margin-bottom:4px" data-id="'+id+'" data-field="note" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
+    +'<input class="fi" type="text" value="'+(e.rov||'')+'" placeholder="Rov / Rabbi" style="font-size:.72rem;padding:4px 7px;margin-bottom:4px" data-id="'+id+'" data-field="rov" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
+    +'<input class="fi" type="url" value="'+(e.donateUrl||'')+'" placeholder="Donation link" style="font-size:.72rem;padding:4px 7px;margin-bottom:8px" data-id="'+id+'" data-field="donateUrl" onchange="saveCtField(this.dataset.id,this.dataset.field,this.value)">'
+    +(e.lastChecked?'<div style="font-size:.68rem;color:#8b949e;margin-bottom:6px">Last checked: '+e.lastChecked+(e.inspectionDay?' · 🔔 '+e.inspectionDay+' '+e.inspectionTime:'')+'</div>':'')
+    // Action buttons row
+    +'<div style="display:flex;gap:5px;flex-wrap:wrap">'
+    +'<button class="ct-act" style="background:var(--navy);color:#fff" data-id="'+id+'" onclick="closeDrop&&closeDrop();closeCtDash();openDraw(\'edit\',this.dataset.id)">✏️ Edit</button>'
+    +'<button class="ct-act" style="background:#f0f0f0;color:#555" onclick="adminShowHistory(\''+id+'\',\''+e.name+'\')">📋 History</button>'
+    +'<button class="ct-act" style="background:#fbeaea;color:#b91c1c" data-id="'+id+'" onclick="ctDelZone(this.dataset.id)">🗑 Delete</button>'
     +'</div>'
     +'</div>'
-    +'<span class="badge '+bc+'" style="margin-left:10px">'+(sl[e.status]||e.status)+'</span>'
+    +'</div>'
+
     +'</div>';
 }
+
 
 function setBackupStatus(id, status){
   var e=S.eruvin.find(function(x){return x.id===id;});
