@@ -1159,6 +1159,32 @@ map.on('load',()=>{
 });
 function addEruvToMap(e){
   const sid='eruv-'+e.id,col=SCOL[e.status]||'#888';
+
+  // Multi-section zones (like Monsey) — render sections as colored fills
+  if(e.sections&&e.sections.length){
+    var secColors=['#4CAF50','#2196F3','#9C27B0','#FF9800','#E91E63',
+                   '#00BCD4','#8BC34A','#FF5722','#607D8B','#795548',
+                   '#F44336','#3F51B5','#009688','#FFEB3B','#673AB7'];
+    e.sections.forEach(function(sec,i){
+      var ssid=sid+'-sec'+i;
+      var scoords=sec.coords.map(function(c){return[c.g,c.a];});
+      var scol=secColors[i%secColors.length];
+      if(!map.getSource(ssid)){
+        map.addSource(ssid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[scoords]}}});
+        map.addLayer({id:ssid+'-fill',type:'fill',source:ssid,paint:{'fill-color':scol,'fill-opacity':0.12}});
+        map.addLayer({id:ssid+'-line',type:'line',source:ssid,paint:{'line-color':scol,'line-width':1,'line-opacity':.5}});
+      }
+    });
+    // Outer boundary bold line
+    if(!map.getSource(sid)){
+      map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
+      map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0}});
+      map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':3,'line-opacity':1}});
+      map.on('click',sid+'-fill',()=>showEruvPopup(e));
+    }
+    return;
+  }
+
   if(map.getSource(sid)){
     map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}});
     try{map.setPaintProperty(sid+'-fill','fill-color',col);}catch(_){}
@@ -4329,7 +4355,29 @@ function patchBsasSubZones(){
 
 function seedVA(){_seedFromWorker('virginia-highlands-eruv','Virginia Highlands Eruv','Atlanta, GA',[-84.3514,33.7779],'va','https://www.google.com/maps/d/embed?mid=1a3jkpmS3ZkRp77a23ac4bNRV6PQ');}
 function seedCheckers(){_seedFromWorker('east-denver-eruv','East Denver Eruv','Denver, CO',[-104.9334,39.7276],'denver','');}
-function seedMonsey(){_seedFromWorker('monsey-eruv','Monsey Eruv','Monsey, NY',[-74.0649,41.1304],'monsey','https://www.google.com/maps/d/embed?mid=1lUGTE1wAI3l5hS4ei6ZttsC5Got25bqY');}
+function seedMonsey(){
+  if(!window._db){toast('Not connected','err');return;}
+  toast('Fetching Monsey data...','ok');
+  Promise.all([
+    fetch('https://raw.githubusercontent.com/maprabinowitz-blip/myeiruv2/main/seed/monsey.json').then(function(r){return r.json();}),
+    fetch('https://raw.githubusercontent.com/maprabinowitz-blip/myeiruv2/main/seed/monsey_sections.json').then(function(r){return r.json();})
+  ]).then(function(results){
+    var d=results[0], secs=results[1];
+    var zone={id:'monsey-eruv',name:'Monsey Eruv',city:'Monsey, NY',
+      status:'review',coords:d.coords,center:[-74.0661,41.1495],
+      sections:secs,
+      source:'eiruvofmonsey.org',
+      embedUrl:'https://www.google.com/maps/d/embed?mid=1lUGTE1wAI3l5hS4ei6ZttsC5Got25bqY',
+      hotline:'845-552-2020',donateUrl:'https://dryveup.com/eiruvofmonsey',
+      owner:'',contractorEmail:'',contractors:[],
+      exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',
+      lastChecked:new Date().toLocaleDateString()};
+    return window._db.setZone('monsey-eruv',zone);
+  }).then(function(ok){
+    if(ok)toast('Monsey: 709pt outer + 28 sections','ok');
+    else toast('Failed','err');
+  }).catch(function(e){toast('Error: '+e.message,'err');});
+}
 function _seedFromWorker(id,name,city,center,key,embedUrl){
   if(!window._db){toast('Not connected','err');return;}
   toast('Fetching...','ok');
@@ -4840,6 +4888,13 @@ function _renderAllMapData(){
     if(map.getLayer&&map.getLayer('eruv-'+e.id+'-fill'))try{map.removeLayer('eruv-'+e.id+'-fill');}catch(_){}
     if(map.getLayer&&map.getLayer('eruv-'+e.id+'-line'))try{map.removeLayer('eruv-'+e.id+'-line');}catch(_){}
     if(map.getSource&&map.getSource('eruv-'+e.id))try{map.removeSource('eruv-'+e.id);}catch(_){}
+    // Remove section layers if any
+    if(e.sections){e.sections.forEach(function(_s,i){
+      var ssid='eruv-'+e.id+'-sec'+i;
+      try{if(map.getLayer(ssid+'-fill'))map.removeLayer(ssid+'-fill');}catch(_){}
+      try{if(map.getLayer(ssid+'-line'))map.removeLayer(ssid+'-line');}catch(_){}
+      try{if(map.getSource(ssid))map.removeSource(ssid);}catch(_){}
+    });}
   });
   S.eruvin.forEach(addEruvToMap);
   // Always load seed shuls first
