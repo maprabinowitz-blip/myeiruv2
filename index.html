@@ -895,6 +895,10 @@ header{
         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><polyline points="9 15 12 12 15 15"/></svg>
         <div class="dp-btn-label">Import KML<span>.kml or .kmz file</span></div>
       </button>
+      <button class="dp-btn" id="dBtn-gmaps" onclick="importFromGoogleMaps()" title="Auto-import from Google My Maps URL">
+        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.5"><circle cx="12" cy="10" r="3"/><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/></svg>
+        <div class="dp-btn-label">Google Maps<span>Auto-import</span></div>
+      </button>
       <input type="file" id="kmlFileIn" accept=".kml,.kmz" style="display:none" onchange="importKmlFile(this)">
       <div class="dp-div"></div>
       <button class="dp-btn" id="dBtn-edit" onclick="setDMode('direct_select')" style="opacity:.3;pointer-events:none" title="Draw a boundary first">
@@ -1005,6 +1009,7 @@ header{
           </div>
           <div class="fg"><label class="lbl">Rabbinic Endorsement</label><input class="fi" id="zoneRov" placeholder="e.g. Rabbi Y. Goldstein, Beth Din of..."></div>
           <div class="fg"><label class="lbl">Donation Link</label><input class="fi" id="zoneDonate" placeholder="https://…"></div>
+          <div class="fg"><label class="lbl">Google Maps Embed URL <small style="color:rgba(255,255,255,.35);font-weight:400">(optional)</small></label><input class="fi" id="zoneEmbed" type="url" placeholder="https://www.google.com/maps/d/embed?mid=…"></div>
         </div>
 
         <div style="height:1px;background:rgba(255,255,255,.07);margin:10px 0 0;"></div>
@@ -2178,7 +2183,8 @@ function showEruvDetail(id){
     +(e.backupStatus&&e.backupLines&&e.backupLines.length?      '<div style="padding:8px 10px;border-radius:8px;margin-bottom:10px;font-size:.78rem;line-height:1.5;border:1px solid '+(e.backupStatus==='up'?'#b2dfdb':e.backupStatus==='down'?'#ffcdd2':'#ffe082')+';background:'+(e.backupStatus==='up'?'#f0fff8':e.backupStatus==='down'?'#fff5f5':'#fffdf0')+'">'      +'<span style="font-weight:700;color:'+(e.backupStatus==='up'?'#1a7040':e.backupStatus==='down'?'var(--red)':'#7a5800')+'">'      +(e.backupStatus==='up'?'✓':e.backupStatus==='down'?'✕':'~')+' Backup Eruv (Park Terrace): '+(e.backupStatus==='up'?'Up':e.backupStatus==='down'?'Down':'Passel')+'</span>'      +(e.backupNote?'<div style="color:var(--muted);margin-top:2px;font-size:.72rem">'+e.backupNote+'</div>':'')      +'</div>':'')
     // Boundary/segment notes
     +segNotesHtml
-    // Donate
+    // Google Maps embed (if zone has embedUrl)
+    +(e.embedUrl?'<div style="margin-bottom:14px">'      +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">🗺 Eruv Map</div>'      +'<div style="position:relative;padding-top:66%;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'      +'<iframe src="'+e.embedUrl+'" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" allowfullscreen loading="lazy"></iframe>'      +'</div></div>':'')    // Donate
     +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:12px">❤️ Support This Eiruv</a><br>':'')
     // Adjacent carrying
     +(function(){
@@ -3616,7 +3622,7 @@ function openDraw(mode,editId){
   S.editTargetId=editId||null;S.exclMode=false;S.curExcl=[];S.curAdj=[];_drawHistory=[];
   document.getElementById('drawOverlay').classList.add('on');
   document.getElementById('drawModeBadge').textContent=mode==='edit'?'Edit':'Draw';
-  ['zoneName','zoneCity','zoneNote','zoneDonate'].forEach(function(id){document.getElementById(id).value='';});
+  ['zoneName','zoneCity','zoneNote','zoneDonate','zoneEmbed'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('zoneStatus').value='up';
   setStatus('up',true);
   renderExclList();
@@ -3881,6 +3887,34 @@ function _updateCdLayers(){
 }
 
 // ── KML Import ──────────────────────────────────────────────────────────────
+function importFromGoogleMaps(){
+  var url = prompt('Paste the Google My Maps URL or embed URL:\n\nExample:\nhttps://www.google.com/maps/d/viewer?mid=1abc...\nhttps://www.google.com/maps/d/embed?mid=1abc...');
+  if(!url) return;
+  // Extract mid
+  var mid = (url.match(/[?&]mid=([^&\s"'<>]+)/) || [])[1];
+  if(!mid){
+    toast('Could not find map ID in URL — use the full Google Maps viewer URL','err');
+    return;
+  }
+  toast('Fetching KML from Google Maps…','ok');
+  fetch('https://api.myeiruv.org',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Action':'kml-proxy'},
+    body:JSON.stringify({mid:mid})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.error){toast('Error: '+d.error,'err');return;}
+    if(!d.kml){toast('No KML returned','err');return;}
+    toast('KML received — parsing…','ok');
+    var suggestedName='';
+    var nameMatch=d.kml.match(/<name>([^<]+)<\/name>/);
+    if(nameMatch)suggestedName=nameMatch[1].trim();
+    _parseAndLoadKml(d.kml, suggestedName);
+  })
+  .catch(function(e){toast('Fetch failed: '+e.message,'err');});
+}
+
 async function importKmlFile(input){
   var file=input.files[0];if(!file)return;
   input.value='';
@@ -4334,8 +4368,10 @@ function loadForEdit(editId){
   S.curExcl=(e.exclusions||[]).map(function(ex){return Object.assign({},ex);});
   S.curAdj=(e.adjacency||[]).map(function(a){return Object.assign({},a);});
   document.getElementById('zoneName').value=e.name;document.getElementById('zoneCity').value=e.city;
+  if(document.getElementById('zoneEmbedUrl'))document.getElementById('zoneEmbedUrl').value=e.embedUrl||'';
   document.getElementById('zoneStatus').value=e.status;document.getElementById('zoneNote').value=e.note||'';
   document.getElementById('zoneDonate').value=e.donateUrl||'';
+  if(document.getElementById('zoneEmbed'))document.getElementById('zoneEmbed').value=e.embedUrl||'';
   setStatus(e.status,true);
   Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]},properties:{isExcl:'0'}});
   S.curExcl.forEach(function(ex){Draw.add({type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]},properties:{isExcl:'1',exclId:ex.id,exclName:ex.name}});});
@@ -4672,7 +4708,7 @@ function autoDetectZoneCity(coords){
 function saveZone(){
   if(_cd.active){if(_cd.pts.length>=3){_finishCustomDraw();}else{toast('Draw zone boundary first (need 3+ points)','err');return;}setTimeout(saveZone,200);return;}
   if(!Draw)return;
-  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim(),rov=(document.getElementById('zoneRov')&&document.getElementById('zoneRov').value.trim())||'',boundaryNotes=(document.getElementById('zoneBoundaryNotes')&&document.getElementById('zoneBoundaryNotes').value.trim())||'';
+  var name=document.getElementById('zoneName').value.trim(),city=document.getElementById('zoneCity').value.trim(),status=document.getElementById('zoneStatus').value,note=document.getElementById('zoneNote').value.trim(),donateUrl=document.getElementById('zoneDonate').value.trim(),rov=(document.getElementById('zoneRov')&&document.getElementById('zoneRov').value.trim())||'',boundaryNotes=(document.getElementById('zoneBoundaryNotes')&&document.getElementById('zoneBoundaryNotes').value.trim())||'',embedUrl=(document.getElementById('zoneEmbed')&&document.getElementById('zoneEmbed').value.trim())||'';
   if(!name||!city){toast('Enter zone name and city','err');return;}
   var feats=Draw.getAll().features,main=feats.find(function(f){return f.properties.isExcl!=='1';});
   if(!main){toast('Draw zone boundary first','err');return;}
@@ -4682,8 +4718,8 @@ function saveZone(){
   var excls=S.curExcl.slice();
   feats.filter(function(f){return f.properties.isExcl==='1';}).forEach(function(f){var xid=f.properties.exclId||'ex-'+Date.now();if(!excls.find(function(x){return x.id===xid;}))excls.push({id:xid,name:f.properties.exclName||'Exclusion',coords:f.geometry.coordinates[0]});});
   var adjacency=S.curAdj.filter(function(a){return a.canEnter;});
-  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){var kmlNotes=window._kmlImportedNotes||null;Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});if(kmlNotes&&kmlNotes.length)e.locationNotes=kmlNotes;addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
-  else{var kmlNotesNew=window._kmlImportedNotes||null;var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};if(kmlNotesNew&&kmlNotesNew.length)zone.locationNotes=kmlNotesNew;window._kmlImportedNotes=null;S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
+  if(S.editTargetId){var e=S.eruvin.find(function(x){return x.id===S.editTargetId;});if(e){var kmlNotes=window._kmlImportedNotes||null;Object.assign(e,{name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,embedUrl:embedUrl,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||''});if(kmlNotes&&kmlNotes.length)e.locationNotes=kmlNotes;addEruvToMap(e);if(window._db)window._db.saveZone(e).then(function(ok){toast(ok?'Zone saved: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}}
+  else{var kmlNotesNew=window._kmlImportedNotes||null;var id='custom-'+Date.now();var zone={id:id,name:name,city:city,status:status,note:note,donateUrl:donateUrl,rov:rov,boundaryNotes:boundaryNotes,embedUrl:embedUrl,segNotes:JSON.parse(JSON.stringify(_segNotes)),coords:coords,center:center,exclusions:excls,adjacency:adjacency,lastChecked:getEruvTimestamp(),checkedBy:S.user&&S.user.name||'',owner:S.user&&S.user.email||''};if(kmlNotesNew&&kmlNotesNew.length)zone.locationNotes=kmlNotesNew;window._kmlImportedNotes=null;S.eruvin.push(zone);addEruvToMap(zone);if(window._db)window._db.saveZone(zone).then(function(ok){toast(ok?'Zone created: '+name:'Zone saved locally (check Firestore rules)',ok?'ok':'err');}).catch(function(err){toast('Local OK. Cloud error: '+(err.message||err),'err');});}
   saveCustomZones();renderEruvList();renderStatus();closeDraw();
 }
 

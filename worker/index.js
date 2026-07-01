@@ -36,6 +36,24 @@ export default {
       return cors(JSON.stringify(data), res.status, allow);
     }
 
+    if (action === 'kml-proxy') {
+      // Fetch KML from Google My Maps — browser can't do this due to CORS
+      const { mid } = body;
+      if (!mid) return json({error:'mid required'},400,allow);
+      const kmlUrl = `https://www.google.com/maps/d/kml?mid=${encodeURIComponent(mid)}&forcekml=1`;
+      try {
+        const res = await fetch(kmlUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MyEiruv/1.0)' }
+        });
+        if (!res.ok) return json({error:`Google returned ${res.status}`},502,allow);
+        const kml = await res.text();
+        if (!kml.includes('<kml')) return json({error:'Not a valid KML response'},502,allow);
+        return cors(JSON.stringify({kml}), 200, allow);
+      } catch(e) {
+        return json({error:e.message},502,allow);
+      }
+    }
+
     if (action === 'google-routes') {
       const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes',{
         method:'POST', headers:{
