@@ -3906,7 +3906,10 @@ function importFromGoogleMaps(){
   .then(function(d){
     if(d.error){toast('Error: '+d.error,'err');return;}
     if(!d.kml){toast('No KML returned','err');return;}
-    toast('KML received — parsing…','ok');
+    var kmlSize=d.kml.length;
+    var hasLS=d.kml.includes('<LineString');
+    var hasPoly=d.kml.includes('<Polygon');
+    toast('KML received ('+kmlSize+' bytes, LS:'+hasLS+' Poly:'+hasPoly+')…','ok');
     var suggestedName='';
     var nameMatch=d.kml.match(/<name>([^<]+)<\/name>/);
     if(nameMatch)suggestedName=nameMatch[1].replace(/\s*(eruv|eiruv)\s*/gi,'').trim()+' Eruv';
@@ -4005,7 +4008,7 @@ function _smartParseKml(kmlText, suggestedName){
   // Parse all LineString placemarks independently
   var segs=[];
   xml.querySelectorAll('Placemark').forEach(function(pm,idx){
-    var ls=pm.querySelector('LineString coordinates');
+    var ls=pm.querySelector('LineString coordinates')||pm.querySelector('Polygon outerBoundaryIs coordinates')||pm.querySelector('Polygon coordinates');
     if(!ls)return;
     var pts=[];
     ls.textContent.trim().split(/\s+/).forEach(function(pt){
