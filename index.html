@@ -3909,7 +3909,9 @@ function importFromGoogleMaps(){
     toast('KML received — parsing…','ok');
     var suggestedName='';
     var nameMatch=d.kml.match(/<name>([^<]+)<\/name>/);
-    if(nameMatch)suggestedName=nameMatch[1].trim();
+    if(nameMatch)suggestedName=nameMatch[1].replace(/\s*(eruv|eiruv)\s*/gi,'').trim()+' Eruv';
+    // Store mid for embed URL
+    window._pendingEmbedUrl='https://www.google.com/maps/d/embed?mid='+mid;
     _parseAndLoadKml(d.kml, suggestedName);
   })
   .catch(function(e){toast('Fetch failed: '+e.message,'err');});
@@ -4132,6 +4134,7 @@ function _parseAndLoadKml(kmlText, suggestedName){
   if(!result)return;
 
   if(result.simple){
+    if(window._pendingEmbedUrl){result.embedUrl=window._pendingEmbedUrl;window._pendingEmbedUrl=null;}
     _loadKmlIntoEditor(result);
     return;
   }
@@ -4229,14 +4232,40 @@ function cancelKmlReview(){
 function acceptKmlReview(){
   if(!_kmlReviewData)return;
   document.getElementById('kmlReviewPanel').style.display='none';
+  if(window._pendingEmbedUrl){_kmlReviewData.embedUrl=window._pendingEmbedUrl;window._pendingEmbedUrl=null;}
   _loadKmlIntoEditor(_kmlReviewData);
   _kmlReviewData=null;
 }
 
 function _loadKmlIntoEditor(r){
   var coords=r.coords;
+  // Auto-fill name from KML
   if(r.zoneName&&!document.getElementById('zoneName').value)
     document.getElementById('zoneName').value=r.zoneName;
+  // Auto-fill embed URL if imported from Google Maps
+  if(r.embedUrl&&document.getElementById('zoneEmbed')&&!document.getElementById('zoneEmbed').value)
+    document.getElementById('zoneEmbed').value=r.embedUrl;
+  // Auto-detect city via reverse geocode of boundary center
+  if(coords&&coords.length&&!document.getElementById('zoneCity').value){
+    var cx=coords.reduce(function(a,c){return a+c[0];},0)/coords.length;
+    var cy=coords.reduce(function(a,c){return a+c[1];},0)/coords.length;
+    fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+cx+','+cy+'.json?types=place,locality,neighborhood,district&access_token='+TOKEN)
+      .then(function(r2){return r2.json();})
+      .then(function(d){
+        if(d.features&&d.features.length){
+          // Build "City, State" from context
+          var f=d.features[0];
+          var city=f.text||'';
+          var state='';
+          (f.context||[]).forEach(function(c){
+            if(c.id.startsWith('region'))state=c.short_code?(c.short_code.replace('US-','')):'';
+          });
+          var cityStr=city+(state?' '+state:'');
+          if(cityStr&&!document.getElementById('zoneCity').value)
+            document.getElementById('zoneCity').value=cityStr;
+        }
+      }).catch(function(){});
+  }
   window._kmlImportedNotes=r.locNotes||[];
 
   _pushUndo();
