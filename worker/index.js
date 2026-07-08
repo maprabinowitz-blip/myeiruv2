@@ -152,8 +152,21 @@ export const scheduled = {
     const hour = now.getUTCHours() - 4; // rough EST
     
     // Load all active alerts from Firestore via REST API
+    // Authenticate as the cron service account (Firebase Auth email/password)
+    // Set CRON_EMAIL + CRON_PASS in worker env; the email must be listed in firestore.rules isAdmin()
+    let idToken = '';
+    try {
+      const authRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${env.FIREBASE_KEY}`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({email: env.CRON_EMAIL, password: env.CRON_PASS, returnSecureToken: true})
+      });
+      const authData = await authRes.json();
+      idToken = authData.idToken || '';
+    } catch(e) { console.log('[Cron] auth failed:', e.message); }
+    const authHdr = idToken ? {Authorization: `Bearer ${idToken}`} : {};
+
     const fsUrl = `https://firestore.googleapis.com/v1/projects/myer-b23f6/databases/(default)/documents/alerts?pageSize=200&key=${env.FIREBASE_KEY}`;
-    const alertsRes = await fetch(fsUrl);
+    const alertsRes = await fetch(fsUrl, {headers: authHdr});
     const alertsData = await alertsRes.json();
     const alerts = (alertsData.documents||[]).map(d => {
       const f = d.fields||{};
@@ -171,7 +184,7 @@ export const scheduled = {
     }).filter(a => a.active && a.userEmail);
 
     // Load zones to get current status
-    const zonesRes = await fetch(`https://firestore.googleapis.com/v1/projects/myer-b23f6/databases/(default)/documents/zones?pageSize=100&key=${env.FIREBASE_KEY}`);
+    const zonesRes = await fetch(`https://firestore.googleapis.com/v1/projects/myer-b23f6/databases/(default)/documents/zones?pageSize=100&key=${env.FIREBASE_KEY}`, {headers: authHdr});
     const zonesData = await zonesRes.json();
     const zones = {};
     (zonesData.documents||[]).forEach(d => {

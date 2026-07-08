@@ -2384,6 +2384,7 @@ window._fsUsers = window._fsUsers || [];
 window._fsContractors = window._fsContractors || [];
 function getUsers(){return window._fsUsers||[];}
 function _cacheAndSaveUser(user){
+  if(user.password)delete user.password;
   var idx=window._fsUsers.findIndex(function(u){return u.email.toLowerCase()===user.email.toLowerCase();});
   if(idx>=0)window._fsUsers[idx]=user;else window._fsUsers.push(user);
   if(window._db)window._db.saveUser(user);
@@ -2462,32 +2463,12 @@ function doForgotPassword(){
   if(!email){err.textContent='Please enter your email.';err.style.display='block';return;}
   var btn=document.querySelector('#authForgotFields .btn-navy');
   if(btn){btn.disabled=true;btn.textContent='Sending...';}
-  // Generate reset token and save to Firestore
-  var token=Math.random().toString(36).slice(2)+Date.now().toString(36);
-  var resetDoc={email:email,token:token,createdAt:new Date().toISOString(),used:false};
-  var saved=false;
-  function sendResetEmail(){
-    var resetUrl='https://myeiruv.org?reset='+token+'&email='+encodeURIComponent(email);
-    fetch('https://api.myeiruv.org',{method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-      body:JSON.stringify({
-        to:email,toName:email,
-        eruvName:'Reset Your MyEiruv Password',
-        eruvCity:'',status:'review',
-        note:'Click the link below to reset your password:\n\n'+resetUrl+'\n\nThis link expires in 1 hour. If you did not request this, ignore this email.',
-        timestamp:new Date().toLocaleDateString()
-      })
-    }).then(function(){
-      if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
-      err.style.cssText='display:block;color:green;';
-      err.textContent='✅ Reset link sent! Check your inbox.';
-    }).catch(function(){
-      if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
-      err.textContent='Could not send email. Please try again.';err.style.display='block';
-    });
-  }
-  if(window._db){
-    window._db.saveResetToken(resetDoc).then(sendResetEmail).catch(sendResetEmail);
-  } else { sendResetEmail(); }
+  window._db.sendReset(email).then(function(ok){
+    if(btn){btn.disabled=false;btn.textContent='Send Reset Link';}
+    err.style.display='block';
+    if(ok){err.style.color='var(--green,#1a7040)';err.textContent='✓ Reset email sent — check your inbox (and spam).';}
+    else{err.style.color='var(--red)';err.textContent='Could not send reset email. Is this the right address?';}
+  });
 }
 function checkResetToken(){
   var params=new URLSearchParams(location.search);
@@ -2524,11 +2505,40 @@ function doGoogle(role){
 function doEmail(){
   var email=document.getElementById('siEmail').value.trim().toLowerCase(),pass=document.getElementById('siPass').value,err=document.getElementById('siErr');err.style.display='none';
   if(!email||!pass){err.textContent='Please fill all fields.';err.style.display='block';return;}
+  if(!window._db||!window._db.emailSignIn){err.textContent='Still loading — try again in a moment.';err.style.display='block';return;}
+  err.textContent='Signing in…';err.style.display='block';err.style.color='var(--muted)';
+
+  window._db.emailSignIn(email,pass).then(function(res){
+    if(res.ok){_finishEmailSignIn(email);return;}
+    if(res.code==='auth/user-not-found'||res.code==='auth/invalid-credential'||res.code==='auth/invalid-login-credentials'){
+      var legacy=getUsers().find(function(u){return u.email.toLowerCase()===email;});
+      if(legacy&&legacy.password===pass){
+        window._db.emailSignUp(email,pass).then(function(res2){
+          if(res2.ok){
+            delete legacy.password;
+            _cacheAndSaveUser(legacy);
+            _finishEmailSignIn(email);
+          }else{
+            err.textContent='Migration failed ('+res2.code+'). Use Forgot Password.';err.style.color='var(--red)';
+          }
+        });
+        return;
+      }
+      err.textContent='Incorrect email or password.';err.style.color='var(--red)';
+      return;
+    }
+    if(res.code==='auth/wrong-password'){err.textContent='Incorrect password.';err.style.color='var(--red)';return;}
+    if(res.code==='auth/too-many-requests'){err.textContent='Too many attempts — wait a minute or reset your password.';err.style.color='var(--red)';return;}
+    err.textContent='Sign-in failed: '+(res.code||'unknown');err.style.color='var(--red)';
+  });
+}
+
+function _finishEmailSignIn(email){
   var isAdmin=email===ADMIN_EMAIL.toLowerCase();
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;});
-  if(!user&&!isAdmin){err.textContent='No account found. Please sign up first.';err.style.display='block';return;}
-  if(!user&&isAdmin){user={name:'Admin',email:email,password:pass,role:'admin',avatar:'A',contractorStatus:'none'};}
-  else{if(user.password&&user.password!==pass){err.textContent='Incorrect password.';err.style.display='block';return;}if(isAdmin)user.role='admin';user.password=pass;}
+  if(!user){user={name:email.split('@')[0],email:email,role:isAdmin?'admin':'user',avatar:email[0].toUpperCase(),contractorStatus:'none'};}
+  if(isAdmin)user.role='admin';
+  if(user.password)delete user.password;
   _cacheAndSaveUser(user);
   closeModal();signInAs(user);
 }
@@ -2536,23 +2546,34 @@ function doRegister(){
   var name=document.getElementById('rName').value.trim(),email=document.getElementById('rEmail').value.trim().toLowerCase(),pass=document.getElementById('rPass').value,err=document.getElementById('rErr');err.style.display='none';
   if(!name||!email||!pass){err.textContent='All fields required.';err.style.display='block';return;}
   if(pass.length<6){err.textContent='Min 6 characters.';err.style.display='block';return;}
-  if(getUsers().find(function(u){return u.email.toLowerCase()===email;})){err.textContent='Already registered.';err.style.display='block';return;}
-  var isAdmin=email===ADMIN_EMAIL.toLowerCase();
-  var user={name:name,email:email,password:pass,role:isAdmin?'admin':'user',avatar:name[0].toUpperCase(),contractorStatus:'none'};
-  _cacheAndSaveUser(user);closeModal();signInAs(user);
-  if(window._db)window._db.loadUsers().then(function(u){if(u&&u.length)window._fsUsers=u;});
-  // Send welcome email via Brevo
-  fetch('https://api.myeiruv.org',{
-    method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
-    body:JSON.stringify({
-      to:email,toName:name,
-      eruvName:'Welcome to MyEiruv!',
-      eruvCity:'',
-      status:'up',
-      note:'Your account has been created. Sign in at myeiruv.org to set eiruv alerts and stay informed every Shabbos.',
-      timestamp:new Date().toLocaleDateString()
-    })
-  }).catch(function(){});
+  if(!window._db||!window._db.emailSignUp){err.textContent='Still loading — try again in a moment.';err.style.display='block';return;}
+  err.textContent='Creating account…';err.style.display='block';err.style.color='var(--muted)';
+
+  window._db.emailSignUp(email,pass).then(function(res){
+    if(!res.ok){
+      if(res.code==='auth/email-already-in-use'){err.textContent='Already registered — sign in instead.';}
+      else if(res.code==='auth/weak-password'){err.textContent='Password too weak (min 6 characters).';}
+      else if(res.code==='auth/invalid-email'){err.textContent='Invalid email address.';}
+      else{err.textContent='Registration failed: '+(res.code||'unknown');}
+      err.style.color='var(--red)';
+      return;
+    }
+    var isAdmin=email===ADMIN_EMAIL.toLowerCase();
+    var user={name:name,email:email,role:isAdmin?'admin':'user',avatar:name[0].toUpperCase(),contractorStatus:'none'};
+    _cacheAndSaveUser(user);closeModal();signInAs(user);
+    if(window._db)window._db.loadUsers().then(function(u){if(u&&u.length)window._fsUsers=u;});
+    fetch('https://api.myeiruv.org',{
+      method:'POST',headers:{'Content-Type':'application/json','X-Action':'brevo-send'},
+      body:JSON.stringify({
+        to:email,toName:name,
+        eruvName:'Welcome to MyEiruv!',
+        eruvCity:'',
+        status:'up',
+        note:'Your account has been created. Sign in at myeiruv.org to set eiruv alerts and stay informed every Shabbos.',
+        timestamp:new Date().toLocaleDateString()
+      })
+    }).catch(function(){});
+  });
 }
 function doContractorApply(){
   var name=document.getElementById('cName').value.trim(),email=document.getElementById('cEmail').value.trim().toLowerCase();
@@ -5118,7 +5139,8 @@ import {
   getDocs, getDoc, setDoc, deleteDoc, updateDoc, query, where
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
-  getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, sendPasswordResetEmail
+  getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, sendPasswordResetEmail,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -5219,6 +5241,20 @@ onAuthStateChanged(auth, async function(fbUser) {
 
 window._db = {
   db: db,
+
+  /* ── EMAIL AUTH (Firebase Auth — no plaintext passwords) ─── */
+  async emailSignIn(email, pass) {
+    try { const cred = await signInWithEmailAndPassword(auth, email, pass); return { ok: true, user: cred.user }; }
+    catch(e) { return { ok: false, code: e.code }; }
+  },
+  async emailSignUp(email, pass) {
+    try { const cred = await createUserWithEmailAndPassword(auth, email, pass); return { ok: true, user: cred.user }; }
+    catch(e) { return { ok: false, code: e.code }; }
+  },
+  async sendReset(email) {
+    try { await sendPasswordResetEmail(auth, email); return true; }
+    catch(e) { return false; }
+  },
 
   /* ── ZONES ────────────────────────────────────────────────── */
   async loadZones() {

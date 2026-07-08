@@ -10,7 +10,8 @@ service cloud.firestore {
     // Helper: is the site admin (Google account email)
     function isAdmin() {
       return isSignedIn() &&
-        request.auth.token.email == 'maprabinowitz@gmail.com';
+        request.auth.token.email in
+          ['maprabinowitz@gmail.com', 'cron@myeiruv.org'];
     }
 
     // Helper: is a contractor assigned to this zone
