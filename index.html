@@ -10,7 +10,15 @@
 <meta name="theme-color" content="#0f1f38">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230f1f38'/%3E%3Cpath d='M5 17 Q16 9 27 17' stroke='%23ffffff' stroke-width='2' fill='none'/%3E%3Cpath d='M5 21 Q16 13 27 21' stroke='%23aaaaaa' stroke-width='1.2' fill='none'/%3E%3Cline x1='7' y1='10' x2='7' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3Cline x1='25' y1='10' x2='25' y2='28' stroke='%234a90d9' stroke-width='2.5'/%3E%3Cellipse cx='4' cy='8.5' rx='3.5' ry='2' fill='%237aaace'/%3E%3Ccircle cx='7' cy='6.5' r='2.2' fill='%237aaace'/%3E%3Cpolygon points='8.5,5 11,6.5 8.5,7.2' fill='%23e8c84a'/%3E%3Ccircle cx='7.8' cy='5.8' r='0.6' fill='%230a1628'/%3E%3C/svg%3E">
-<title>MyEiruv</title>
+<title>MyEiruv — Live Eruv Status &amp; Maps</title>
+<meta name="description" content="Check if you're inside the eruv. Live eruv status, interactive boundary maps, Shabbos alerts, and walking routes for Jewish communities worldwide.">
+<meta property="og:title" content="MyEiruv — Live Eruv Status &amp; Maps">
+<meta property="og:description" content="Check if you're inside the eruv. Live status updates every Erev Shabbos, interactive maps, and alerts for your community.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://myeiruv.org">
+<meta property="og:image" content="https://myeiruv.org/logo.png">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#0a1628">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -430,6 +438,29 @@ header{
   #map{height:48vh;}
   .admin-drawer,.ct-dash{width:100%;}
   .hdr-brand{display:none;}
+  /* Touch targets: min 44px tap area */
+  button,.hbtn,.ct-act,.act-btn,.dp-btn{min-height:44px;}
+  .u-drop-it{padding:12px 16px;min-height:44px;}
+  /* Header: tighter */
+  .hdr{padding:8px 12px;gap:8px;}
+  /* Inputs: 16px font prevents iOS zoom-on-focus */
+  input,select,textarea,.fi{font-size:16px !important;}
+  /* Modals: full-screen on phone */
+  .modal-inner{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;margin:0;}
+  /* Draw palette: horizontal scroll strip at bottom */
+  .draw-palette{flex-direction:row;overflow-x:auto;max-width:calc(100vw - 20px);bottom:12px;top:auto;-webkit-overflow-scrolling:touch;}
+  .dp-btn{flex-shrink:0;}
+  /* Zone detail: full width */
+  .eruv-detail{width:100%;}
+  /* Toast above thumb zone */
+  .toast{bottom:80px;left:12px;right:12px;width:auto;}
+  /* Safe-area for notched phones */
+  .hdr{padding-top:calc(8px + env(safe-area-inset-top));}
+  .sidebar{padding-bottom:env(safe-area-inset-bottom);}
+}
+@media(max-width:400px){
+  .hdr .logo-txt{font-size:.95rem;}
+  .stat-pills{flex-wrap:wrap;}
 }
 @keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}

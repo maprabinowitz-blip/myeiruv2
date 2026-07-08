@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: signed in with Google via Firebase Auth
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper: is the site admin (Google account email)
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email == 'maprabinowitz@gmail.com';
+    }
+
+    // Helper: is a contractor assigned to this zone
+    function isZoneContractor(zoneId) {
+      return isSignedIn() &&
+        request.auth.token.email in
+          get(/databases/$(database)/documents/zones/$(zoneId)).data.contractors;
+    }
+
+    // ── ZONES: public read; admin or assigned contractor write ──
+    match /zones/{zoneId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || isZoneContractor(zoneId);
+    }
+
+    // ── SHULS: public read; admin write ──
+    match /shuls/{shulId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── USERS: own doc only; admin reads all. NO PASSWORDS STORED. ──
+    match /users/{userId} {
+      allow read: if isAdmin() ||
+        (isSignedIn() && request.auth.token.email == resource.data.email);
+      allow create: if isSignedIn() &&
+        request.auth.token.email == request.resource.data.email &&
+        !('password' in request.resource.data);
+      allow update: if (isAdmin() ||
+        (isSignedIn() && request.auth.token.email == resource.data.email)) &&
+        !('password' in request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // ── ALERTS: own alerts only; admin reads all (for cron) ──
+    match /alerts/{alertId} {
+      allow read: if isAdmin() ||
+        (isSignedIn() && request.auth.token.email == resource.data.userEmail);
+      allow create: if isSignedIn() &&
+        request.auth.token.email == request.resource.data.userEmail;
+      allow update, delete: if isAdmin() ||
+        (isSignedIn() && request.auth.token.email == resource.data.userEmail);
+    }
+
+    // ── CONTRACTORS: public read (shows on zone pages); admin write ──
+    match /contractors/{cId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Default deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
