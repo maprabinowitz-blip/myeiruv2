@@ -2942,6 +2942,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Monsey Eruv</div><div class="acard-mt">Monsey, NY — 1,815 pts (28 sections)</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedMonsey()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Virginia Highlands Eruv</div><div class="acard-mt">Atlanta, GA — 360 pts + 6 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedVA()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Seed 12 Remaining Eruvin</div><div class="acard-mt">Crown Heights, Paramus, Oakland, Eugene, Lower Merion, Champaign, Waltham, Ottawa x2, Budapest, Bushey, Chigwell</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedAllRemaining()">📥 Import All</button></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -4406,6 +4407,36 @@ function fixBsas(){
     })
     .then(function(){toast('Buenos Aires reset to 99 pts','ok');})
     .catch(function(e){toast(e.code+': '+e.message,'err');});
+}
+
+function seedAllRemaining(){
+  if(!window._db){toast('Not connected','err');return;}
+  var zones=[
+    {id:'crown-heights-eruv',name:'Crown Heights Eruv',city:'Brooklyn, NY',center:[-73.9284, 40.6572],embedUrl:'https://www.google.com/maps/d/embed?mid=1wcvJ7WnWgprRR3WiYMeFm9LCwfWEJ-0'},
+    {id:'paramus-eruv',name:'Paramus Eruv',city:'Paramus, NJ',center:[-74.0485, 40.9398],embedUrl:'https://www.google.com/maps/d/embed?mid=1oUwkPDrH3UYcU1GRhWM2cSQtvLIQG2k6'},
+    {id:'oakland-eruv',name:'Oakland Eruv',city:'Oakland, CA',center:[-122.2243, 37.8071],embedUrl:'https://www.google.com/maps/d/embed?mid=1szsKi-tRPUr0KtklVSLjqgjslnCMYl8x'},
+    {id:'eugene-eruv',name:'Eugene Eruv',city:'Eugene, OR',center:[-123.0868, 44.0521],embedUrl:'https://www.google.com/maps/d/embed?mid=13CXgM5o-yhjvfBtfiZ0qJC18LHdKzq42'},
+    {id:'lower-merion-eruv',name:'Lower Merion Eruv',city:'Philadelphia, PA',center:[-75.2673, 40.0093],embedUrl:'https://www.google.com/maps/d/embed?mid=zal-mq_nmhdw.kbdqsn2teocw'},
+    {id:'champaign-urbana-eruv',name:'Champaign-Urbana Eruv',city:'Champaign, IL',center:[-88.2272, 40.1115],embedUrl:'https://www.google.com/maps/d/embed?mid=1FlrCIWb7nqQgdk667FWkZe_W60I'},
+    {id:'waltham-brandeis-eruv',name:'Waltham/Brandeis Eruv',city:'Waltham, MA',center:[-71.2575, 42.365],embedUrl:'https://www.google.com/maps/d/embed?mid=17eM6z4Gp5rf_PsGX6onvNz6041g'},
+    {id:'ottawa-craig-henry-eruv',name:'Ottawa Craig Henry Eruv',city:'Ottawa, Canada',center:[-75.7689, 45.3393],embedUrl:'https://www.google.com/maps/d/embed?mid=1XGd3csGwSnGx3PSiWIyKUlz5guA'},
+    {id:'ottawa-jcc-eruv',name:'Ottawa JCC Eruv',city:'Ottawa, Canada',center:[-75.7524, 45.3745],embedUrl:'https://www.google.com/maps/d/embed?mid=162GsGfUyH5K1zfy_yBaeKUzCQJk'},
+    {id:'budapest-eruv',name:'Budapest Eruv',city:'Budapest, Hungary',center:[19.076, 47.5036],embedUrl:'https://www.google.com/maps/d/embed?mid=1EQLl76QcHzAZ18jJcpmE0y8OlgMTIqw'},
+    {id:'bushey-eruv',name:'Bushey Eruv',city:'Bushey, London',center:[-0.3605, 51.6455],embedUrl:'https://www.google.com/maps/d/embed?mid=1CsXiBbVJ52Ij2BQfa154WdmTqH8'},
+    {id:'chigwell-eruv',name:'Chigwell Eruv',city:'Chigwell, London',center:[0.077, 51.65],embedUrl:'https://www.google.com/maps/d/embed?mid=1BQTpWUUnb9yC1eXgr00fi0OO4U4'},
+  ];
+  var done=0;
+  zones.forEach(function(z){
+    window._db.setZone(z.id,{
+      id:z.id,name:z.name,city:z.city,status:'review',
+      coords:[],center:z.center,embedUrl:z.embedUrl,
+      owner:'',contractorEmail:'',contractors:[],
+      exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',
+      lastChecked:new Date().toLocaleDateString()
+    }).then(function(ok){
+      if(ok){done++;toast(z.name+' added ('+done+'/'+zones.length+')','ok');}
+    });
+  });
 }
 
 function _startCustomDraw(isExcl){
