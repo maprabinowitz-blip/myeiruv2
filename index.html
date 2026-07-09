@@ -1110,45 +1110,7 @@ function loadCustomZones(){
 }
 
 // MAP
-var SEED_SHULS = [
-  // Brooklyn, NY
-  {id:'shul-young-israel-bklyn',      name:'Young Israel of Brooklyn',         city:'Brooklyn, NY',     lat:40.6501, lng:-73.9496},
-  {id:'shul-cong-beth-jacob-bklyn',   name:'Congregation Beth Jacob',          city:'Brooklyn, NY',     lat:40.6480, lng:-73.9430},
-  {id:'shul-agudath-israel-bklyn',    name:'Agudath Israel of Flatbush',       city:'Brooklyn, NY',     lat:40.6355, lng:-73.9601},
-  {id:'shul-torah-vodaath-bklyn',     name:'Yeshiva Torah Vodaath',            city:'Brooklyn, NY',     lat:40.6520, lng:-73.9410},
-  {id:'shul-bais-yaakov-bklyn',       name:'Bais Yaakov of Brooklyn',          city:'Brooklyn, NY',     lat:40.6389, lng:-73.9628},
-  {id:'shul-khal-adas-yereim-bklyn',  name:'Khal Adas Yereim',                city:'Brooklyn, NY',     lat:40.6370, lng:-73.9580},
-  // Woodmere / Five Towns, NY
-  {id:'shul-ohab-zedek-fivetowns',    name:'Ohab Zedek',                       city:'Woodmere, NY',     lat:40.6348, lng:-73.7112},
-  {id:'shul-young-israel-woodmere',   name:'Young Israel of Woodmere',         city:'Woodmere, NY',     lat:40.6367, lng:-73.7145},
-  {id:'shul-white-shul-fivetowns',    name:'The White Shul',                   city:'Woodmere, NY',     lat:40.6260, lng:-73.7210},
-  {id:'shul-bais-medrash-fivetowns',  name:'Bais Medrash of Woodmere',         city:'Woodmere, NY',     lat:40.6320, lng:-73.7180},
-  // Teaneck, NJ
-  {id:'shul-beth-abraham-teaneck',    name:'Congregation Beth Abraham',        city:'Teaneck, NJ',      lat:40.8945, lng:-74.0138},
-  {id:'shul-bnai-yeshurun-teaneck',   name:"B'nai Yeshurun",                   city:'Teaneck, NJ',      lat:40.8920, lng:-74.0090},
-  {id:'shul-beis-chana-teaneck',      name:'Beis Chana of Teaneck',            city:'Teaneck, NJ',      lat:40.8960, lng:-74.0175},
-  {id:'shul-rinat-yisrael-teaneck',   name:'Rinat Yisrael',                    city:'Teaneck, NJ',      lat:40.8978, lng:-74.0155},
-  {id:'shul-young-israel-teaneck',    name:'Young Israel of Teaneck',          city:'Teaneck, NJ',      lat:40.8900, lng:-74.0120},
-  // Monsey, NY
-  {id:'shul-bnai-jeshurun-monsey',    name:"B'nai Jeshurun",                   city:'Monsey, NY',       lat:41.1112, lng:-74.0704},
-  {id:'shul-bais-medrash-monsey',     name:'Bais Medrash Zichron Moshe',       city:'Monsey, NY',       lat:41.1080, lng:-74.0720},
-  {id:'shul-khal-vizhnitz-monsey',    name:'Khal Vizhnitz',                    city:'Monsey, NY',       lat:41.1140, lng:-74.0680},
-  {id:'shul-satmar-monsey',           name:'Satmar of Monsey',                 city:'Monsey, NY',       lat:41.1095, lng:-74.0755},
-  // Skokie, IL
-  {id:'shul-or-chadash-skokie',       name:'Or Chadash',                       city:'Skokie, IL',       lat:42.0331, lng:-87.7476},
-  {id:'shul-kins-skokie',             name:'Keser Israel - North Shore',       city:'Skokie, IL',       lat:42.0380, lng:-87.7420},
-  {id:'shul-cong-bene-sholem-skokie', name:'Congregation Bene Sholem',         city:'Skokie, IL',       lat:42.0290, lng:-87.7500},
-  {id:'shul-young-israel-skokie',     name:'Young Israel of Skokie',           city:'Skokie, IL',       lat:42.0350, lng:-87.7460},
-  // Silver Spring, MD
-  {id:'shul-kol-ami-silver-spring',   name:'Kol Ami',                          city:'Silver Spring, MD',lat:39.0040, lng:-77.0256},
-  {id:'shul-shaarei-tfila-ss',        name:'Shaarei Tfila',                    city:'Silver Spring, MD',lat:39.0020, lng:-77.0230},
-  {id:'shul-bais-yisrael-ss',         name:'Bais Yisrael',                     city:'Silver Spring, MD',lat:39.0060, lng:-77.0280},
-  // Los Angeles, CA
-  {id:'shul-bais-naftoli-la',         name:'Bais Naftoli',                     city:'Los Angeles, CA',  lat:34.0540, lng:-118.3820},
-  {id:'shul-bais-bezalel-la',         name:'Bais Bezalel',                     city:'Los Angeles, CA',  lat:34.0560, lng:-118.3790},
-  {id:'shul-young-israel-la',         name:'Young Israel of Los Angeles',      city:'Los Angeles, CA',  lat:34.0520, lng:-118.3850},
-  {id:'shul-beth-jacob-la',           name:'Beth Jacob Congregation',          city:'Los Angeles, CA',  lat:34.0580, lng:-118.3760},
-];
+var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
 map.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-right');
@@ -2241,7 +2203,7 @@ function showEruvDetail(id){
     // Boundary/segment notes
     +segNotesHtml
     // Google Maps embed (if zone has embedUrl)
-    +(e.embedUrl?'<div style="margin-bottom:14px">'      +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">🗺 Eruv Map</div>'      +'<div style="position:relative;padding-top:66%;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'      +'<iframe src="'+e.embedUrl+'" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" allowfullscreen loading="lazy"></iframe>'      +'</div></div>':'')    // Donate
+    +(e.embedUrl?'<div style="margin-bottom:14px">'      +'<div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">🗺 Eruv Map</div>'      +'<div style="position:relative;padding-top:66%;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'      +'<iframe src="'+e.embedUrl+'" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" allowfullscreen loading="lazy"></iframe>'      +'</div></div>':(e.mapsUrl?'<a href="'+e.mapsUrl+'" target="_blank" style="display:block;margin-bottom:14px;padding:12px;background:var(--card2,#f4f6fb);border:1px solid var(--border);border-radius:10px;text-align:center;color:var(--navy);font-weight:600;font-size:.85rem;text-decoration:none">🗺 View Eruv Map on Google Maps →</a>':''))    // Donate
     +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:12px">❤️ Support This Eiruv</a><br>':'')
     // Adjacent carrying
     +(function(){
@@ -2995,6 +2957,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Virginia Highlands Eruv</div><div class="acard-mt">Atlanta, GA — 360 pts + 6 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedVA()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Seed 12 Remaining Eruvin</div><div class="acard-mt">Crown Heights, Paramus, Oakland, Eugene, Lower Merion, Champaign, Waltham, Ottawa x2, Budapest, Bushey, Chigwell</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedAllRemaining()">📥 Import All</button></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -4468,7 +4431,7 @@ function seedAllRemaining(){
     {id:'paramus-eruv',name:'Paramus Eruv',city:'Paramus, NJ',center:[-74.0485, 40.9398],embedUrl:'https://www.google.com/maps/d/embed?mid=1oUwkPDrH3UYcU1GRhWM2cSQtvLIQG2k6'},
     {id:'oakland-eruv',name:'Oakland Eruv',city:'Oakland, CA',center:[-122.2243, 37.8071],embedUrl:'https://www.google.com/maps/d/embed?mid=1szsKi-tRPUr0KtklVSLjqgjslnCMYl8x'},
     {id:'eugene-eruv',name:'Eugene Eruv',city:'Eugene, OR',center:[-123.0868, 44.0521],embedUrl:'https://www.google.com/maps/d/embed?mid=13CXgM5o-yhjvfBtfiZ0qJC18LHdKzq42'},
-    {id:'lower-merion-eruv',name:'Lower Merion Eruv',city:'Philadelphia, PA',center:[-75.2673, 40.0093],embedUrl:'https://www.google.com/maps/d/embed?mid=zal-mq_nmhdw.kbdqsn2teocw'},
+    {id:'lower-merion-eruv',name:'Lower Merion Eruv',city:'Philadelphia, PA',center:[-75.2673, 40.0093],embedUrl:'',mapsUrl:'https://www.google.com/maps/d/viewer?mid=zal-mq_nmhdw.kbdqsn2teocw'},
     {id:'champaign-urbana-eruv',name:'Champaign-Urbana Eruv',city:'Champaign, IL',center:[-88.2272, 40.1115],embedUrl:'https://www.google.com/maps/d/embed?mid=1FlrCIWb7nqQgdk667FWkZe_W60I'},
     {id:'waltham-brandeis-eruv',name:'Waltham/Brandeis Eruv',city:'Waltham, MA',center:[-71.2575, 42.365],embedUrl:'https://www.google.com/maps/d/embed?mid=17eM6z4Gp5rf_PsGX6onvNz6041g'},
     {id:'ottawa-craig-henry-eruv',name:'Ottawa Craig Henry Eruv',city:'Ottawa, Canada',center:[-75.7689, 45.3393],embedUrl:'https://www.google.com/maps/d/embed?mid=1XGd3csGwSnGx3PSiWIyKUlz5guA'},
@@ -4479,16 +4442,39 @@ function seedAllRemaining(){
   ];
   var done=0;
   zones.forEach(function(z){
-    window._db.setZone(z.id,{
+    var zdata={
       id:z.id,name:z.name,city:z.city,status:'review',
-      coords:[],center:z.center,embedUrl:z.embedUrl,
+      coords:[],center:z.center,
       owner:'',contractorEmail:'',contractors:[],
       exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',
       lastChecked:new Date().toLocaleDateString()
-    }).then(function(ok){
+    };
+    if(z.embedUrl)zdata.embedUrl=z.embedUrl;
+    if(z.mapsUrl)zdata.mapsUrl=z.mapsUrl;
+    window._db.setZone(z.id,zdata).then(function(ok){
       if(ok){done++;toast(z.name+' added ('+done+'/'+zones.length+')','ok');}
     });
   });
+}
+
+function clearAllShuls(){
+  if(!window._db||!window._db.db){toast('Not ready','err');return;}
+  if(!confirm('Remove all shuls from the database? This cannot be undone.'))return;
+  import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(function(fs){
+    return fs.getDocs(fs.collection(window._db.db,'shuls'));
+  }).then(function(snap){
+    var proms=[];
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(function(fs){
+      snap.forEach(function(d){
+        proms.push(fs.deleteDoc(fs.doc(window._db.db,'shuls',d.id)));
+      });
+      Promise.all(proms).then(function(){
+        toast(snap.size+' shuls removed','ok');
+        S.shuls=[];
+        if(window._map_shul_layers){/* map cleanup handled on refresh */}
+      });
+    });
+  }).catch(function(e){toast('Error: '+e.message,'err');});
 }
 
 function _startCustomDraw(isExcl){
