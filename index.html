@@ -2956,7 +2956,6 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Monsey Eruv</div><div class="acard-mt">Monsey, NY — 1,815 pts (28 sections)</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedMonsey()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Virginia Highlands Eruv</div><div class="acard-mt">Atlanta, GA — 360 pts + 6 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedVA()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Seed 12 Remaining Eruvin</div><div class="acard-mt">Crown Heights, Paramus, Oakland, Eugene, Lower Merion, Champaign, Waltham, Ottawa x2, Budapest, Bushey, Chigwell</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedAllRemaining()">📥 Import All</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
@@ -5006,25 +5005,13 @@ function _loadShulsForView(){
   },500);
 }
 
+var _shulOverpassCache={}; // avoid re-querying same area
 function _loadShulsOSM(lat,lng,radius){
-  // Use Mapbox Geocoding API to find synagogues/shuls nearby
-  var searches=['synagogue','shul','chabad','yeshiva'];
-  var done={};
-  searches.forEach(function(term){
-    var url='https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(term)+'.json'
-      +'?proximity='+lng+','+lat
-      +'&bbox='+(lng-0.03)+','+(lat-0.03)+','+(lng+0.03)+','+(lat+0.03)
-      +'&limit=10&types=poi&access_token='+TOKEN;
-    fetch(url).then(function(r){return r.json();}).then(function(data){
-      if(!data||!data.features)return;
-      data.features.forEach(function(f){
-        var id='mb-'+f.id;
-        if(done[id])return;done[id]=true;
-        var coords=f.geometry.coordinates;
-        addShulToMap({id:id,name:f.text||f.place_name.split(',')[0],city:'',lat:coords[1],lng:coords[0]});
-      });
-    }).catch(function(){});
-  });
+  // Snap to a coarse grid so panning slightly doesn't re-fire the query
+  var gridKey=Math.round(lat*20)+','+Math.round(lng*20);
+  if(_shulOverpassCache[gridKey])return;
+  _shulOverpassCache[gridKey]=true;
+  loadShulsFromGoogle(lat,lng); // real OSM data: amenity=place_of_worship + religion=jewish
 }
 
 function addShulToMap(shul){
