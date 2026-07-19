@@ -2957,6 +2957,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Virginia Highlands Eruv</div><div class="acard-mt">Atlanta, GA — 360 pts + 6 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedVA()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -4474,6 +4475,29 @@ function clearAllShuls(){
       });
     });
   }).catch(function(e){toast('Error: '+e.message,'err');});
+}
+
+function seedEleven(){
+  if(!window._db){toast('Not connected','err');return;}
+  toast('Fetching boundary data…','ok');
+  fetch('https://raw.githubusercontent.com/maprabinowitz-blip/myeiruv2/main/seed/eleven.json')
+    .then(function(r){return r.json();})
+    .then(function(zones){
+      var done=0;
+      zones.forEach(function(z){
+        window._db.setZone(z.id,{
+          id:z.id,name:z.name,city:z.city,status:'review',
+          coords:z.coords,center:z.center,
+          locationNotes:z.notes||[],
+          owner:'',contractorEmail:'',contractors:[],
+          exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',
+          lastChecked:new Date().toLocaleDateString()
+        }).then(function(ok){
+          if(ok){done++;toast(z.name+' ('+done+'/'+zones.length+')','ok');}
+        });
+      });
+    })
+    .catch(function(e){toast('Error: '+e.message,'err');});
 }
 
 function _startCustomDraw(isExcl){
