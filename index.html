@@ -4375,8 +4375,8 @@ function seedMonsey(){
   if(!window._db){toast('Not connected','err');return;}
   toast('Fetching Monsey data...','ok');
   Promise.all([
-    fetch('https://raw.githubusercontent.com/maprabinowitz-blip/myeiruv2/main/seed/monsey.json').then(function(r){return r.json();}),
-    fetch('https://raw.githubusercontent.com/maprabinowitz-blip/myeiruv2/main/seed/monsey_sections.json').then(function(r){return r.json();})
+    fetch('/seed/monsey.json').then(function(r){return r.json();}),
+    fetch('/seed/monsey_sections.json').then(function(r){return r.json();})
   ]).then(function(results){
     var d=results[0], secs=results[1];
     var zone={id:'monsey-eruv',name:'Monsey Eruv',city:'Monsey, NY',
@@ -4397,7 +4397,7 @@ function seedMonsey(){
 function _seedFromWorker(id,name,city,center,key,embedUrl){
   if(!window._db){toast('Not connected','err');return;}
   toast('Fetching...','ok');
-  fetch('https://raw.githubusercontent.com/maprabinowitz-blip/myeiruv2/main/seed/'+key+'.json')
+  fetch('/seed/'+key+'.json')
     .then(function(r){return r.json();})
     .then(function(d){
       var zone={id:id,name:name,city:city,status:'review',coords:d.coords,center:center,
@@ -4480,7 +4480,7 @@ function clearAllShuls(){
 function seedEleven(){
   if(!window._db){toast('Not connected','err');return;}
   toast('Fetching boundary data…','ok');
-  fetch('https://raw.githubusercontent.com/maprabinowitz-blip/myeiruv2/main/seed/eleven.json')
+  fetch('/seed/eleven.json')
     .then(function(r){return r.json();})
     .then(function(zones){
       var done=0;

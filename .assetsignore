@@ -1,0 +1,8 @@
+.git
+.wrangler
+.gitignore
+worker
+firestore.rules
+Mapbox
+OSRM:index.html
+node_modules
