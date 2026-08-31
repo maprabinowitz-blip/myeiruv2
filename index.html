@@ -616,7 +616,7 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
         <p class="ps">Enter any address, shul, or landmark.</p>
         <div class="addr-wrap">
           <svg class="addr-ico" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 6.5a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" stroke-width="1.1"/><path d="M10 5c0 4-4 6.5-4 6.5S2 9 2 5a4 4 0 018 0z" stroke="currentColor" stroke-width="1.1"/></svg>
-          <input id="addrInput" autocomplete="new-password" name="search_addr" class="fi addr-fi" type="text" placeholder="Address, shul, landmark…" oninput="onType(this.value,'check')" onkeydown="onKey(event,'check')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <input id="addrInput" autocomplete="off" aria-autocomplete="list" role="combobox" name="q_addr" class="fi addr-fi" type="search" placeholder="Address, shul, landmark…" oninput="onType(this.value,'check')" onkeydown="onKey(event,'check')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button class="me-btn" onclick="useMyLoc()">&#9901; Me</button>
           <div class="ac-box" id="ac-check"></div>
         </div>
@@ -639,7 +639,7 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
         <div class="route-stop">
           <div class="stop-dot sa">A</div>
           <div style="flex:1;position:relative">
-            <input id="rStart" autocomplete="new-password" name="route_start" class="fi" type="text" placeholder="Start: address or place…" oninput="onType(this.value,'rStart')" onkeydown="onKey(event,'rStart')" autocomplete="off" autocorrect="off" spellcheck="false" style="padding-right:52px">
+            <input id="rStart" autocomplete="off" aria-autocomplete="list" role="combobox" name="q_start" class="fi" type="search" placeholder="Start: address or place…" oninput="onType(this.value,'rStart')" onkeydown="onKey(event,'rStart')" autocomplete="off" autocorrect="off" spellcheck="false" style="padding-right:52px">
             <button class="me-btn" onclick="useMyLocRoute()">&#9901; Me</button>
             <div class="ac-box" id="ac-rStart"></div>
           </div>
@@ -650,7 +650,7 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
         <div class="route-stop">
           <div class="stop-dot sb" style="background:none;font-size:1.1rem;">📍</div>
           <div style="flex:1;position:relative">
-            <input id="rEnd" autocomplete="new-password" name="route_end" class="fi" type="text" placeholder="End: address or place…" oninput="onType(this.value,'rEnd')" onkeydown="onKey(event,'rEnd')" autocomplete="off" autocorrect="off" spellcheck="false">
+            <input id="rEnd" autocomplete="off" aria-autocomplete="list" role="combobox" name="q_end" class="fi" type="search" placeholder="End: address or place…" oninput="onType(this.value,'rEnd')" onkeydown="onKey(event,'rEnd')" autocomplete="off" autocorrect="off" spellcheck="false">
             <div class="ac-box" id="ac-rEnd"></div>
           </div>
         </div>
@@ -943,7 +943,7 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
     <!-- Search bar -->
     <div class="draw-search-wrap" id="drawSearchWrap">
       <div style="position:relative">
-        <input class="fi" id="drawSearch" autocomplete="new-password" name="draw_search" type="text" placeholder="Search address or area…" oninput="onType(this.value,'drawSearch')" onkeydown="onKey(event,'drawSearch')" autocomplete="off" autocorrect="off" spellcheck="false">
+        <input class="fi" id="drawSearch" autocomplete="off" aria-autocomplete="list" role="combobox" name="draw_search" type="text" placeholder="Search address or area…" oninput="onType(this.value,'drawSearch')" onkeydown="onKey(event,'drawSearch')" autocomplete="off" autocorrect="off" spellcheck="false">
         <div class="ac-box" id="ac-drawSearch"></div>
       </div>
     </div>
