@@ -468,6 +468,35 @@ header{
 .eruv-detail-panel.open{padding:12px 14px;}
 .eruv-row{animation:fadeIn .15s ease;}
 .acard{animation:fadeIn .15s ease;}
+
+/* ══ Polish pass: motion, depth, focus ══ */
+.eruv-card,.acard,.alert-card{transition:transform .15s ease,box-shadow .15s ease;}
+.eruv-card:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(15,31,56,.08);}
+button,.hbtn,.act-btn,.dp-btn,.u-drop-it{transition:background .15s ease,transform .1s ease,box-shadow .15s ease;}
+button:active,.act-btn:active{transform:scale(.97);}
+:focus-visible{outline:2px solid var(--gold,#c8923a);outline-offset:2px;border-radius:4px;}
+input.fi{transition:border-color .15s ease,box-shadow .15s ease;}
+input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,85,.08);}
+/* Header depth */
+.hdr{box-shadow:0 1px 12px rgba(10,22,40,.25);}
+/* Sidebar scroll feel */
+.sidebar{scroll-behavior:smooth;}
+.sidebar::-webkit-scrollbar{width:8px;}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(107,122,153,.25);border-radius:4px;}
+.sidebar::-webkit-scrollbar-thumb:hover{background:rgba(107,122,153,.45);}
+/* Status pills: subtle ring */
+.b-up,.b-rv,.b-dn{box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);}
+/* Modal entrance */
+@keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
+.modal-inner{animation:modalIn .2s ease;}
+/* Toast entrance */
+@keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.toast{animation:toastIn .18s ease;}
+/* Search row alignment */
+.addr-row,.search-row{display:flex;align-items:stretch;}
+/* Loading shimmer utility */
+@keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
+.skel{background:linear-gradient(90deg,#eef1f7 25%,#e2e7f0 37%,#eef1f7 63%);background-size:400px 100%;animation:shimmer 1.2s infinite;border-radius:8px;}
 </style>
 </head>
 <body>
@@ -587,7 +616,7 @@ header{
         <p class="ps">Enter any address, shul, or landmark.</p>
         <div class="addr-wrap">
           <svg class="addr-ico" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 6.5a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" stroke-width="1.1"/><path d="M10 5c0 4-4 6.5-4 6.5S2 9 2 5a4 4 0 018 0z" stroke="currentColor" stroke-width="1.1"/></svg>
-          <input id="addrInput" autocomplete="new-password" name="search_addr" class="fi addr-fi" type="text" placeholder="Address, shul, landmark…" oninput="onType(this.value,'check')" onkeydown="onKey(event,'check')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <input id="addrInput" autocomplete="new-password" name="search_addr" class="fi addr-fi" type="text" placeholder="Address, shul, landmark…" oninput="onType(this.value,'check')" onkeydown="onKey(event,'check')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button id="checkGoBtn" onclick="checkTypedAddress()" style="flex-shrink:0;margin-left:8px;padding:0 18px;border:none;border-radius:10px;background:var(--navy,#1a3055);color:#fff;font-weight:600;font-size:.85rem;cursor:pointer;min-height:44px">Check</button>
           <button class="me-btn" onclick="useMyLoc()">&#9901; Me</button>
           <div class="ac-box" id="ac-check"></div>
         </div>
@@ -1239,6 +1268,28 @@ function addExclToMap(eruvId,ex){
 // AUTOCOMPLETE
 const GEO_TYPES='address,place,locality,poi';
 let acTimers={};
+function checkTypedAddress(){
+  var q=document.getElementById('addrInput').value.trim();
+  if(!q)return;
+  hideAC('check');
+  var prox=S.lastCoords?(S.lastCoords[0]+','+S.lastCoords[1]):PROX;
+  var btn=document.getElementById('checkGoBtn');
+  if(btn){btn.disabled=true;btn.textContent='…';}
+  fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(q)+'.json?proximity='+prox+'&limit=1&access_token='+TOKEN)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(btn){btn.disabled=false;btn.textContent='Check';}
+      if(d.features&&d.features.length){
+        var f=d.features[0];
+        document.getElementById('addrInput').value=f.place_name;
+        checkPoint(f.geometry.coordinates[0],f.geometry.coordinates[1],f.place_name);
+      }else{
+        toast('Address not found — try adding city/state','err');
+      }
+    })
+    .catch(function(){if(btn){btn.disabled=false;btn.textContent='Check';}toast('Search failed — try again','err');});
+}
+
 function onType(val,id){
   clearTimeout(acTimers[id]);
   const box=document.getElementById('ac-'+id);
@@ -1318,11 +1369,15 @@ function renderAC(features,id){
 }
 function hovAC(id,i){S.acFocused[id]=i;var items=document.querySelectorAll('#ac-'+id+' .ac-item');items.forEach(function(el,j){el.classList.toggle('foc',j===i);});}
 function onKey(e,id){
-  var box=document.getElementById('ac-'+id);if(!box||!box.classList.contains('on'))return;
+  var box=document.getElementById('ac-'+id);
+  if(!box||!box.classList.contains('on')){
+    if(e.key==='Enter'&&id==='check'){e.preventDefault();checkTypedAddress();}
+    return;
+  }
   var n=(S.acData[id]||[]).length,cur=S.acFocused[id]||-1;
   if(e.key==='ArrowDown'){e.preventDefault();S.acFocused[id]=Math.min(cur+1,n-1);hovAC(id,S.acFocused[id]);}
   else if(e.key==='ArrowUp'){e.preventDefault();S.acFocused[id]=Math.max(cur-1,0);hovAC(id,S.acFocused[id]);}
-  else if(e.key==='Enter'){e.preventDefault();if(cur>=0)selectAC(id,cur);}
+  else if(e.key==='Enter'){e.preventDefault();if(cur>=0){selectAC(id,cur);}else if(n>0){selectAC(id,0);}else if(id==='check'){checkTypedAddress();}}
   else if(e.key==='Escape')hideAC(id);
 }
 function hideAC(id){var b=document.getElementById('ac-'+id);if(b)b.classList.remove('on');}
