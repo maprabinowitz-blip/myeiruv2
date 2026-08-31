@@ -1397,6 +1397,13 @@ function selectAC(id,i){
 
 // PIP / CHECK
 function pip(lng,lat,coords){
+  var inside=false;
+  for(var i=0,j=coords.length-1;i<coords.length;j=i++){
+    var xi=coords[i][0],yi=coords[i][1],xj=coords[j][0],yj=coords[j][1];
+    if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
 function findAllEiruvim(lng,lat){
   return S.eruvin.filter(function(e){return e.coords&&pip(lng,lat,e.coords)&&!inExcl(lng,lat,e);});
 }
@@ -1433,13 +1440,7 @@ function showLocationStatus(lng,lat){
   document.getElementById('eruvDetailBody').innerHTML=detail;
   openModal('vMain');showV('vEruvDetail');
 }
-  var inside=false;
-  for(var i=0,j=coords.length-1;i<coords.length;j=i++){
-    var xi=coords[i][0],yi=coords[i][1],xj=coords[j][0],yj=coords[j][1];
-    if(((yi>lat)!==(yj>lat))&&(lng<(xj-xi)*(lat-yi)/(yj-yi)+xi))inside=!inside;
-  }
-  return inside;
-}
+
 function inExcl(lng,lat,e){return(e.exclusions||[]).some(function(ex){return pip(lng,lat,ex.coords);});}
 function findEruv(lng,lat){for(var i=0;i<S.eruvin.length;i++){var e=S.eruvin[i];if(pip(lng,lat,e.coords)&&!inExcl(lng,lat,e))return e;}return null;}
 
