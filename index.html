@@ -1139,6 +1139,7 @@ function loadCustomZones(){
 }
 
 // MAP
+console.log('[MyEiruv build v0831.1904]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -5551,7 +5552,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v0831.1904</span>
   </div>
 </div>
 <style>
