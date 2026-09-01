@@ -54,6 +54,27 @@ export default {
       }
     }
 
+    if (action === 'places-shuls') {
+      // Google Places: real synagogue landmarks near a point
+      const { lat, lng, radius } = body;
+      if (!lat || !lng) return json({error:'lat/lng required'},400,allow);
+      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${Math.min(radius||4000,10000)}&type=synagogue&key=${env.GOOGLE_ROUTES_KEY}`;
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS')
+          return json({error:'places:'+data.status},502,allow);
+        const shuls = (data.results||[]).map(p => ({
+          id: 'g-'+p.place_id,
+          name: p.name,
+          lat: p.geometry?.location?.lat,
+          lng: p.geometry?.location?.lng,
+          address: p.vicinity||''
+        })).filter(s => s.lat && s.lng);
+        return cors(JSON.stringify({shuls}), 200, allow);
+      } catch(e) { return json({error:e.message},502,allow); }
+    }
+
     if (action === 'google-routes') {
       const res = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes',{
         method:'POST', headers:{

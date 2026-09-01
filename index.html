@@ -5092,7 +5092,20 @@ function _loadShulsOSM(lat,lng,radius){
   var gridKey=Math.round(lat*20)+','+Math.round(lng*20);
   if(_shulOverpassCache[gridKey])return;
   _shulOverpassCache[gridKey]=true;
-  loadShulsFromGoogle(lat,lng); // real OSM data: amenity=place_of_worship + religion=jewish
+  // Primary: Google Places (accurate landmarks). Fallback: OSM Overpass.
+  fetch('https://api.myeiruv.org',{
+    method:'POST',headers:{'Content-Type':'application/json','X-Action':'places-shuls'},
+    body:JSON.stringify({lat:lat,lng:lng,radius:4000})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.shuls&&d.shuls.length){
+      d.shuls.forEach(function(s){addShulToMap(s);});
+    }else{
+      loadShulsFromGoogle(lat,lng); // OSM fallback
+    }
+  })
+  .catch(function(){loadShulsFromGoogle(lat,lng);});
 }
 
 function addShulToMap(shul){
