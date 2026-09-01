@@ -55,24 +55,44 @@ export default {
     }
 
     if (action === 'places-shuls') {
-      // Google Places: real synagogue landmarks near a point
+      // Shul landmarks: try Google Places, then Foursquare, else error (client falls back to OSM)
       const { lat, lng, radius } = body;
       if (!lat || !lng) return json({error:'lat/lng required'},400,allow);
-      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${Math.min(radius||4000,10000)}&type=synagogue&key=${env.GOOGLE_ROUTES_KEY}`;
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-        if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS')
-          return json({error:'places:'+data.status},502,allow);
-        const shuls = (data.results||[]).map(p => ({
-          id: 'g-'+p.place_id,
-          name: p.name,
-          lat: p.geometry?.location?.lat,
-          lng: p.geometry?.location?.lng,
-          address: p.vicinity||''
-        })).filter(s => s.lat && s.lng);
-        return cors(JSON.stringify({shuls}), 200, allow);
-      } catch(e) { return json({error:e.message},502,allow); }
+      const rad = Math.min(radius||4000,10000);
+
+      // 1) Google Places (needs GOOGLE_ROUTES_KEY + Places API enabled)
+      if (env.GOOGLE_ROUTES_KEY) {
+        try {
+          const gUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${rad}&type=synagogue&key=${env.GOOGLE_ROUTES_KEY}`;
+          const gRes = await fetch(gUrl);
+          const gData = await gRes.json();
+          if (gData.status === 'OK' || gData.status === 'ZERO_RESULTS') {
+            const shuls = (gData.results||[]).map(p => ({
+              id: 'g-'+p.place_id, name: p.name,
+              lat: p.geometry?.location?.lat, lng: p.geometry?.location?.lng,
+              address: p.vicinity||''
+            })).filter(s => s.lat && s.lng);
+            if (shuls.length) return cors(JSON.stringify({shuls, src:'google'}), 200, allow);
+          }
+        } catch(e) {}
+      }
+
+      // 2) Foursquare (set FSQ_KEY in worker env; category 4bf58dd8d48988d139941735 = Synagogue)
+      if (env.FSQ_KEY) {
+        try {
+          const fUrl = `https://api.foursquare.com/v3/places/search?ll=${lat},${lng}&radius=${rad}&categories=4bf58dd8d48988d139941735&limit=50`;
+          const fRes = await fetch(fUrl, {headers:{'Authorization': env.FSQ_KEY, 'Accept':'application/json'}});
+          const fData = await fRes.json();
+          const shuls = (fData.results||[]).map(p => ({
+            id: 'fsq-'+p.fsq_id, name: p.name,
+            lat: p.geocodes?.main?.latitude, lng: p.geocodes?.main?.longitude,
+            address: (p.location&&p.location.formatted_address)||''
+          })).filter(s => s.lat && s.lng);
+          if (shuls.length) return cors(JSON.stringify({shuls, src:'foursquare'}), 200, allow);
+        } catch(e) {}
+      }
+
+      return json({error:'no landmark source available'},502,allow);
     }
 
     if (action === 'google-routes') {
