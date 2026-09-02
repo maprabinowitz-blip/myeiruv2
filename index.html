@@ -2591,7 +2591,8 @@ function doRegister(){
         note:'Your account has been created. Sign in at myeiruv.org to set eiruv alerts and stay informed every Shabbos.',
         timestamp:new Date().toLocaleDateString()
       })
-    }).catch(function(){});
+    }).then(function(r){return r.text().then(function(t){console.log('[welcome email]',r.status,t);});})
+      .catch(function(e){console.error('[welcome email] fetch failed:',e);});
   });
 }
 function doContractorApply(){
