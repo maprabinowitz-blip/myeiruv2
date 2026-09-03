@@ -11,7 +11,7 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() &&
         request.auth.token.email in
-          ['maprabinowitz@gmail.com', 'cron@myeiruv.org'];
+          ['maprabinowitz@gmail.com', 'myeiruv@gmail.com', 'cron@myeiruv.org'];
     }
 
     // Helper: is a contractor assigned to this zone

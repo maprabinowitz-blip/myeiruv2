@@ -1114,7 +1114,8 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
 <div id="toast"></div>
 <script>
 const TOKEN='pk.eyJ1IjoibXJycnJyIiwiYSI6ImNtbXh2ZGluYzByd28ycG9zcms5dmhuNmkifQ.DxC4l12BdksgQuSZnArQXg';
-const ADMIN_EMAIL='maprabinowitz@gmail.com';
+const ADMIN_EMAILS=['maprabinowitz@gmail.com','myeiruv@gmail.com'];
+const ADMIN_EMAIL='myeiruv@gmail.com'; // where admin notifications are sent
 const GROUTES_KEY='AIzaSyDnJ0h-tN_c8WG8CBE8DBZJC0DIMW6C3V8'; // Also add as GOOGLE_ROUTES_KEY in Cloudflare Worker
 // NOTE: Store Twilio auth token securely — paste below (will be used only by admin)
 
@@ -2554,7 +2555,7 @@ function doEmail(){
 }
 
 function _finishEmailSignIn(email){
-  var isAdmin=email===ADMIN_EMAIL.toLowerCase();
+  var isAdmin=ADMIN_EMAILS.includes(email);
   var user=getUsers().find(function(u){return u.email.toLowerCase()===email;});
   if(!user){user={name:email.split('@')[0],email:email,role:isAdmin?'admin':'user',avatar:email[0].toUpperCase(),contractorStatus:'none'};}
   if(isAdmin)user.role='admin';
@@ -2578,7 +2579,7 @@ function doRegister(){
       err.style.color='var(--red)';
       return;
     }
-    var isAdmin=email===ADMIN_EMAIL.toLowerCase();
+    var isAdmin=ADMIN_EMAILS.includes(email);
     var user={name:name,email:email,role:isAdmin?'admin':'user',avatar:name[0].toUpperCase(),contractorStatus:'none'};
     _cacheAndSaveUser(user);closeModal();signInAs(user);
     if(window._db)window._db.loadUsers().then(function(u){if(u&&u.length)window._fsUsers=u;});
@@ -5255,7 +5256,7 @@ window._googleSignIn = async function(role) {
     }
     const fbUser = result.user;
     const email  = fbUser.email.toLowerCase();
-    const isAdmin = email === ADMIN_EMAIL.toLowerCase();
+    const isAdmin = ADMIN_EMAILS.includes(email);
 
     // Load or create user doc in Firestore
     let user = await window._db.getUser(email);
