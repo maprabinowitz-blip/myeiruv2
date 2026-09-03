@@ -2360,7 +2360,8 @@ function saveAlert(){
         note:"You're now subscribed to eiruv status alerts for "+eruv+" in "+city+". You'll receive updates every time the status changes.",
         timestamp:new Date().toLocaleDateString()
       })
-    }).catch(function(){});
+    }).then(function(r){return r.text().then(function(t){console.log('[alert email]',r.status,t);});})
+      .catch(function(e){console.error('[alert email] fetch failed:',e);});
   }
 }
 function renderAlerts(){
