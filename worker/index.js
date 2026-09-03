@@ -152,6 +152,25 @@ export default {
       return cors(await res.text(), res.status, allow);
     }
 
+    if (action === 'brevo-sms') {
+      // Uses the same BREVO_KEY as email — no separate account needed.
+      // Requires: Brevo dashboard > Transactional > SMS > enabled + sender name registered.
+      const {to,message} = body;
+      let phone = to.replace(/\D/g,'');
+      if(phone.length===10) phone='1'+phone; // Brevo wants no leading +, country code included
+      const res = await fetch('https://api.brevo.com/v3/transactionalSMS/sms',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','api-key':env.BREVO_KEY},
+        body:JSON.stringify({
+          sender: env.BREVO_SMS_SENDER || 'MyEiruv',
+          recipient: phone,
+          content: message,
+          type: 'transactional'
+        })
+      });
+      return cors(await res.text(), res.status, allow);
+    }
+
     return json({error:'unknown action'},400,allow);
   }
 };
