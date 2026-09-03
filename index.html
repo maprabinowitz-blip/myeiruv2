@@ -5150,7 +5150,7 @@ async function loadShulsFromGoogle(lat,lng,pagetoken){
           body:'data='+encodeURIComponent(query)
         });
         if(resp.ok){data=await resp.json();break;}
-      }catch(err){console.warn('Overpass endpoint failed:',endpoints[i]);}
+      }catch(err){/* Overpass mirror unavailable — try next silently */}
     }
     
     if(data&&data.elements&&data.elements.length){
@@ -5171,7 +5171,7 @@ async function loadShulsFromGoogle(lat,lng,pagetoken){
       });
       if(added>0)console.log('[MyEiruv] Loaded',added,'shuls near',lat,lng);
     }else{
-      console.warn('[MyEiruv] No shuls found near',lat,lng);
+      /* no shuls found near this point — expected in many areas */
     }
   }catch(e){console.warn('[MyEiruv] Shul loading error:',e.message);}
 }
