@@ -2657,7 +2657,7 @@ function doSignOut(){
   if(window._googleSignOut)window._googleSignOut();
   document.getElementById('signinPill').style.display='flex';
   document.getElementById('userPillWrap').style.display='none';
-  ['adminTrigger','ctDashTrigger','editZonesTrigger','drawTrigger'].forEach(function(id){document.getElementById(id).style.display='none';});
+  ['adminTrigger','ctDashTrigger','editZonesTrigger','drawTrigger'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
   localStorage.removeItem('myeiruv_session');closeDrop();renderAlerts();
   var brand=document.getElementById('hdrBrand');if(brand)brand.style.visibility='visible';
   toast('Signed out');
@@ -2837,8 +2837,9 @@ function adminAddContractor(){
       note:'You have been added as a contractor on MyEiruv.\n\n1. Go to myeiruv.org\n2. Click Sign In and create an account with this email address\n3. You will have access to your contractor portal to create and manage eiruv zones.\n\nIf you already have an account, simply sign in and your contractor portal will be available.',
       timestamp:new Date().toLocaleDateString()})
   }).catch(function(){});
+  var ctInput=document.getElementById('adminAddCtEmail');
+  if(ctInput)ctInput.value='';
   renderAdmin('contractors');
-  document.getElementById('adminAddCtEmail').value='';
   toast(email+' added as contractor — welcome email sent','ok');
 }
 function removeContractor(email){
