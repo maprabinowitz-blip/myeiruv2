@@ -1770,14 +1770,80 @@ function planRoute(){
         var pct=scoreCoverage(r.geometry.coordinates);
         if(pct>bestPct){bestPct=pct;best=r;}
       });
-      if(bestPct<0.5){
-        toast('No eiruv compliant route found','err');
-      } else if(bestPct<1.0){
-        toast('Route partially exits the eiruv','warn');
-      }
-      drawRoute(best,sc,ec);
+      if(bestPct>=1.0){drawRoute(best,sc,ec);return;}
+      // Route exits the eiruv — try one detour before giving up.
+      tryDetour(best,bestPct,sc,ec,scoreCoverage);
     })
     .catch(function(){toast('Could not fetch route','err');btn.innerHTML='Check Route';btn.disabled=false;});
+  }
+
+  /* ── Detour pass ───────────────────────────────────────────────────────
+     Runs only when no alternative achieves full eiruv coverage.
+     Finds the largest outside stretch, snaps a point back inside the eiruv,
+     and re-requests the route through it. Keeps the detour only if it both
+     improves coverage AND stays practical (<15 min added or <1.5x length). */
+  function tryDetour(orig,origPct,sc,ec,scoreCoverage){
+    var target=_findDetourTarget(orig.geometry.coordinates);
+    if(!target){_finishRoute(orig,origPct,sc,ec);return;}
+
+    fetch('https://api.mapbox.com/directions/v5/mapbox/walking/'
+      +sc.lng+','+sc.lat+';'+target[0]+','+target[1]+';'+ec.lng+','+ec.lat
+      +'?geometries=geojson&steps=true&overview=full&access_token='+TOKEN)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var alt=d.routes&&d.routes[0];
+      if(!alt){_finishRoute(orig,origPct,sc,ec);return;}
+      var altPct=scoreCoverage(alt.geometry.coordinates);
+      var addedMin=(alt.duration-orig.duration)/60;
+      var ratio=alt.distance/Math.max(orig.distance,1);
+      var practical=(addedMin<15)||(ratio<1.5);
+      if(altPct>origPct&&practical){
+        toast('Route adjusted to stay in the eiruv','ok');
+        drawRoute(alt,sc,ec);
+      }else{
+        _finishRoute(orig,origPct,sc,ec);
+      }
+    })
+    .catch(function(){_finishRoute(orig,origPct,sc,ec);});
+  }
+
+  /* Picks the midpoint of the longest outside-the-eiruv stretch, then steps
+     it toward the nearest inside point so Mapbox has a reachable waypoint. */
+  function _findDetourTarget(coords){
+    var runStart=-1,bestStart=-1,bestEnd=-1,bestLen=0;
+    for(var i=0;i<coords.length;i++){
+      var out=!findEruv(coords[i][0],coords[i][1]);
+      if(out){ if(runStart<0)runStart=i; }
+      else if(runStart>=0){
+        if(i-runStart>bestLen){bestLen=i-runStart;bestStart=runStart;bestEnd=i-1;}
+        runStart=-1;
+      }
+    }
+    if(runStart>=0&&coords.length-runStart>bestLen){bestStart=runStart;bestEnd=coords.length-1;bestLen=coords.length-runStart;}
+    if(bestStart<0)return null;
+
+    var mid=coords[Math.floor((bestStart+bestEnd)/2)];
+    // Nearest inside point on the route gives us a direction to push toward.
+    var anchorPt=null,anchorD=Infinity;
+    for(var j=0;j<coords.length;j++){
+      if(findEruv(coords[j][0],coords[j][1])){
+        var dd=_ptDist(mid,coords[j]);
+        if(dd<anchorD){anchorD=dd;anchorPt=coords[j];}
+      }
+    }
+    if(!anchorPt)return null;
+    // Step from mid toward the inside anchor until we're actually inside.
+    for(var t=0.2;t<=1.0;t+=0.2){
+      var p=[mid[0]+(anchorPt[0]-mid[0])*t,mid[1]+(anchorPt[1]-mid[1])*t];
+      if(findEruv(p[0],p[1]))return p;
+    }
+    return anchorPt;
+  }
+
+  function _finishRoute(route,pct,sc,ec){
+    if(pct<0.5)toast('No eiruv compliant route found','err');
+    else toast('Route partially exits the eiruv','warn');
+    drawRoute(route,sc,ec);
   }
 
   function drawRoute(route,sc,ec){
