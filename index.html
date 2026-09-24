@@ -1823,14 +1823,14 @@ function planRoute(){
     if(bestStart<0)return null;
 
     var mid=coords[Math.floor((bestStart+bestEnd)/2)];
-    // Nearest inside point on the route gives us a direction to push toward.
-    var anchorPt=null,anchorD=Infinity;
-    for(var j=0;j<coords.length;j++){
-      if(findEruv(coords[j][0],coords[j][1])){
-        var dd=_ptDist(mid,coords[j]);
-        if(dd<anchorD){anchorD=dd;anchorPt=coords[j];}
-      }
-    }
+    // Use the inside points bracketing this breach (exit / re-entry) as the
+    // direction to push toward — nearer and more sensible than scanning the
+    // whole route, and keeps this O(n) instead of O(n^2).
+    var before=bestStart>0?coords[bestStart-1]:null;
+    var after=bestEnd<coords.length-1?coords[bestEnd+1]:null;
+    var anchorPt=null;
+    if(before&&after)anchorPt=_ptDist(mid,before)<=_ptDist(mid,after)?before:after;
+    else anchorPt=before||after;
     if(!anchorPt)return null;
     // Step from mid toward the inside anchor until we're actually inside.
     for(var t=0.2;t<=1.0;t+=0.2){
