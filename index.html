@@ -1202,9 +1202,11 @@ function addEruvToMap(e){
     // Outer boundary bold line
     if(!map.getSource(sid)){
       map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
-      map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0}});
+      map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.02}});
       map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':3,'line-opacity':1}});
-      map.on('click',sid+'-fill',()=>showEruvPopup(e));
+      map.on('click',sid+'-fill',function(){ if(_zoneClicksOff())return; showEruvPopup(e); });
+    map.on('mouseenter',sid+'-fill',function(){ if(!_zoneClicksOff())map.getCanvas().style.cursor='pointer'; });
+    map.on('mouseleave',sid+'-fill',function(){ map.getCanvas().style.cursor=''; });
     }
     return;
   }
@@ -1217,15 +1219,26 @@ function addEruvToMap(e){
     map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
     map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.07}});
     map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':2.5,'line-opacity':.9}});
-    map.on('click',sid+'-fill',()=>showEruvPopup(e));
+    map.on('click',sid+'-fill',function(){ if(_zoneClicksOff())return; showEruvPopup(e); });
+    map.on('mouseenter',sid+'-fill',function(){ if(!_zoneClicksOff())map.getCanvas().style.cursor='pointer'; });
+    map.on('mouseleave',sid+'-fill',function(){ map.getCanvas().style.cursor=''; });
   // 💬 markers hidden by default - shown when eiruv is clicked/focused
   // Store reference for later use
   e._hasNotes=!!(e.note||e.boundaryNotes||(e.segNotes&&Object.keys(e.segNotes).length));
-    map.on('mouseenter',sid+'-fill',()=>{map.getCanvas().style.cursor='pointer';});
-    map.on('mouseleave',sid+'-fill',()=>{map.getCanvas().style.cursor='';});
   }
   (e.exclusions||[]).forEach(ex=>addExclToMap(e.id,ex));
 }
+/* While any drawing mode is active the map clicks belong to that tool. */
+function _zoneClicksOff(){
+  try{
+    if(typeof S!=='undefined'&&(S.exclMode||S.segNoteMode))return true;
+    if(typeof _cd!=='undefined'&&_cd&&_cd.active)return true;
+    var ov=document.getElementById('drawOverlay');
+    if(ov&&ov.classList.contains('on'))return true;
+  }catch(_){}
+  return false;
+}
+
 function showEruvPopup(e){
   if(!e)return;
   var dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
@@ -1246,11 +1259,25 @@ function showEruvPopup(e){
     }
   }
   var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
+  // Boundary notes (this was referenced but never defined — it threw on every map click)
+  var bNotes='';
+  if(e.boundaryNotes){
+    bNotes='<div style="font-size:.71rem;color:var(--muted);margin-top:5px;line-height:1.45;white-space:pre-wrap">'+e.boundaryNotes+'</div>';
+  }
+  var nSeg=e.segNotes?Object.keys(e.segNotes).length:0;
+  var nLoc=(e.locationNotes||[]).length;
+  if(nSeg+nLoc>0){
+    bNotes+='<div style="font-size:.68rem;color:var(--muted);margin-top:4px">📍 '+(nSeg+nLoc)+' boundary note'+((nSeg+nLoc)>1?'s':'')+'</div>';
+  }
+  var moreBtn='<button onclick="openZoneDetail(this.dataset.z)" data-z="'+e.id+'" '
+    +'style="margin-top:9px;width:100%;border:none;background:var(--navy);color:#fff;padding:7px 0;'
+    +'border-radius:7px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">View full details →</button>';
   var html='<div style="min-width:200px">'
     +'<div class="pop-title">'+e.name+'</div>'
+    +(e.city?'<div style="font-size:.68rem;color:var(--muted);margin-top:1px">'+e.city+'</div>':'')
     +'<div class="pop-status">'+dot+' '+lbl+'</div>'
     +lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+bNotes+adj
-    +(don?'<div style="margin-top:6px">'+don+'</div>':'')+ctInfo+'</div>';
+    +(don?'<div style="margin-top:6px">'+don+'</div>':'')+ctInfo+moreBtn+'</div>';
   var lngLat=e.center;
   if(!lngLat&&e.coords&&e.coords.length){
     var lngs=e.coords.map(function(c){return c[0];}),lats=e.coords.map(function(c){return c[1];});
@@ -1259,6 +1286,26 @@ function showEruvPopup(e){
   if(!lngLat)return;
   new mapboxgl.Popup({closeButton:true,maxWidth:'260px',offset:5}).setLngLat(lngLat).setHTML(html).addTo(map);
 }
+/* Map click -> full zone detail in the sidebar. Reuses the existing accordion
+   so there is one detail view, not two that can drift apart. */
+function openZoneDetail(id){
+  var e=S.eruvin.find(function(x){return x.id===id;});
+  if(!e)return;
+  // Make sure the Check tab (which holds the eiruv list) is showing
+  var tab=document.querySelector('.s-tab');
+  if(tab&&!tab.classList.contains('on'))sTab(tab,'check');
+  // The list must exist before we can open a row in it
+  if(!document.getElementById('detail-'+id)){
+    try{renderEruvList();}catch(_){}
+  }
+  var row=document.getElementById('wrap-'+id);
+  if(!row){flyTo(e.center,e.name);return;}
+  var d=document.getElementById('detail-'+id);
+  var alreadyOpen=d&&d.style.display!=='none'&&d.innerHTML.length>10;
+  if(!alreadyOpen)toggleEruvDetail(id);
+  setTimeout(function(){row.scrollIntoView({behavior:'smooth',block:'center'});},60);
+}
+
 function addExclToMap(eruvId,ex){
   const sid='excl-'+eruvId+'-'+ex.id;
   if(map.getSource(sid)){map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]}});return;}
@@ -3085,6 +3132,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County — 16 loops</div><div class="acard-mt">From MASHGICHIM + TR exports · 11 still need identifying</div></div></div><div class="act-row"><button class="act-btn ap" id="ocBtn" onclick="seedOceanCounty()">📥 Import</button></div><div id="ocLog" style="margin-top:6px;max-height:150px;overflow-y:auto"></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -4627,6 +4675,73 @@ function seedEleven(){
     .catch(function(e){toast('Error: '+e.message,'err');});
 }
 
+/* One-time: import the 16 Ocean County loops from the two Google My Maps
+   exports. Reverse-geocodes each centre so the city field is real, not guessed. */
+function seedOceanCounty(){
+  if(!window._db){toast('Not connected','err');return;}
+  var btn=document.getElementById('ocBtn');
+  if(btn){btn.disabled=true;btn.textContent='Importing…';}
+  var log=document.getElementById('ocLog');
+  fetch('/seed/oceancounty.json')
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(zones){
+      var done=0,rows=[];
+      return zones.reduce(function(chain,z){
+        return chain.then(function(){
+          // city from Mapbox (browser-side — the token works here)
+          return fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'
+              +z.center[0]+','+z.center[1]+'.json?types=place,locality&limit=1&access_token='+TOKEN)
+            .then(function(r){return r.json();})
+            .then(function(g){
+              var city='Ocean County, NJ';
+              var f=g.features&&g.features[0];
+              if(f){
+                var parts=f.place_name.split(',');
+                city=(parts[0]+(parts[1]?','+parts[1]:'')).trim();
+              }
+              return city;
+            })
+            .catch(function(){return 'Ocean County, NJ';})
+            .then(function(city){
+              var note=z.needsId
+                ? 'Imported from "'+z.srcLabel+'" — this loop still needs to be identified.'
+                : (z.note||'');
+              return window._db.setZone(z.id,{
+                id:z.id,name:z.name,city:city,status:'review',
+                coords:z.coords,center:z.center,
+                note:note,
+                boundaryNotes:'Source label in Google My Maps: "'+z.srcLabel+'". Area ≈ '+z.area+' km².',
+                source:'Ocean County import',
+                needsReview:true,
+                owner:'',contractorEmail:'',contractors:[],
+                exclusions:[],adjacency:[],segNotes:{},
+                lastChecked:new Date().toLocaleDateString()
+              }).then(function(){
+                done++;
+                rows.push(z.name+'  —  '+city+'  ('+z.area+' km²)');
+                if(log)log.innerHTML=rows.map(function(t){return '<div style="font-size:.7rem;color:var(--muted);padding:1px 0">'+t+'</div>';}).join('');
+                if(btn)btn.textContent='Importing… '+done+'/'+zones.length;
+              });
+            });
+        });
+      }, Promise.resolve()).then(function(){
+        if(btn){btn.disabled=false;btn.textContent='✓ Imported '+done;}
+        toast('Ocean County: '+done+' zones imported','ok');
+        window._db.loadZones().then(function(z){
+          if(z&&z.length){
+            S.eruvin=z.map(function(x){return Object.assign({},x,{exclusions:x.exclusions||[],adjacency:x.adjacency||[]});});
+            _renderAllMapData&&_renderAllMapData();
+            renderEruvList&&renderEruvList();
+          }
+        });
+      });
+    })
+    .catch(function(e){
+      if(btn){btn.disabled=false;btn.textContent='Retry import';}
+      toast('Error: '+e.message,'err');
+    });
+}
+
 function _startCustomDraw(isExcl){
   _undoStack=[];
   _cd.pts=[];_cd.active=true;_cd.excl=!!isExcl;_cd.dblPending=false;
@@ -5632,6 +5747,7 @@ checkResetToken();
 <!-- Footer disclaimer -->
 <div id="site-footer" style="position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(15,31,56,.92);backdrop-filter:blur(8px);padding:5px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none;border-top:1px solid rgba(255,255,255,.08);">
   <div style="font-size:.6rem;color:rgba(255,255,255,.5);line-height:1.4;flex:1;">
+    🚧 <strong style="color:#e8c07a">Setup in progress —</strong> <span style="color:rgba(255,255,255,.75)">boundaries are still being imported and verified. Do not rely on this site yet.</span><br>
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
