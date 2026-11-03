@@ -3132,7 +3132,8 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County — 60 zones</div><div class="acard-mt">3 maps reconciled · 4 duplicates merged · 40 still need naming</div></div></div><div class="act-row"><button class="act-btn ap" id="ocBtn" onclick="seedOceanCounty()">📥 Import</button></div><div id="ocLog" style="margin-top:6px;max-height:150px;overflow-y:auto"></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County — 44 zones</div><div class="acard-mt">Jackson–Lakewood + Mashgichim · Toms River held back</div></div></div><div class="act-row"><button class="act-btn ap" id="ocBtn" onclick="seedOceanCounty()">📥 Import</button></div><div id="ocLog" style="margin-top:6px;max-height:150px;overflow-y:auto"></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Toms River — held back</div><div class="acard-mt">16 zones parked. Removes them from the map if they were already imported.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="trBtn" onclick="removeTomsRiver()">🗑 Remove from site</button></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -4677,6 +4678,36 @@ function seedEleven(){
 
 /* One-time: import the 16 Ocean County loops from the two Google My Maps
    exports. Reverse-geocodes each centre so the city field is real, not guessed. */
+/* Toms River zones are parked until we decide how to handle that map.
+   Pulls them out of Firestore if an earlier import already put them in. */
+function removeTomsRiver(){
+  if(!window._db){toast('Not connected','err');return;}
+  var btn=document.getElementById('trBtn');
+  if(btn){btn.disabled=true;btn.textContent='Removing…';}
+  fetch('/seed/tomsriver.json')
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(list){
+      var gone=0;
+      return list.reduce(function(chain,z){
+        return chain.then(function(){
+          return window._db.deleteZone(z.id).then(function(ok){ if(ok)gone++; });
+        });
+      },Promise.resolve()).then(function(){
+        S.eruvin=(S.eruvin||[]).filter(function(e){
+          return !list.some(function(z){return z.id===e.id;});
+        });
+        _renderAllMapData&&_renderAllMapData();
+        renderEruvList&&renderEruvList();
+        if(btn){btn.disabled=false;btn.textContent='✓ Removed '+gone;}
+        toast(gone+' Toms River zones removed','ok');
+      });
+    })
+    .catch(function(e){
+      if(btn){btn.disabled=false;btn.textContent='Retry';}
+      toast('Error: '+e.message,'err');
+    });
+}
+
 var _ocCity={};
 function seedOceanCounty(){
   if(!window._db){toast('Not connected','err');return;}
