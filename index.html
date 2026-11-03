@@ -3132,9 +3132,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Mashgichim map — 36 zones</div><div class="acard-mt">Labels kept exactly as in Google My Maps, full point fidelity</div></div></div><div class="act-row"><button class="act-btn ap" id="ocBtn" onclick="seedOceanCounty()">📥 Import</button></div><div id="ocLog" style="margin-top:6px;max-height:150px;overflow-y:auto"></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Held back — Toms River</div><div class="acard-mt">16 zones parked. Clears them if an earlier import wrote them.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="trBtn" onclick="removeParked(\'tomsriver.json\',\'Toms River\',\'trBtn\')">🗑 Remove</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Held back — Jackson–Lakewood</div><div class="acard-mt">12 zones parked. Clears them if an earlier import wrote them.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="jlBtn" onclick="removeParked(\'jackson.json\',\'Jackson–Lakewood\',\'jlBtn\')">🗑 Remove</button></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County imports</div><div class="acard-mt">Removes every zone brought in from the Mashgichim, Jackson–Lakewood and Toms River maps. Leaves your original eiruvin alone.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="wipeBtn" onclick="wipeOceanCounty()">🗑 Remove all</button></div><div id="wipeLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -4681,107 +4679,42 @@ function seedEleven(){
    exports. Reverse-geocodes each centre so the city field is real, not guessed. */
 /* Toms River zones are parked until we decide how to handle that map.
    Pulls them out of Firestore if an earlier import already put them in. */
-function removeParked(file,label,btnId){
+/* Removes everything the Ocean County imports put in. Matches on the source
+   field each import wrote, so it cannot touch the original eiruvin. */
+var OC_SOURCES=['Mashgichim map','Jackson–Lakewood map','Toms River map','Ocean County import'];
+function wipeOceanCounty(){
   if(!window._db){toast('Not connected','err');return;}
-  var btn=document.getElementById(btnId);
-  if(btn){btn.disabled=true;btn.textContent='Removing…';}
-  fetch('/seed/'+file)
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(list){
-      var gone=0;
-      return list.reduce(function(chain,z){
-        return chain.then(function(){
-          return window._db.deleteZone(z.id).then(function(ok){ if(ok)gone++; });
-        });
-      },Promise.resolve()).then(function(){
-        S.eruvin=(S.eruvin||[]).filter(function(e){
-          return !list.some(function(z){return z.id===e.id;});
-        });
-        _renderAllMapData&&_renderAllMapData();
-        renderEruvList&&renderEruvList();
-        if(btn){btn.disabled=false;btn.textContent='✓ Removed '+gone;}
-        toast(gone+' '+label+' zones removed','ok');
-      });
-    })
-    .catch(function(e){
-      if(btn){btn.disabled=false;btn.textContent='Retry';}
-      toast('Error: '+e.message,'err');
-    });
-}
-
-var _ocCity={};
-function seedOceanCounty(){
-  if(!window._db){toast('Not connected','err');return;}
-  var btn=document.getElementById('ocBtn');
-  if(btn){btn.disabled=true;btn.textContent='Importing…';}
-  var log=document.getElementById('ocLog');
-  fetch('/seed/oceancounty.json')
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(zones){
-      var done=0,rows=[];
-      return zones.reduce(function(chain,z){
-        return chain.then(function(){
-          // city from Mapbox (browser-side — the token works here)
-          var ck=z.center[0].toFixed(2)+','+z.center[1].toFixed(2);
-          if(_ocCity[ck]) return Promise.resolve(_ocCity[ck]);
-          return fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'
-              +z.center[0]+','+z.center[1]+'.json?types=place,locality&limit=1&access_token='+TOKEN)
-            .then(function(r){return r.json();})
-            .then(function(g){
-              var city='Ocean County, NJ';
-              var f=g.features&&g.features[0];
-              if(f){
-                var parts=f.place_name.split(',');
-                city=(parts[0]+(parts[1]?','+parts[1]:'')).trim();
-              }
-              _ocCity[ck]=city;
-              return city;
-            })
-            .catch(function(){return 'Ocean County, NJ';})
-            .then(function(city){
-              var note='';
-              if(z.needsId===undefined&&z.phone) note='Mashgiach contact on file.';
-              else if(z.isTerritory) note='This is a mashgiach inspection territory covering several eiruvin, not an eiruv on its own.';
-              else if(z.notAnEruv) note='⚠ The source map marks this as not a standalone eiruv — check before relying on it.';
-              else if(z.needsId) note='Imported as "'+z.srcLabel+'" — still needs to be identified.';
-              return window._db.setZone(z.id,{
-                id:z.id,name:z.name,city:city,status:'review',
-                coords:z.coords,center:z.center,
-                note:note,
-                boundaryNotes:z.boundaryNotes||('Source: '+z.srcFile+' — label "'+z.srcLabel+'". Area ≈ '+z.area+' km².'),
-                rov:z.mashgiach||'',
-                hotline:z.phone||'',
-                source:z.srcFile,
-                needsReview:true,
-                notAnEruv:!!z.notAnEruv,
-                isTerritory:!!z.isTerritory,
-                owner:'',contractorEmail:'',contractors:[],
-                exclusions:[],adjacency:[],segNotes:{},
-                lastChecked:new Date().toLocaleDateString()
-              }).then(function(){
-                done++;
-                rows.push(z.name+'  —  '+city+'  ('+z.area+' km²)');
-                if(log)log.innerHTML=rows.map(function(t){return '<div style="font-size:.7rem;color:var(--muted);padding:1px 0">'+t+'</div>';}).join('');
-                if(btn)btn.textContent='Importing… '+done+'/'+zones.length;
-              });
-            });
-        });
-      }, Promise.resolve()).then(function(){
-        if(btn){btn.disabled=false;btn.textContent='✓ Imported '+done;}
-        toast('Ocean County: '+done+' zones imported','ok');
-        window._db.loadZones().then(function(z){
-          if(z&&z.length){
-            S.eruvin=z.map(function(x){return Object.assign({},x,{exclusions:x.exclusions||[],adjacency:x.adjacency||[]});});
-            _renderAllMapData&&_renderAllMapData();
-            renderEruvList&&renderEruvList();
+  var btn=document.getElementById('wipeBtn'), log=document.getElementById('wipeLog');
+  if(btn){btn.disabled=true;btn.textContent='Checking…';}
+  window._db.loadZones().then(function(all){
+    var hit=(all||[]).filter(function(z){return OC_SOURCES.indexOf(z.source)>=0;});
+    if(!hit.length){
+      if(btn){btn.disabled=false;btn.textContent='Nothing to remove';}
+      if(log)log.innerHTML='<div style="font-size:.72rem;color:var(--muted)">No imported zones found — the site is already clean.</div>';
+      return;
+    }
+    var gone=0;
+    return hit.reduce(function(chain,z){
+      return chain.then(function(){
+        return window._db.deleteZone(z.id).then(function(ok){
+          if(ok){
+            gone++;
+            if(btn)btn.textContent='Removing… '+gone+'/'+hit.length;
+            if(log)log.innerHTML+='<div style="font-size:.7rem;color:var(--muted)">removed '+z.name+'</div>';
           }
         });
       });
-    })
-    .catch(function(e){
-      if(btn){btn.disabled=false;btn.textContent='Retry import';}
-      toast('Error: '+e.message,'err');
+    },Promise.resolve()).then(function(){
+      S.eruvin=(S.eruvin||[]).filter(function(e){return OC_SOURCES.indexOf(e.source)<0;});
+      _renderAllMapData&&_renderAllMapData();
+      renderEruvList&&renderEruvList();
+      if(btn){btn.disabled=false;btn.textContent='✓ Removed '+gone;}
+      toast(gone+' imported zones removed — '+S.eruvin.length+' eiruvin left','ok');
     });
+  }).catch(function(e){
+    if(btn){btn.disabled=false;btn.textContent='Retry';}
+    toast('Error: '+e.message,'err');
+  });
 }
 
 function _startCustomDraw(isExcl){
