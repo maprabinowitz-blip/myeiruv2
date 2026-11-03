@@ -3132,6 +3132,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Mashgichim map</div><div class="acard-mt">36 zones, labels exactly as in Google My Maps. Import 3 first and check the map before doing the rest.</div></div></div><div class="act-row"><button class="act-btn ap" id="mgTestBtn" onclick="importMashgichim(true)">📥 Import 3 (test)</button><button class="act-btn ao" id="mgAllBtn" onclick="importMashgichim(false)">📥 Import all 36</button></div><div id="mgLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County imports</div><div class="acard-mt">Removes every zone brought in from the Mashgichim, Jackson–Lakewood and Toms River maps. Leaves your original eiruvin alone.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="wipeBtn" onclick="wipeOceanCounty()">🗑 Remove all</button></div><div id="wipeLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
@@ -4682,6 +4683,68 @@ function seedEleven(){
 /* Removes everything the Ocean County imports put in. Matches on the source
    field each import wrote, so it cannot touch the original eiruvin. */
 var OC_SOURCES=['Mashgichim map','Jackson–Lakewood map','Toms River map','Ocean County import'];
+/* Mashgichim map import. Writes zones exactly as drawn — no merging, no
+   renaming, no simplification. test=true does only 3 so you can eyeball them. */
+function importMashgichim(test){
+  if(!window._db){toast('Not connected','err');return;}
+  var btn=document.getElementById(test?'mgTestBtn':'mgAllBtn');
+  var log=document.getElementById('mgLog');
+  var label=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Importing…';}
+  if(log)log.innerHTML='';
+
+  fetch('/seed/mashgichim.json')
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(all){
+      var list=test?all.filter(function(z){return z.test;}):all;
+      var done=0;
+      return list.reduce(function(chain,z){
+        return chain.then(function(){
+          return fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'
+                +z.center[0]+','+z.center[1]+'.json?types=place&limit=1&access_token='+TOKEN)
+            .then(function(r){return r.json();})
+            .then(function(g){
+              var f=g.features&&g.features[0];
+              return f?f.place_name.split(',').slice(0,2).join(',').trim():'Ocean County, NJ';
+            })
+            .catch(function(){return 'Ocean County, NJ';})
+            .then(function(city){
+              return window._db.setZone(z.id,{
+                id:z.id,name:z.name,city:city,status:'review',
+                coords:z.coords,center:z.center,
+                note:'',
+                boundaryNotes:'Label on the Mashgichim map: "'+z.srcLabel+'". Area \u2248 '+z.area+' km\u00b2, '+z.coords.length+' points.',
+                hotline:z.phone||'',
+                source:'Mashgichim map',
+                owner:'',contractorEmail:'',contractors:[],
+                exclusions:[],adjacency:[],segNotes:{},
+                lastChecked:new Date().toLocaleDateString()
+              });
+            })
+            .then(function(){
+              done++;
+              if(btn)btn.textContent='Importing… '+done+'/'+list.length;
+              if(log)log.innerHTML+='<div style="font-size:.7rem;color:var(--muted)">'+z.name+' — '+z.area+' km\u00b2</div>';
+            });
+        });
+      },Promise.resolve()).then(function(){
+        if(btn){btn.disabled=false;btn.textContent='\u2713 '+done+' imported';}
+        toast(done+' zones imported — check them on the map','ok');
+        return window._db.loadZones();
+      }).then(function(z){
+        if(z&&z.length){
+          S.eruvin=z.map(function(x){return Object.assign({},x,{exclusions:x.exclusions||[],adjacency:x.adjacency||[]});});
+          _renderAllMapData&&_renderAllMapData();
+          renderEruvList&&renderEruvList();
+        }
+      });
+    })
+    .catch(function(e){
+      if(btn){btn.disabled=false;btn.textContent=label||'Retry';}
+      toast('Error: '+e.message,'err');
+    });
+}
+
 function wipeOceanCounty(){
   if(!window._db){toast('Not connected','err');return;}
   var btn=document.getElementById('wipeBtn'), log=document.getElementById('wipeLog');
