@@ -4697,7 +4697,7 @@ function importMashgichim(test){
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(all){
       var list=test?all.filter(function(z){return z.test;}):all;
-      var done=0;
+      var done=0, failed=[];
       return list.reduce(function(chain,z){
         return chain.then(function(){
           return fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'
@@ -4712,6 +4712,9 @@ function importMashgichim(test){
               return window._db.setZone(z.id,{
                 id:z.id,name:z.name,city:city,status:'review',
                 coords:z.coords,center:z.center,
+                // setZone merges, so a zone soft-deleted earlier keeps _deleted:true
+                // and loadZones filters it straight back out. Clear it explicitly.
+                _deleted:false,_deletedAt:null,
                 note:'',
                 boundaryNotes:'Label on the Mashgichim map: "'+z.srcLabel+'". Area \u2248 '+z.area+' km\u00b2, '+z.coords.length+' points.',
                 hotline:z.phone||'',
@@ -4721,15 +4724,23 @@ function importMashgichim(test){
                 lastChecked:new Date().toLocaleDateString()
               });
             })
-            .then(function(){
+            .then(function(ok){
+              // setZone swallows its own errors and returns false, so check it —
+              // otherwise a failed write is counted as a success.
+              if(ok===false){
+                failed.push(z.name);
+                if(log)log.innerHTML+='<div style="font-size:.7rem;color:#e5534b">\u2717 '+z.name+' \u2014 write failed</div>';
+                return;
+              }
               done++;
               if(btn)btn.textContent='Importing… '+done+'/'+list.length;
               if(log)log.innerHTML+='<div style="font-size:.7rem;color:var(--muted)">'+z.name+' — '+z.area+' km\u00b2</div>';
             });
         });
       },Promise.resolve()).then(function(){
-        if(btn){btn.disabled=false;btn.textContent='\u2713 '+done+' imported';}
-        toast(done+' zones imported — check them on the map','ok');
+        if(btn){btn.disabled=false;btn.textContent=(failed.length?'\u26a0 ':'\u2713 ')+done+'/'+list.length+' imported';}
+        if(failed.length)toast(failed.length+' zone(s) failed: '+failed.join(', '),'err');
+        else toast(done+' zones imported — check them on the map','ok');
         return window._db.loadZones();
       }).then(function(z){
         if(z&&z.length){
