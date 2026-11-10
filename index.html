@@ -3132,7 +3132,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Mashgichim map</div><div class="acard-mt">All 36 zones, labels exactly as in Google My Maps. Verified against the Google map: all 36 match.</div></div></div><div class="act-row"><button class="act-btn ao" id="mgAllBtn" onclick="importMashgichim(false)">📥 Import all 36 Mashgichim zones</button></div><div id="mgLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Mashgichim map</div><div class="acard-mt">39 zones — the Mashgichim map reconciled with the Jackson–Lakewood map: 7 renamed, HALPERT (1) replaced by Royal Grove + Rav Shor, 2 zones added. No duplicates.</div></div></div><div class="act-row"><button class="act-btn ao" id="mgAllBtn" onclick="importMashgichim(false)">📥 Import all 39 zones</button></div><div id="mgLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County imports</div><div class="acard-mt">Removes every zone brought in from the Mashgichim, Jackson–Lakewood and Toms River maps. Leaves your original eiruvin alone.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="wipeBtn" onclick="wipeOceanCounty()">🗑 Remove all</button></div><div id="wipeLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
@@ -4716,9 +4716,10 @@ function importMashgichim(test){
                 // and loadZones filters it straight back out. Clear it explicitly.
                 _deleted:false,_deletedAt:null,
                 note:'',
-                boundaryNotes:'Label on the Mashgichim map: "'+z.srcLabel+'". Area \u2248 '+z.area+' km\u00b2, '+z.coords.length+' points.',
+                boundaryNotes:z.boundaryNotes||'',
+                needsName:!!z.needsName,
                 hotline:z.phone||'',
-                source:'Mashgichim map',
+                source:z.srcFile||'Mashgichim map',
                 owner:'',contractorEmail:'',contractors:[],
                 exclusions:[],adjacency:[],segNotes:{},
                 lastChecked:new Date().toLocaleDateString()
@@ -4738,6 +4739,21 @@ function importMashgichim(test){
             });
         });
       },Promise.resolve()).then(function(){
+        // Retire zones this seed no longer lists (e.g. one that turned out to be an
+        // inspection territory). Without this they stay in Firestore and keep drawing.
+        if(test)return;
+        var keep={};list.forEach(function(z){keep[z.id]=1;});
+        var mine={'Mashgichim map':1,'Jackson\u2013Lakewood map':1};
+        return window._db.loadZones().then(function(cur){
+          var stale=(cur||[]).filter(function(x){return mine[x.source]&&!keep[x.id];});
+          return stale.reduce(function(c,x){
+            return c.then(function(){
+              if(log)log.innerHTML+='<div style="font-size:.7rem;color:var(--muted)">retired '+x.name+'</div>';
+              return window._db.deleteZone(x.id);
+            });
+          },Promise.resolve());
+        });
+      }).then(function(){
         if(btn){btn.disabled=false;btn.textContent=(failed.length?'\u26a0 ':'\u2713 ')+done+'/'+list.length+' imported';}
         if(failed.length)toast(failed.length+' zone(s) failed: '+failed.join(', '),'err');
         else toast(done+' zones imported — check them on the map','ok');
