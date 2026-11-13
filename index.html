@@ -1140,7 +1140,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1110.1852]');
+console.log('[MyEiruv build v1113.1727]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -3132,7 +3132,7 @@ function renderAdmin(sec){
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Mashgichim map</div><div class="acard-mt">39 zones — the Mashgichim map reconciled with the Jackson–Lakewood map: 7 renamed, HALPERT (1) replaced by Royal Grove + Rav Shor, 2 zones added. No duplicates.</div></div></div><div class="act-row"><button class="act-btn ao" id="mgAllBtn" onclick="importMashgichim(false)">📥 Import all 39 zones</button></div><div id="mgLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Mashgichim map</div><div class="acard-mt">39 zones + 7 karfifos (exclusions) — the Mashgichim map reconciled with the Jackson–Lakewood map: 7 renamed, HALPERT (1) replaced by Royal Grove + Rav Shor, 2 zones added. No duplicates.</div></div></div><div class="act-row"><button class="act-btn ao" id="mgAllBtn" onclick="importMashgichim(false)">📥 Import all 39 zones</button></div><div id="mgLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
     html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County imports</div><div class="acard-mt">Removes every zone brought in from the Mashgichim, Jackson–Lakewood and Toms River maps. Leaves your original eiruvin alone.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="wipeBtn" onclick="wipeOceanCounty()">🗑 Remove all</button></div><div id="wipeLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
@@ -4721,7 +4721,7 @@ function importMashgichim(test){
                 hotline:z.phone||'',
                 source:z.srcFile||'Mashgichim map',
                 owner:'',contractorEmail:'',contractors:[],
-                exclusions:[],adjacency:[],segNotes:{},
+                exclusions:z.exclusions||[],adjacency:[],segNotes:{},
                 lastChecked:new Date().toLocaleDateString()
               });
             })
@@ -5816,7 +5816,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1110.1852</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1113.1727</span>
   </div>
 </div>
 <style>
