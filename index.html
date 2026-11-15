@@ -1140,7 +1140,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1113.1727]');
+console.log('[MyEiruv build v1115.0615]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -1204,7 +1204,7 @@ function addEruvToMap(e){
       map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
       map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.02}});
       map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':3,'line-opacity':1}});
-      map.on('click',sid+'-fill',function(){ if(_zoneClicksOff())return; showEruvPopup(e); });
+      map.on('click',sid+'-fill',function(ev){ if(_zoneClicksOff()||_onNoteLine(ev))return; showEruvPopup(e); });
     map.on('mouseenter',sid+'-fill',function(){ if(!_zoneClicksOff())map.getCanvas().style.cursor='pointer'; });
     map.on('mouseleave',sid+'-fill',function(){ map.getCanvas().style.cursor=''; });
     }
@@ -1219,7 +1219,7 @@ function addEruvToMap(e){
     map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
     map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.07}});
     map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':2.5,'line-opacity':.9}});
-    map.on('click',sid+'-fill',function(){ if(_zoneClicksOff())return; showEruvPopup(e); });
+    map.on('click',sid+'-fill',function(ev){ if(_zoneClicksOff()||_onNoteLine(ev))return; showEruvPopup(e); });
     map.on('mouseenter',sid+'-fill',function(){ if(!_zoneClicksOff())map.getCanvas().style.cursor='pointer'; });
     map.on('mouseleave',sid+'-fill',function(){ map.getCanvas().style.cursor=''; });
   // 💬 markers hidden by default - shown when eiruv is clicked/focused
@@ -1227,6 +1227,7 @@ function addEruvToMap(e){
   e._hasNotes=!!(e.note||e.boundaryNotes||(e.segNotes&&Object.keys(e.segNotes).length));
   }
   (e.exclusions||[]).forEach(ex=>addExclToMap(e.id,ex));
+  addNoteLines(e);
 }
 /* While any drawing mode is active the map clicks belong to that tool. */
 function _zoneClicksOff(){
@@ -1265,7 +1266,7 @@ function showEruvPopup(e){
     bNotes='<div style="font-size:.71rem;color:var(--muted);margin-top:5px;line-height:1.45;white-space:pre-wrap">'+e.boundaryNotes+'</div>';
   }
   var nSeg=e.segNotes?Object.keys(e.segNotes).length:0;
-  var nLoc=(e.locationNotes||[]).length;
+  var nLoc=(e.locationNotes||[]).length+(e.noteLines||[]).length;
   if(nSeg+nLoc>0){
     bNotes+='<div style="font-size:.68rem;color:var(--muted);margin-top:4px">📍 '+(nSeg+nLoc)+' boundary note'+((nSeg+nLoc)>1?'s':'')+'</div>';
   }
@@ -1312,6 +1313,45 @@ function addExclToMap(eruvId,ex){
   map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]}}});
   map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':'#d94040','fill-opacity':0.13}});
   map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':'#d94040','line-width':1.5,'line-dasharray':[3,2]}});
+}
+
+/* Street notes drawn as lines on a zone: red = that stretch is not in the eiruv,
+   green = it is, blue = anything else. They guide the eye only; they are lines,
+   not areas, so they do not change the inside/outside check. */
+var NOTE_LINE_COL={out:'#d94040','in':'#2e9e5b',info:'#2f6fd0'};
+function _nlEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function addNoteLines(e){
+  (e.noteLines||[]).forEach(function(ln,i){
+    var lid='eruv-'+e.id+'-nl'+i;
+    var pts=(ln.coords||[]).map(function(c){return c&&c.g!==undefined?[c.g,c.a]:c;});
+    if(pts.length<2)return;
+    var data={type:'Feature',geometry:{type:'LineString',coordinates:pts}};
+    if(map.getSource(lid)){map.getSource(lid).setData(data);return;}
+    var col=NOTE_LINE_COL[ln.kind]||NOTE_LINE_COL.info;
+    map.addSource(lid,{type:'geojson',data:data});
+    map.addLayer({id:lid,type:'line',source:lid,layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':col,'line-width':4,'line-opacity':.9}});
+    // a wide, nearly invisible copy so the line can be tapped on a phone
+    map.addLayer({id:lid+'-hit',type:'line',source:lid,paint:{'line-color':col,'line-width':18,'line-opacity':0.02}});
+    map.on('click',lid+'-hit',function(ev){
+      if(_zoneClicksOff())return;
+      var tag={out:'Not in the eiruv','in':'Inside the eiruv'}[ln.kind]||'Note';
+      var nm=/^(not in|inside the|in) eruv$/i.test(ln.name||'')?'':(ln.name||'');
+      var html='<div style="font-size:.8rem;font-weight:700;color:'+col+'">'+tag+'</div>'
+        +(nm?'<div style="font-size:.78rem;margin-top:3px">'+_nlEsc(nm)+'</div>':'')
+        +(ln.text?'<div style="font-size:.74rem;margin-top:3px;line-height:1.4">'+_nlEsc(ln.text)+'</div>':'')
+        +'<div style="font-size:.68rem;color:var(--muted);margin-top:5px">'+_nlEsc(e.name)+'</div>';
+      new mapboxgl.Popup({closeButton:true,maxWidth:'260px',offset:5}).setLngLat(ev.lngLat).setHTML(html).addTo(map);
+    });
+    map.on('mouseenter',lid+'-hit',function(){ if(!_zoneClicksOff())map.getCanvas().style.cursor='pointer'; });
+    map.on('mouseleave',lid+'-hit',function(){ map.getCanvas().style.cursor=''; });
+  });
+}
+/* True when a street-note line is under the pointer, so the zone behind it stays quiet. */
+function _onNoteLine(ev){
+  try{
+    var pt=ev&&ev.point;if(!pt)return false;
+    return map.queryRenderedFeatures([[pt.x-9,pt.y-9],[pt.x+9,pt.y+9]]).some(function(f){return f.layer&&/-nl\d+-hit$/.test(f.layer.id);});
+  }catch(_){return false;}
 }
 
 // AUTOCOMPLETE
@@ -3125,15 +3165,12 @@ function renderAdmin(sec){
         var html=fsWarn+'<span class="adm-sec">Overview</span><div class="adm-stats"><div class="sbox"><div class="sbox-n">'+S.eruvin.length+'</div><div class="sbox-l">Zones</div></div><div class="sbox"><div class="sbox-n" style="color:var(--green)">'+up+'</div><div class="sbox-l">Up</div></div><div class="sbox"><div class="sbox-n" style="color:var(--amber)">'+rv+'</div><div class="sbox-l">Review</div></div><div class="sbox"><div class="sbox-n" style="color:var(--red)">'+dn+'</div><div class="sbox-l">Down</div></div></div>';
     html+='<div class="adm-stats" style="margin-top:6px"><div class="sbox"><div class="sbox-n">'+(S.shuls||[]).length+'</div><div class="sbox-l">Shuls</div></div><div class="sbox"><div class="sbox-n">'+users.length+'</div><div class="sbox-l">Users</div></div><div class="sbox"><div class="sbox-n">'+conts.length+'</div><div class="sbox-l">Contractors</div></div></div>';
     if(pend.length){html+='<span class="adm-sec">Pending Applications</span>';pend.forEach(function(u){html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge b-rv">Pending</span></div><div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div></div>';});}
-    html+='<span class="adm-sec" style="margin-top:10px">One-time</span>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Buenos Aires — Reset</div><div class="acard-mt">Back to clean 99-pt original</div></div></div><div class="act-row"><button class="act-btn ap" onclick="fixBsas()">📥 Fix</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Monsey Eruv</div><div class="acard-mt">Monsey, NY — 1,815 pts (28 sections)</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedMonsey()">📥 Import</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Virginia Highlands Eruv</div><div class="acard-mt">Atlanta, GA — 360 pts + 6 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedVA()">📥 Import</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">East Denver Eruv</div><div class="acard-mt">606 pts + 22 notes</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedCheckers()">📥 Import</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Clear All Shuls</div><div class="acard-mt">Remove inaccurate seeded shul data (will re-seed properly later)</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" onclick="clearAllShuls()">🗑 Clear Shuls</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Fix 11 Boundaries</div><div class="acard-mt">Real KML coords for Budapest, Bushey, Champaign, Chigwell, Crown Hts, Eugene, Oakland, Ottawa x2, Paramus, Waltham</div></div></div><div class="act-row"><button class="act-btn ap" onclick="seedEleven()">📥 Fix All</button></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Mashgichim map</div><div class="acard-mt">39 zones + 7 karfifos (exclusions) — the Mashgichim map reconciled with the Jackson–Lakewood map: 7 renamed, HALPERT (1) replaced by Royal Grove + Rav Shor, 2 zones added. No duplicates.</div></div></div><div class="act-row"><button class="act-btn ao" id="mgAllBtn" onclick="importMashgichim(false)">📥 Import all 39 zones</button></div><div id="mgLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Ocean County imports</div><div class="acard-mt">Removes every zone brought in from the Mashgichim, Jackson–Lakewood and Toms River maps. Leaves your original eiruvin alone.</div></div></div><div class="act-row"><button class="act-btn" style="background:#fbeaea;color:#b91c1c" id="wipeBtn" onclick="wipeOceanCounty()">🗑 Remove all</button></div><div id="wipeLog" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
+    if(SEED_UPDATES.length){
+      html+='<span class="adm-sec" style="margin-top:10px">Updates to apply</span>';
+      SEED_UPDATES.forEach(function(u){
+        html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.title+'</div><div class="acard-mt">'+u.desc+'</div></div></div><div class="act-row"><button class="act-btn ao" id="seedBtn-'+u.file+'" onclick="applySeed(\''+u.file+'\')">Apply update</button></div><div id="seedLog-'+u.file+'" style="margin-top:6px;max-height:180px;overflow-y:auto"></div></div>';
+      });
+    }
     html+='<span class="adm-sec" style="margin-top:10px">Quick Status</span>';
     S.eruvin.forEach(function(e){var bc={up:'b-up',review:'b-rv',down:'b-dn'}[e.status];html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+e.name+'</div><div class="acard-mt">'+e.city+'</div></div><span class="badge '+bc+'">'+e.status+'</span></div><div class="act-row"><button class="act-btn ag" onclick="admStatus(\''+e.id+'\',\'up\')">Up</button><button class="act-btn ao" onclick="admStatus(\''+e.id+'\',\'review\')">Review</button><button class="act-btn ar" onclick="admStatus(\''+e.id+'\',\'down\')">Down</button></div></div>';});
     body.innerHTML=html;
@@ -4522,289 +4559,95 @@ function _loadKmlIntoEditor(r){
 
 // ── Delete selected point ───────────────────────────────────────────────────
 
-function patchBsasSubZones(){
-  if(!window._db||!window._db.db){toast('Not ready','err');return;}
-  var db=window._db.db;
-  var coords=[{"g":-58.4513394,"a":-34.5993161},{"g":-58.4495152,"a":-34.5999541},{"g":-58.4454214,"a":-34.6042494},{"g":-58.4462582,"a":-34.6048057},{"g":-58.4455501,"a":-34.6054504},{"g":-58.4448045,"a":-34.6049205},{"g":-58.4431844,"a":-34.6067021},{"g":-58.4425406,"a":-34.6083534},{"g":-58.4417038,"a":-34.6085035},{"g":-58.441626,"a":-34.6089119},{"g":-58.4374454,"a":-34.6088875},{"g":-58.4251931,"a":-34.6087462},{"g":-58.4178979,"a":-34.6086112},{"g":-58.4160096,"a":-34.608651},{"g":-58.4150709,"a":-34.6085317},{"g":-58.4139771,"a":-34.6079184},{"g":-58.4135372,"a":-34.6062847},{"g":-58.4100182,"a":-34.6069293},{"g":-58.3918435,"a":-34.6058697},{"g":-58.3927662,"a":-34.5971975},{"g":-58.3928091,"a":-34.5958551},{"g":-58.3927447,"a":-34.5948306},{"g":-58.3924014,"a":-34.5928876},{"g":-58.391586,"a":-34.592022},{"g":-58.3856652,"a":-34.5868868},{"g":-58.3855354,"a":-34.5864488},{"g":-58.3859246,"a":-34.5857517},{"g":-58.3868043,"a":-34.5843385},{"g":-58.3869342,"a":-34.5841633},{"g":-58.3870789,"a":-34.5840201},{"g":-58.3879546,"a":-34.5842509},{"g":-58.3885515,"a":-34.584754},{"g":-58.3892247,"a":-34.5842908},{"g":-58.3895868,"a":-34.5841456},{"g":-58.3907885,"a":-34.58363},{"g":-58.3906934,"a":-34.5834772},{"g":-58.3906656,"a":-34.5829723},{"g":-58.3907691,"a":-34.5823887},{"g":-58.3921424,"a":-34.5817792},{"g":-58.3922712,"a":-34.5814259},{"g":-58.3927432,"a":-34.5806132},{"g":-58.3937303,"a":-34.5804365},{"g":-58.3949426,"a":-34.5807369},{"g":-58.395919,"a":-34.5814789},{"g":-58.3976911,"a":-34.5806801},{"g":-58.3969883,"a":-34.5797349},{"g":-58.3965753,"a":-34.5789046},{"g":-58.3968144,"a":-34.5786246},{"g":-58.3986275,"a":-34.5773349},{"g":-58.4004085,"a":-34.5764692},{"g":-58.4018462,"a":-34.5753826},{"g":-58.402844,"a":-34.5744551},{"g":-58.4036808,"a":-34.5732448},{"g":-58.4049895,"a":-34.5715782},{"g":-58.4052256,"a":-34.5715649},{"g":-58.4060195,"a":-34.572148},{"g":-58.406049,"a":-34.5718697},{"g":-58.4061858,"a":-34.5716267},{"g":-58.4063055,"a":-34.5714775},{"g":-58.4064573,"a":-34.5713106},{"g":-58.4070421,"a":-34.570944},{"g":-58.4079046,"a":-34.5707636},{"g":-58.4085322,"a":-34.5705207},{"g":-58.408795,"a":-34.5703087},{"g":-58.4090026,"a":-34.5699089},{"g":-58.4090884,"a":-34.5694451},{"g":-58.4095605,"a":-34.568946},{"g":-58.4101827,"a":-34.5686677},{"g":-58.411438,"a":-34.5682436},{"g":-58.4120871,"a":-34.5681818},{"g":-58.4124465,"a":-34.5681509},{"g":-58.4126397,"a":-34.5687384},{"g":-58.4128703,"a":-34.5689062},{"g":-58.4134336,"a":-34.5688753},{"g":-58.4148766,"a":-34.5687781},{"g":-58.4157027,"a":-34.568491},{"g":-58.4167365,"a":-34.5682848},{"g":-58.4185604,"a":-34.568572},{"g":-58.41977,"a":-34.5690844},{"g":-58.4205774,"a":-34.5695261},{"g":-58.4215189,"a":-34.5702284},{"g":-58.422429,"a":-34.571118},{"g":-58.422641,"a":-34.57104},{"g":-58.423027,"a":-34.570887},{"g":-58.42323,"a":-34.570771},{"g":-58.423357,"a":-34.570671},{"g":-58.423346,"a":-34.570494},{"g":-58.423388,"a":-34.570437},{"g":-58.423746,"a":-34.570297},{"g":-58.423746,"a":-34.570297},{"g":-58.423957,"a":-34.570437},{"g":-58.424128,"a":-34.570506},{"g":-58.423983,"a":-34.570593},{"g":-58.423763,"a":-34.570424},{"g":-58.423506,"a":-34.570523},{"g":-58.423524,"a":-34.570571},{"g":-58.423538,"a":-34.570611},{"g":-58.423547,"a":-34.570659},{"g":-58.423504,"a":-34.570701},{"g":-58.423289,"a":-34.570858},{"g":-58.423008,"a":-34.571016},{"g":-58.422655,"a":-34.571147},{"g":-58.422468,"a":-34.571217},{"g":-58.422429,"a":-34.571118},{"g":-58.4226373,"a":-34.5716773},{"g":-58.4231253,"a":-34.5727329},{"g":-58.4242045,"a":-34.5748539},{"g":-58.4254126,"a":-34.5773284},{"g":-58.4247992,"a":-34.5777242},{"g":-58.4253651,"a":-34.5783701},{"g":-58.4255609,"a":-34.578676},{"g":-58.4259054,"a":-34.5792217},{"g":-58.4319314,"a":-34.5860537},{"g":-58.4333995,"a":-34.5869773},{"g":-58.4354973,"a":-34.5882709},{"g":-58.4372464,"a":-34.5894584},{"g":-58.4381691,"a":-34.5901783},{"g":-58.4387163,"a":-34.5905823},{"g":-58.4396443,"a":-34.5912426},{"g":-58.4441296,"a":-34.5943439},{"g":-58.4513394,"a":-34.5993161}];
-  import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js')
-    .then(function(fs){
-      return fs.updateDoc(fs.doc(db,'zones','buenos-aires-eruv'),{
-        coords:coords,
-        center:[-58.414429,-34.581535]
-      });
-    })
-    .then(function(){
-      toast('✅ Buenos Aires coords updated — 121 pts','ok');
-      var z=(S.eruvin||[]).find(function(e){return e.id==='buenos-aires-eruv';});
-      if(z){
-        z.coords=coords.map(function(c){return[c.g,c.a];});
-        z.center=[-58.414429,-34.581535];
-      }
-      _renderAllMapData&&_renderAllMapData();
-    })
-    .catch(function(e){toast('Error: '+e.message,'err');console.error(e);});
-}
-
-function seedVA(){_seedFromWorker('virginia-highlands-eruv','Virginia Highlands Eruv','Atlanta, GA',[-84.3514,33.7779],'va','https://www.google.com/maps/d/embed?mid=1a3jkpmS3ZkRp77a23ac4bNRV6PQ');}
-function seedCheckers(){_seedFromWorker('east-denver-eruv','East Denver Eruv','Denver, CO',[-104.9334,39.7276],'denver','');}
-function seedMonsey(){
+/* One-time data updates. Each entry is a file in /seed/ listing zones to write,
+   zones to patch and zones to retire. Add an entry here when there is an update
+   to run and delete it once it has been applied, so the admin page stays clean. */
+var SEED_UPDATES=[
+  {file:'update-1',title:'Monsey, Oakland, Paramus',
+   desc:'Monsey becomes its 28 sections, each its own eiruv (7 of them were missing from the single outline). Oakland gets its 27 street notes. Paramus gets its border rule and the Teaneck connection.'}
+];
+function applySeed(file){
   if(!window._db){toast('Not connected','err');return;}
-  toast('Fetching Monsey data...','ok');
-  Promise.all([
-    fetch('/seed/monsey.json').then(function(r){return r.json();}),
-    fetch('/seed/monsey_sections.json').then(function(r){return r.json();})
-  ]).then(function(results){
-    var d=results[0], secs=results[1];
-    var zone={id:'monsey-eruv',name:'Monsey Eruv',city:'Monsey, NY',
-      status:'review',coords:d.coords,center:[-74.0661,41.1495],
-      sections:secs,
-      source:'eiruvofmonsey.org',
-      embedUrl:'https://www.google.com/maps/d/embed?mid=1lUGTE1wAI3l5hS4ei6ZttsC5Got25bqY',
-      hotline:'845-552-2020',donateUrl:'https://dryveup.com/eiruvofmonsey',
-      owner:'',contractorEmail:'',contractors:[],
-      exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',
-      lastChecked:new Date().toLocaleDateString()};
-    return window._db.setZone('monsey-eruv',zone);
-  }).then(function(ok){
-    if(ok)toast('Monsey: 709pt outer + 28 sections','ok');
-    else toast('Failed','err');
-  }).catch(function(e){toast('Error: '+e.message,'err');});
-}
-function _seedFromWorker(id,name,city,center,key,embedUrl){
-  if(!window._db){toast('Not connected','err');return;}
-  toast('Fetching...','ok');
-  fetch('/seed/'+key+'.json')
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(d){
-      var zone={id:id,name:name,city:city,status:'review',coords:d.coords,center:center,
-        locationNotes:d.notes||[],owner:'',contractorEmail:'',contractors:[],
-        exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',lastChecked:new Date().toLocaleDateString()};
-      if(embedUrl)zone.embedUrl=embedUrl;
-      if(d.hotline)zone.hotline=d.hotline;
-      if(d.donateUrl)zone.donateUrl=d.donateUrl;
-      if(d.source)zone.source=d.source;
-      return window._db.setZone(id,zone);
-    })
-    .then(function(ok){if(ok)toast(name+' imported','ok');else toast('Import failed','err');})
-    .catch(function(e){toast('Error: '+e.message,'err');});
-}
-function fixBsas(){
-  if(!window._db||!window._db.db){toast('Not ready','err');return;}
-  var c=[{"g":-58.4513394,"a":-34.5993161},{"g":-58.4495152,"a":-34.5999541},{"g":-58.4454214,"a":-34.6042494},{"g":-58.4462582,"a":-34.6048057},{"g":-58.4455501,"a":-34.6054504},{"g":-58.4448045,"a":-34.6049205},{"g":-58.4431844,"a":-34.6067021},{"g":-58.4425406,"a":-34.6083534},{"g":-58.4417038,"a":-34.6085035},{"g":-58.441626,"a":-34.6089119},{"g":-58.4374454,"a":-34.6088875},{"g":-58.4251931,"a":-34.6087462},{"g":-58.4178979,"a":-34.6086112},{"g":-58.4160096,"a":-34.608651},{"g":-58.4150709,"a":-34.6085317},{"g":-58.4139771,"a":-34.6079184},{"g":-58.4135372,"a":-34.6062847},{"g":-58.4100182,"a":-34.6069293},{"g":-58.3918435,"a":-34.6058697},{"g":-58.3927662,"a":-34.5971975},{"g":-58.3928091,"a":-34.5958551},{"g":-58.3927447,"a":-34.5948306},{"g":-58.3924014,"a":-34.5928876},{"g":-58.391586,"a":-34.592022},{"g":-58.3856652,"a":-34.5868868},{"g":-58.3855354,"a":-34.5864488},{"g":-58.3859246,"a":-34.5857517},{"g":-58.3868043,"a":-34.5843385},{"g":-58.3869342,"a":-34.5841633},{"g":-58.3870789,"a":-34.5840201},{"g":-58.3879546,"a":-34.5842509},{"g":-58.3885515,"a":-34.584754},{"g":-58.3892247,"a":-34.5842908},{"g":-58.3895868,"a":-34.5841456},{"g":-58.3907885,"a":-34.58363},{"g":-58.3906934,"a":-34.5834772},{"g":-58.3906656,"a":-34.5829723},{"g":-58.3907691,"a":-34.5823887},{"g":-58.3921424,"a":-34.5817792},{"g":-58.3922712,"a":-34.5814259},{"g":-58.3927432,"a":-34.5806132},{"g":-58.3937303,"a":-34.5804365},{"g":-58.3949426,"a":-34.5807369},{"g":-58.395919,"a":-34.5814789},{"g":-58.3976911,"a":-34.5806801},{"g":-58.3969883,"a":-34.5797349},{"g":-58.3965753,"a":-34.5789046},{"g":-58.3968144,"a":-34.5786246},{"g":-58.3986275,"a":-34.5773349},{"g":-58.4004085,"a":-34.5764692},{"g":-58.4018462,"a":-34.5753826},{"g":-58.402844,"a":-34.5744551},{"g":-58.4036808,"a":-34.5732448},{"g":-58.4049895,"a":-34.5715782},{"g":-58.4052256,"a":-34.5715649},{"g":-58.4060195,"a":-34.572148},{"g":-58.406049,"a":-34.5718697},{"g":-58.4061858,"a":-34.5716267},{"g":-58.4063055,"a":-34.5714775},{"g":-58.4064573,"a":-34.5713106},{"g":-58.4070421,"a":-34.570944},{"g":-58.4079046,"a":-34.5707636},{"g":-58.4085322,"a":-34.5705207},{"g":-58.408795,"a":-34.5703087},{"g":-58.4090026,"a":-34.5699089},{"g":-58.4090884,"a":-34.5694451},{"g":-58.4095605,"a":-34.568946},{"g":-58.4101827,"a":-34.5686677},{"g":-58.411438,"a":-34.5682436},{"g":-58.4120871,"a":-34.5681818},{"g":-58.4124465,"a":-34.5681509},{"g":-58.4126397,"a":-34.5687384},{"g":-58.4128703,"a":-34.5689062},{"g":-58.4134336,"a":-34.5688753},{"g":-58.4148766,"a":-34.5687781},{"g":-58.4157027,"a":-34.568491},{"g":-58.4167365,"a":-34.5682848},{"g":-58.4185604,"a":-34.568572},{"g":-58.41977,"a":-34.5690844},{"g":-58.4205774,"a":-34.5695261},{"g":-58.4215189,"a":-34.5702284},{"g":-58.422429,"a":-34.571118},{"g":-58.4226373,"a":-34.5716773},{"g":-58.4231253,"a":-34.5727329},{"g":-58.4242045,"a":-34.5748539},{"g":-58.4254126,"a":-34.5773284},{"g":-58.4247992,"a":-34.5777242},{"g":-58.4253651,"a":-34.5783701},{"g":-58.4255609,"a":-34.578676},{"g":-58.4259054,"a":-34.5792217},{"g":-58.4319314,"a":-34.5860537},{"g":-58.4333995,"a":-34.5869773},{"g":-58.4354973,"a":-34.5882709},{"g":-58.4372464,"a":-34.5894584},{"g":-58.4381691,"a":-34.5901783},{"g":-58.4387163,"a":-34.5905823},{"g":-58.4396443,"a":-34.5912426},{"g":-58.4441296,"a":-34.5943439},{"g":-58.4513394,"a":-34.5993161}];
-  import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js')
-    .then(function(fs){
-      return fs.updateDoc(fs.doc(window._db.db,'zones','buenos-aires-eruv'),
-        {coords:c,center:[-58.412446,-34.583944],backupLines:[]});
-    })
-    .then(function(){toast('Buenos Aires reset to 99 pts','ok');})
-    .catch(function(e){toast(e.code+': '+e.message,'err');});
-}
-
-function seedAllRemaining(){
-  if(!window._db){toast('Not connected','err');return;}
-  var zones=[
-    {id:'crown-heights-eruv',name:'Crown Heights Eruv',city:'Brooklyn, NY',center:[-73.9284, 40.6572],embedUrl:'https://www.google.com/maps/d/embed?mid=1wcvJ7WnWgprRR3WiYMeFm9LCwfWEJ-0'},
-    {id:'paramus-eruv',name:'Paramus Eruv',city:'Paramus, NJ',center:[-74.0485, 40.9398],embedUrl:'https://www.google.com/maps/d/embed?mid=1oUwkPDrH3UYcU1GRhWM2cSQtvLIQG2k6'},
-    {id:'oakland-eruv',name:'Oakland Eruv',city:'Oakland, CA',center:[-122.2243, 37.8071],embedUrl:'https://www.google.com/maps/d/embed?mid=1szsKi-tRPUr0KtklVSLjqgjslnCMYl8x'},
-    {id:'eugene-eruv',name:'Eugene Eruv',city:'Eugene, OR',center:[-123.0868, 44.0521],embedUrl:'https://www.google.com/maps/d/embed?mid=13CXgM5o-yhjvfBtfiZ0qJC18LHdKzq42'},
-    {id:'lower-merion-eruv',name:'Lower Merion Eruv',city:'Philadelphia, PA',center:[-75.2673, 40.0093],embedUrl:'',mapsUrl:'https://www.google.com/maps/d/viewer?mid=zal-mq_nmhdw.kbdqsn2teocw'},
-    {id:'champaign-urbana-eruv',name:'Champaign-Urbana Eruv',city:'Champaign, IL',center:[-88.2272, 40.1115],embedUrl:'https://www.google.com/maps/d/embed?mid=1FlrCIWb7nqQgdk667FWkZe_W60I'},
-    {id:'waltham-brandeis-eruv',name:'Waltham/Brandeis Eruv',city:'Waltham, MA',center:[-71.2575, 42.365],embedUrl:'https://www.google.com/maps/d/embed?mid=17eM6z4Gp5rf_PsGX6onvNz6041g'},
-    {id:'ottawa-craig-henry-eruv',name:'Ottawa Craig Henry Eruv',city:'Ottawa, Canada',center:[-75.7689, 45.3393],embedUrl:'https://www.google.com/maps/d/embed?mid=1XGd3csGwSnGx3PSiWIyKUlz5guA'},
-    {id:'ottawa-jcc-eruv',name:'Ottawa JCC Eruv',city:'Ottawa, Canada',center:[-75.7524, 45.3745],embedUrl:'https://www.google.com/maps/d/embed?mid=162GsGfUyH5K1zfy_yBaeKUzCQJk'},
-    {id:'budapest-eruv',name:'Budapest Eruv',city:'Budapest, Hungary',center:[19.076, 47.5036],embedUrl:'https://www.google.com/maps/d/embed?mid=1EQLl76QcHzAZ18jJcpmE0y8OlgMTIqw'},
-    {id:'bushey-eruv',name:'Bushey Eruv',city:'Bushey, London',center:[-0.3605, 51.6455],embedUrl:'https://www.google.com/maps/d/embed?mid=1CsXiBbVJ52Ij2BQfa154WdmTqH8'},
-    {id:'chigwell-eruv',name:'Chigwell Eruv',city:'Chigwell, London',center:[0.077, 51.65],embedUrl:'https://www.google.com/maps/d/embed?mid=1BQTpWUUnb9yC1eXgr00fi0OO4U4'},
-  ];
-  var done=0;
-  zones.forEach(function(z){
-    var zdata={
-      id:z.id,name:z.name,city:z.city,status:'review',
-      coords:[],center:z.center,
-      owner:'',contractorEmail:'',contractors:[],
-      exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',
-      lastChecked:new Date().toLocaleDateString()
-    };
-    if(z.embedUrl)zdata.embedUrl=z.embedUrl;
-    if(z.mapsUrl)zdata.mapsUrl=z.mapsUrl;
-    window._db.setZone(z.id,zdata).then(function(ok){
-      if(ok){done++;toast(z.name+' added ('+done+'/'+zones.length+')','ok');}
-    });
-  });
-}
-
-function clearAllShuls(){
-  if(!window._db||!window._db.db){toast('Not ready','err');return;}
-  if(!confirm('Remove all shuls from the database? This cannot be undone.'))return;
-  import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(function(fs){
-    return fs.getDocs(fs.collection(window._db.db,'shuls'));
-  }).then(function(snap){
-    var proms=[];
-    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js').then(function(fs){
-      snap.forEach(function(d){
-        proms.push(fs.deleteDoc(fs.doc(window._db.db,'shuls',d.id)));
-      });
-      Promise.all(proms).then(function(){
-        toast(snap.size+' shuls removed','ok');
-        S.shuls=[];
-        if(window._map_shul_layers){/* map cleanup handled on refresh */}
-      });
-    });
-  }).catch(function(e){toast('Error: '+e.message,'err');});
-}
-
-function seedEleven(){
-  if(!window._db){toast('Not connected','err');return;}
-  toast('Fetching boundary data…','ok');
-  fetch('/seed/eleven.json')
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(zones){
-      var done=0;
-      zones.forEach(function(z){
-        window._db.setZone(z.id,{
-          id:z.id,name:z.name,city:z.city,status:'review',
-          coords:z.coords,center:z.center,
-          locationNotes:z.notes||[],
-          owner:'',contractorEmail:'',contractors:[],
-          exclusions:[],adjacency:[],segNotes:{},boundaryNotes:'',
-          lastChecked:new Date().toLocaleDateString()
-        }).then(function(ok){
-          if(ok){done++;toast(z.name+' ('+done+'/'+zones.length+')','ok');}
-        });
-      });
-    })
-    .catch(function(e){toast('Error: '+e.message,'err');});
-}
-
-/* One-time: import the 16 Ocean County loops from the two Google My Maps
-   exports. Reverse-geocodes each centre so the city field is real, not guessed. */
-/* Toms River zones are parked until we decide how to handle that map.
-   Pulls them out of Firestore if an earlier import already put them in. */
-/* Removes everything the Ocean County imports put in. Matches on the source
-   field each import wrote, so it cannot touch the original eiruvin. */
-var OC_SOURCES=['Mashgichim map','Jackson–Lakewood map','Toms River map','Ocean County import'];
-/* Mashgichim map import. Writes zones exactly as drawn — no merging, no
-   renaming, no simplification. test=true does only 3 so you can eyeball them. */
-function importMashgichim(test){
-  if(!window._db){toast('Not connected','err');return;}
-  var btn=document.getElementById(test?'mgTestBtn':'mgAllBtn');
-  var log=document.getElementById('mgLog');
-  var label=btn?btn.textContent:'';
-  if(btn){btn.disabled=true;btn.textContent='Importing…';}
+  var btn=document.getElementById('seedBtn-'+file), log=document.getElementById('seedLog-'+file);
+  var say=function(t,bad){if(log)log.innerHTML+='<div style="font-size:.7rem;color:'+(bad?'#e5534b':'var(--muted)')+'">'+t+'</div>';};
+  if(btn){btn.disabled=true;btn.textContent='Loading…';}
   if(log)log.innerHTML='';
-
-  fetch('/seed/mashgichim.json')
+  var done=0, failed=[];
+  fetch('/seed/'+file+'.json?t='+Date.now())
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(all){
-      var list=test?all.filter(function(z){return z.test;}):all;
-      var done=0, failed=[];
-      return list.reduce(function(chain,z){
-        return chain.then(function(){
+    .then(function(u){
+      var have={};(S.eruvin||[]).forEach(function(z){have[z.id]=z;});
+      var zones=u.zones||[], patches=u.patches||[], retire=u.retire||[];
+      var total=zones.length+patches.length;
+      var tick=function(){done++;if(btn)btn.textContent='Working… '+done+'/'+total;};
+
+      // 1. zones written in full
+      var chain=zones.reduce(function(c,z){
+        return c.then(function(){
+          if(!z.geocodeCity)return z.city||'';
           return fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'
                 +z.center[0]+','+z.center[1]+'.json?types=place&limit=1&access_token='+TOKEN)
             .then(function(r){return r.json();})
-            .then(function(g){
-              var f=g.features&&g.features[0];
-              return f?f.place_name.split(',').slice(0,2).join(',').trim():'Ocean County, NJ';
-            })
-            .catch(function(){return 'Ocean County, NJ';})
-            .then(function(city){
-              return window._db.setZone(z.id,{
-                id:z.id,name:z.name,city:city,status:'review',
-                coords:z.coords,center:z.center,
-                // setZone merges, so a zone soft-deleted earlier keeps _deleted:true
-                // and loadZones filters it straight back out. Clear it explicitly.
-                _deleted:false,_deletedAt:null,
-                note:'',
-                boundaryNotes:z.boundaryNotes||'',
-                needsName:!!z.needsName,
-                hotline:z.phone||'',
-                source:z.srcFile||'Mashgichim map',
-                owner:'',contractorEmail:'',contractors:[],
-                exclusions:z.exclusions||[],adjacency:[],segNotes:{},
-                lastChecked:new Date().toLocaleDateString()
-              });
-            })
-            .then(function(ok){
-              // setZone swallows its own errors and returns false, so check it —
-              // otherwise a failed write is counted as a success.
-              if(ok===false){
-                failed.push(z.name);
-                if(log)log.innerHTML+='<div style="font-size:.7rem;color:#e5534b">\u2717 '+z.name+' \u2014 write failed</div>';
-                return;
-              }
-              done++;
-              if(btn)btn.textContent='Importing… '+done+'/'+list.length;
-              if(log)log.innerHTML+='<div style="font-size:.7rem;color:var(--muted)">'+z.name+' — '+z.area+' km\u00b2</div>';
-            });
+            .then(function(g){var f=g.features&&g.features[0];return f?f.place_name.split(',').slice(0,2).join(',').trim():(z.city||'');})
+            .catch(function(){return z.city||'';});
+        }).then(function(city){
+          var f={id:z.id,name:z.name,city:city,coords:z.coords,center:z.center,
+                 // setZone merges, so clear a soft-delete left by an earlier removal
+                 _deleted:false,_deletedAt:null,
+                 boundaryNotes:z.boundaryNotes||'',exclusions:z.exclusions||[],
+                 source:z.source||'',lastChecked:new Date().toLocaleDateString()};
+          if(z.hotline)f.hotline=z.hotline;
+          if(z.donateUrl)f.donateUrl=z.donateUrl;
+          if(!have[z.id]){   // first time only: a re-run must not reset status or anything edited since
+            f.status='review';f.note='';f.owner='';f.contractorEmail='';f.contractors=[];f.adjacency=[];f.segNotes={};
+          }
+          return window._db.setZone(z.id,f);
+        }).then(function(ok){
+          if(ok===false){failed.push(z.name);say('✗ '+z.name+' — write failed',1);return;}
+          tick();say(z.name);
         });
-      },Promise.resolve()).then(function(){
-        // Retire zones this seed no longer lists (e.g. one that turned out to be an
-        // inspection territory). Without this they stay in Firestore and keep drawing.
-        if(test)return;
-        var keep={};list.forEach(function(z){keep[z.id]=1;});
-        var mine={'Mashgichim map':1,'Jackson\u2013Lakewood map':1};
-        return window._db.loadZones().then(function(cur){
-          var stale=(cur||[]).filter(function(x){return mine[x.source]&&!keep[x.id];});
-          return stale.reduce(function(c,x){
-            return c.then(function(){
-              if(log)log.innerHTML+='<div style="font-size:.7rem;color:var(--muted)">retired '+x.name+'</div>';
-              return window._db.deleteZone(x.id);
-            });
-          },Promise.resolve());
+      },Promise.resolve());
+
+      // 2. existing zones changed in place: only the listed fields are touched
+      chain=patches.reduce(function(c,p){
+        return c.then(function(){
+          var cur=have[p.id];
+          if(!cur){failed.push(p.id);say('✗ '+p.id+' — not on the site, skipped',1);return;}
+          var f=Object.assign({},p.fields||{});
+          if(p.appendBoundaryNote){
+            var old=cur.boundaryNotes||'';
+            if(old.indexOf(p.appendBoundaryNote)<0)f.boundaryNotes=old?old+' · '+p.appendBoundaryNote:p.appendBoundaryNote;
+          }
+          return window._db.patchZone(p.id,f).then(function(ok){
+            if(ok===false){failed.push(cur.name);say('✗ '+cur.name+' — update failed',1);return;}
+            tick();say('updated '+cur.name);
+          });
         });
+      },chain);
+
+      // 3. retire what was replaced, and only if every replacement was written
+      return chain.then(function(){
+        if(failed.length)return;
+        return retire.reduce(function(c,id){
+          return c.then(function(){
+            if(!have[id])return;
+            return window._db.deleteZone(id).then(function(ok){
+              if(ok===false){failed.push(have[id].name);say('✗ could not retire '+have[id].name,1);}
+              else say('retired '+have[id].name);
+            });
+          });
+        },Promise.resolve());
       }).then(function(){
-        if(btn){btn.disabled=false;btn.textContent=(failed.length?'\u26a0 ':'\u2713 ')+done+'/'+list.length+' imported';}
-        if(failed.length)toast(failed.length+' zone(s) failed: '+failed.join(', '),'err');
-        else toast(done+' zones imported — check them on the map','ok');
-        return window._db.loadZones();
-      }).then(function(z){
-        if(z&&z.length){
-          S.eruvin=z.map(function(x){return Object.assign({},x,{exclusions:x.exclusions||[],adjacency:x.adjacency||[]});});
-          _renderAllMapData&&_renderAllMapData();
-          renderEruvList&&renderEruvList();
-        }
+        if(btn){btn.disabled=false;btn.textContent=(failed.length?'⚠ ':'✓ ')+done+'/'+total+' done';}
+        if(failed.length){toast(failed.length+' failed: '+failed.join(', '),'err');return;}
+        toast('Update applied — reloading the map','ok');
+        setTimeout(function(){location.reload();},2500);
       });
     })
-    .catch(function(e){
-      if(btn){btn.disabled=false;btn.textContent=label||'Retry';}
-      toast('Error: '+e.message,'err');
+    .catch(function(err){
+      if(btn){btn.disabled=false;btn.textContent='Retry';}
+      toast('Error: '+err.message,'err');
     });
-}
-
-function wipeOceanCounty(){
-  if(!window._db){toast('Not connected','err');return;}
-  var btn=document.getElementById('wipeBtn'), log=document.getElementById('wipeLog');
-  if(btn){btn.disabled=true;btn.textContent='Checking…';}
-  window._db.loadZones().then(function(all){
-    var hit=(all||[]).filter(function(z){return OC_SOURCES.indexOf(z.source)>=0;});
-    if(!hit.length){
-      if(btn){btn.disabled=false;btn.textContent='Nothing to remove';}
-      if(log)log.innerHTML='<div style="font-size:.72rem;color:var(--muted)">No imported zones found — the site is already clean.</div>';
-      return;
-    }
-    var gone=0;
-    return hit.reduce(function(chain,z){
-      return chain.then(function(){
-        return window._db.deleteZone(z.id).then(function(ok){
-          if(ok){
-            gone++;
-            if(btn)btn.textContent='Removing… '+gone+'/'+hit.length;
-            if(log)log.innerHTML+='<div style="font-size:.7rem;color:var(--muted)">removed '+z.name+'</div>';
-          }
-        });
-      });
-    },Promise.resolve()).then(function(){
-      S.eruvin=(S.eruvin||[]).filter(function(e){return OC_SOURCES.indexOf(e.source)<0;});
-      _renderAllMapData&&_renderAllMapData();
-      renderEruvList&&renderEruvList();
-      if(btn){btn.disabled=false;btn.textContent='✓ Removed '+gone;}
-      toast(gone+' imported zones removed — '+S.eruvin.length+' eiruvin left','ok');
-    });
-  }).catch(function(e){
-    if(btn){btn.disabled=false;btn.textContent='Retry';}
-    toast('Error: '+e.message,'err');
-  });
 }
 
 function _startCustomDraw(isExcl){
@@ -5287,6 +5130,12 @@ function _renderAllMapData(){
     if(map.getLayer&&map.getLayer('eruv-'+e.id+'-fill'))try{map.removeLayer('eruv-'+e.id+'-fill');}catch(_){}
     if(map.getLayer&&map.getLayer('eruv-'+e.id+'-line'))try{map.removeLayer('eruv-'+e.id+'-line');}catch(_){}
     if(map.getSource&&map.getSource('eruv-'+e.id))try{map.removeSource('eruv-'+e.id);}catch(_){}
+    (e.noteLines||[]).forEach(function(_l,i){
+      var lid='eruv-'+e.id+'-nl'+i;
+      try{if(map.getLayer(lid+'-hit'))map.removeLayer(lid+'-hit');}catch(_){}
+      try{if(map.getLayer(lid))map.removeLayer(lid);}catch(_){}
+      try{if(map.getSource(lid))map.removeSource(lid);}catch(_){}
+    });
     // Remove section layers if any
     if(e.sections){e.sections.forEach(function(_s,i){
       var ssid='eruv-'+e.id+'-sec'+i;
@@ -5816,7 +5665,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1113.1727</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1115.0615</span>
   </div>
 </div>
 <style>
