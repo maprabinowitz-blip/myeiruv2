@@ -428,6 +428,25 @@ header{
 .pop-title{font-family:'Fraunces',serif;font-weight:600;font-size:.87rem;color:var(--navy);margin-bottom:3px;}
 .pop-status{font-size:.73rem;color:var(--text);}
 .pop-note{font-size:.7rem;color:var(--muted);font-style:italic;margin-top:3px;}
+#zoneBanner{position:absolute;top:10px;left:50%;z-index:6;width:340px;max-width:calc(100% - 20px);
+  background:#fff;border:1px solid var(--border);border-radius:11px;box-shadow:0 6px 22px rgba(20,35,60,.18);
+  padding:8px 30px 8px 11px;font-family:'DM Sans',sans-serif;
+  opacity:0;pointer-events:none;transform:translate(-50%,-14px);transition:opacity .16s ease,transform .16s ease;}
+#zoneBanner.on{opacity:1;pointer-events:auto;transform:translate(-50%,0);}
+#zoneBanner .zb-row{display:flex;align-items:flex-start;gap:8px;padding:4px 0;}
+#zoneBanner .zb-row+.zb-row{border-top:1px solid var(--border);margin-top:3px;padding-top:7px;}
+#zoneBanner .zb-dot{flex:none;width:9px;height:9px;border-radius:50%;margin-top:5px;}
+#zoneBanner .zb-main{flex:1;min-width:0;}
+#zoneBanner .zb-name{font-size:.84rem;font-weight:700;color:var(--navy);line-height:1.25;overflow-wrap:anywhere;}
+#zoneBanner .zb-sub{font-size:.69rem;color:var(--muted);margin-top:1px;line-height:1.35;}
+#zoneBanner .zb-warn{font-size:.69rem;color:#c0392b;font-weight:600;margin-top:2px;}
+#zoneBanner .zb-tel{display:inline-block;font-size:.7rem;color:var(--blue);text-decoration:none;margin-top:2px;}
+#zoneBanner .zb-more{flex:none;border:1px solid var(--border);background:#fff;color:var(--navy);border-radius:7px;
+  padding:4px 9px;font-size:.69rem;font-weight:600;cursor:pointer;font-family:inherit;margin-top:1px;}
+#zoneBanner .zb-more:hover{background:var(--bg);}
+#zoneBanner .zb-x{position:absolute;top:3px;right:5px;border:none;background:none;color:var(--muted);
+  font-size:1.05rem;line-height:1;cursor:pointer;padding:4px 5px;}
+@media (prefers-reduced-motion:reduce){#zoneBanner{transition:none;}}
 .pop-adj{font-size:.7rem;color:var(--blue);margin-top:3px;}
 .mapboxgl-ctrl-group{border-radius:8px !important;box-shadow:var(--sh) !important;}
 
@@ -1140,7 +1159,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1115.0615]');
+console.log('[MyEiruv build v1115.0623]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -1181,6 +1200,14 @@ map.on('load',()=>{
     renderEruvList();renderStatus();
   }
 });
+/* GeoJSON polygons must end on the point they start on. Zones are stored without
+   the repeated point, and an open ring makes Mapbox drop the fill and part of
+   the outline in some map tiles once you zoom in. Close it when drawing. */
+function _ring(c){
+  if(!c||c.length<3)return c||[];
+  var a=c[0],b=c[c.length-1];
+  return (a[0]===b[0]&&a[1]===b[1])?c:c.concat([a]);
+}
 function addEruvToMap(e){
   const sid='eruv-'+e.id,col=SCOL[e.status]||'#888';
 
@@ -1194,17 +1221,17 @@ function addEruvToMap(e){
       var scoords=sec.coords.map(function(c){return[c.g,c.a];});
       var scol=secColors[i%secColors.length];
       if(!map.getSource(ssid)){
-        map.addSource(ssid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[scoords]}}});
+        map.addSource(ssid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(scoords)]}}});
         map.addLayer({id:ssid+'-fill',type:'fill',source:ssid,paint:{'fill-color':scol,'fill-opacity':0.12}});
         map.addLayer({id:ssid+'-line',type:'line',source:ssid,paint:{'line-color':scol,'line-width':1,'line-opacity':.5}});
       }
     });
     // Outer boundary bold line
     if(!map.getSource(sid)){
-      map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
+      map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(e.coords)]}}});
       map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.02}});
       map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':3,'line-opacity':1}});
-      map.on('click',sid+'-fill',function(ev){ if(_zoneClicksOff()||_onNoteLine(ev))return; showEruvPopup(e); });
+      map.on('click',sid+'-fill',function(ev){ if(_zoneClicksOff()||_onNoteLine(ev))return; showEruvPopup(e,ev); });
     map.on('mouseenter',sid+'-fill',function(){ if(!_zoneClicksOff())map.getCanvas().style.cursor='pointer'; });
     map.on('mouseleave',sid+'-fill',function(){ map.getCanvas().style.cursor=''; });
     }
@@ -1212,14 +1239,14 @@ function addEruvToMap(e){
   }
 
   if(map.getSource(sid)){
-    map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}});
+    map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(e.coords)]}});
     try{map.setPaintProperty(sid+'-fill','fill-color',col);}catch(_){}
     try{map.setPaintProperty(sid+'-line','line-color',col);}catch(_){}
   }else{
-    map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
+    map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(e.coords)]}}});
     map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':col,'fill-opacity':0.07}});
     map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':col,'line-width':2.5,'line-opacity':.9}});
-    map.on('click',sid+'-fill',function(ev){ if(_zoneClicksOff()||_onNoteLine(ev))return; showEruvPopup(e); });
+    map.on('click',sid+'-fill',function(ev){ if(_zoneClicksOff()||_onNoteLine(ev))return; showEruvPopup(e,ev); });
     map.on('mouseenter',sid+'-fill',function(){ if(!_zoneClicksOff())map.getCanvas().style.cursor='pointer'; });
     map.on('mouseleave',sid+'-fill',function(){ map.getCanvas().style.cursor=''; });
   // 💬 markers hidden by default - shown when eiruv is clicked/focused
@@ -1240,52 +1267,55 @@ function _zoneClicksOff(){
   return false;
 }
 
-function showEruvPopup(e){
+/* Clicking a zone drops a small banner from the top of the map. It lists every
+   eiruv at the spot that was clicked (zones can sit inside one another) and goes
+   away on the next click anywhere else, on Escape, or on its own x. */
+var _zbShownAt=0;
+function _zbEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function hideZoneBanner(){var b=document.getElementById('zoneBanner');if(b)b.classList.remove('on');}
+function showEruvPopup(e,ev){
   if(!e)return;
-  var dot={up:'🟢',review:'🟡',down:'🔴'}[e.status]||'⚪';
-  var lbl={up:'Up & Kosher ✓',review:'Under Review ⚠',down:'Down ✗'}[e.status]||e.status;
-  var adj=(e.adjacency||[]).filter(function(a){return a.canEnter;}).map(function(a){var z=S.eruvin.find(function(x){return x.id===a.id;});return z?'<div class="pop-adj">↔ Carrying permitted into '+z.name+'</div>':''}).join('');
-  var don=e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 10px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.74rem;font-weight:600;text-decoration:none">❤️ Donate</a>':'';
-  var ctInfo='';
-  if(e.owner){
-    var ct=(window._fsContractors||[]).find(function(c){return c.email===e.owner;})||(window._fsUsers||[]).find(function(u){return u.email===e.owner;});
-    if(ct&&ct.name){
-      ctInfo='<div style="font-size:.71rem;color:var(--navy);margin-top:8px;border-top:1px solid #eee;padding-top:8px">'
-        +'<div style="font-weight:600;margin-bottom:3px">📋 Contractor</div>'
-        +'<div>'+ct.name+'</div>'
-        +(ct.phone?'<div><a href="tel:'+ct.phone+'" style="color:var(--blue);text-decoration:none">📞 '+ct.phone+'</a></div>':'')
-        +(e.rov?'<div style="font-size:.68rem;color:var(--muted);margin-top:2px">Rov: '+e.rov+'</div>':'')
-        +(ct.email?'<div style="margin-top:5px"><button onclick="sendMsgToContractor(this.dataset.email,this.dataset.name)" data-email="'+ct.email+'" data-name="'+e.name+'" style="border:none;background:var(--navy);color:#fff;padding:4px 10px;border-radius:5px;font-size:.68rem;cursor:pointer;font-family:inherit;">✉ Send Message</button></div>':'')
-        +'</div>';
-    }
+  var ll=ev&&ev.lngLat?[ev.lngLat.lng,ev.lngLat.lat]:null;
+  var list=[e];
+  if(ll){
+    try{findAllEiruvim(ll[0],ll[1]).forEach(function(z){if(list.indexOf(z)<0)list.push(z);});}catch(_){}
   }
-  var lastUpd=e.lastChecked?'<div style="font-size:.66rem;color:var(--muted2);margin-top:2px">'+e.lastChecked+'</div>':'';
-  // Boundary notes (this was referenced but never defined — it threw on every map click)
-  var bNotes='';
-  if(e.boundaryNotes){
-    bNotes='<div style="font-size:.71rem;color:var(--muted);margin-top:5px;line-height:1.45;white-space:pre-wrap">'+e.boundaryNotes+'</div>';
+  var rows=list.map(function(z){
+    var col=SCOL[z.status]||'#888';
+    var lbl={up:'Up & Kosher',review:'Under Review',down:'Down'}[z.status]||z.status||'';
+    var sub=[z.city,z.lastChecked].filter(Boolean).map(_zbEsc).join(' · ');
+    var excl=ll&&inExcl(ll[0],ll[1],z);
+    return '<div class="zb-row">'
+      +'<span class="zb-dot" style="background:'+col+'"></span>'
+      +'<div class="zb-main"><div class="zb-name">'+_zbEsc(z.name)+'</div>'
+      +'<div class="zb-sub"><span style="color:'+col+';font-weight:600">'+lbl+'</span>'+(sub?' · '+sub:'')+'</div>'
+      +(excl?'<div class="zb-warn">This spot is cut out of the eiruv (karpaf / exclusion)</div>':'')
+      +(z.hotline?'<a class="zb-tel" href="tel:'+_zbEsc(z.hotline)+'">☎ '+_zbEsc(z.hotline)+'</a>':'')
+      +'</div>'
+      +'<button class="zb-more" data-z="'+_zbEsc(z.id)+'" onclick="hideZoneBanner();openZoneDetail(this.dataset.z)">Details</button>'
+      +'</div>';
+  }).join('');
+  var b=document.getElementById('zoneBanner');
+  if(!b){
+    b=document.createElement('div');b.id='zoneBanner';
+    map.getContainer().appendChild(b);
+    // any click that is not on the banner or the map closes it; map clicks are handled below
+    var away=function(x){
+      if(!b.classList.contains('on'))return;
+      if(b.contains(x.target))return;
+      var mc=map.getCanvasContainer();
+      if(mc&&mc.contains(x.target))return;
+      hideZoneBanner();
+    };
+    document.addEventListener('mousedown',away,true);
+    document.addEventListener('touchstart',away,{capture:true,passive:true});
+    document.addEventListener('keydown',function(k){if(k.key==='Escape')hideZoneBanner();});
+    // a click on the map that did not just open a banner closes the one showing
+    map.on('click',function(){ if(Date.now()-_zbShownAt>120)hideZoneBanner(); });
   }
-  var nSeg=e.segNotes?Object.keys(e.segNotes).length:0;
-  var nLoc=(e.locationNotes||[]).length+(e.noteLines||[]).length;
-  if(nSeg+nLoc>0){
-    bNotes+='<div style="font-size:.68rem;color:var(--muted);margin-top:4px">📍 '+(nSeg+nLoc)+' boundary note'+((nSeg+nLoc)>1?'s':'')+'</div>';
-  }
-  var moreBtn='<button onclick="openZoneDetail(this.dataset.z)" data-z="'+e.id+'" '
-    +'style="margin-top:9px;width:100%;border:none;background:var(--navy);color:#fff;padding:7px 0;'
-    +'border-radius:7px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit">View full details →</button>';
-  var html='<div style="min-width:200px">'
-    +'<div class="pop-title">'+e.name+'</div>'
-    +(e.city?'<div style="font-size:.68rem;color:var(--muted);margin-top:1px">'+e.city+'</div>':'')
-    +'<div class="pop-status">'+dot+' '+lbl+'</div>'
-    +lastUpd+(e.note?'<div class="pop-note">'+e.note+'</div>':'')+bNotes+adj
-    +(don?'<div style="margin-top:6px">'+don+'</div>':'')+ctInfo+moreBtn+'</div>';
-  var lngLat=e.center;
-  if(!lngLat&&e.coords&&e.coords.length){
-    var lngs=e.coords.map(function(c){return c[0];}),lats=e.coords.map(function(c){return c[1];});
-    lngLat=[(Math.min.apply(null,lngs)+Math.max.apply(null,lngs))/2,(Math.min.apply(null,lats)+Math.max.apply(null,lats))/2];
-  }
-  if(!lngLat)return;
-  new mapboxgl.Popup({closeButton:true,maxWidth:'260px',offset:5}).setLngLat(lngLat).setHTML(html).addTo(map);
+  b.innerHTML='<button class="zb-x" onclick="hideZoneBanner()" aria-label="Close">×</button>'+rows;
+  _zbShownAt=Date.now();
+  b.classList.add('on');
 }
 /* Map click -> full zone detail in the sidebar. Reuses the existing accordion
    so there is one detail view, not two that can drift apart. */
@@ -1309,8 +1339,8 @@ function openZoneDetail(id){
 
 function addExclToMap(eruvId,ex){
   const sid='excl-'+eruvId+'-'+ex.id;
-  if(map.getSource(sid)){map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]}});return;}
-  map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[ex.coords]}}});
+  if(map.getSource(sid)){map.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(ex.coords)]}});return;}
+  map.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(ex.coords)]}}});
   map.addLayer({id:sid+'-fill',type:'fill',source:sid,paint:{'fill-color':'#d94040','fill-opacity':0.13}});
   map.addLayer({id:sid+'-line',type:'line',source:sid,paint:{'line-color':'#d94040','line-width':1.5,'line-dasharray':[3,2]}});
 }
@@ -4112,9 +4142,9 @@ function initDrawMap(mode,editId){
     _initCdLayers();
     if(!editId){var mc=map.getCenter(),mz=map.getZoom();drawMap.jumpTo({center:mc,zoom:Math.max(mz,12)});}
     S.eruvin.forEach(function(e){var sid='ref-'+e.id;try{
-      if(!drawMap.getSource(sid)){drawMap.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}}});
+      if(!drawMap.getSource(sid)){drawMap.addSource(sid,{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(e.coords)]}}});
         drawMap.addLayer({id:sid,type:'line',source:sid,paint:{'line-color':'#1a2c4a','line-width':1,'line-opacity':.12,'line-dasharray':[4,3]}});}
-      else drawMap.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[e.coords]}});}catch(_){}});
+      else drawMap.getSource(sid).setData({type:'Feature',geometry:{type:'Polygon',coordinates:[_ring(e.coords)]}});}catch(_){}});
     if(editId){loadForEdit(editId);}
     else{setTimeout(function(){_startCustomDraw(false);},100);}
   });
@@ -5665,7 +5695,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1115.0615</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1115.0623</span>
   </div>
 </div>
 <style>
