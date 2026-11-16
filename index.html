@@ -214,6 +214,9 @@ header{
 .nc.on{border-color:var(--navy);background:rgba(26,44,74,.07);color:var(--navy);}
 
 /* ── MAP ── */
+/* The legend and the full-screen button are placed against this box. Without it they
+   were placed against the whole page and ended up half hidden under the header. */
+.map-col{flex:1;position:relative;display:flex;min-width:0;min-height:0;}
 #map{flex:1;position:relative;}
 .map-legend{position:absolute;top:11px;right:11px;background:rgba(255,255,255,.96);border:1px solid var(--border);border-radius:9px;padding:8px 12px;box-shadow:var(--sh);z-index:10;backdrop-filter:blur(8px);}
 .leg-row{display:flex;align-items:center;gap:6px;font-size:.71rem;color:var(--text);margin-bottom:3px;}
@@ -428,7 +431,7 @@ header{
 .pop-title{font-family:'Fraunces',serif;font-weight:600;font-size:.87rem;color:var(--navy);margin-bottom:3px;}
 .pop-status{font-size:.73rem;color:var(--text);}
 .pop-note{font-size:.7rem;color:var(--muted);font-style:italic;margin-top:3px;}
-#zoneBanner{position:absolute;top:10px;left:50%;z-index:6;width:340px;max-width:calc(100% - 20px);
+#zoneBanner{position:absolute;top:10px;left:50%;z-index:12;width:340px;max-width:calc(100% - 20px);
   background:#fff;border:1px solid var(--border);border-radius:11px;box-shadow:0 6px 22px rgba(20,35,60,.18);
   padding:8px 30px 8px 11px;font-family:'DM Sans',sans-serif;
   opacity:0;pointer-events:none;transform:translate(-50%,-14px);transition:opacity .16s ease,transform .16s ease;}
@@ -454,7 +457,8 @@ header{
   :root{--sw:100%;}
   .app{flex-direction:column-reverse;}
   .sidebar{height:52vh;border-right:none;border-top:1px solid var(--border);}
-  #map{height:48vh;}
+  /* the map takes whatever the sidebar leaves; a fixed 48vh pushed its top under the header */
+  #map{height:auto;}
   .admin-drawer,.ct-dash{width:100%;}
   .hdr-brand{display:none;}
   /* Touch targets: min 44px tap area */
@@ -720,6 +724,7 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
       </div>
     </div>
   </div>
+  <div class="map-col">
   <div id="map"></div>
   <div class="map-legend">
     <div class="leg-row"><div class="leg-line" style="background:#22a865"></div>Up &amp; Kosher</div>
@@ -729,6 +734,7 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
   </div>
   <button class="map-fs-btn" onclick="toggleMapFs()">&#8596; Full Screen</button>
   <button class="fs-exit" id="fsExit" onclick="toggleMapFs()">&#10005; Exit Full Screen</button>
+  </div>
 </div>
 
 <!-- ADMIN DRAWER -->
@@ -1159,7 +1165,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1116.0443]');
+console.log('[MyEiruv build v1116.0637]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -5819,7 +5825,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0443</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0637</span>
   </div>
 </div>
 <style>
