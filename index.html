@@ -1159,7 +1159,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1116.0138]');
+console.log('[MyEiruv build v1116.0141]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -4599,8 +4599,8 @@ function _loadKmlIntoEditor(r){
    zones to patch and zones to retire. Add an entry here when there is an update
    to run and delete it once it has been applied, so the admin page stays clean. */
 var SEED_UPDATES=[
-  {file:'update-1',title:'Monsey, Oakland, Paramus',
-   desc:'Monsey becomes its 28 sections, each its own eiruv and each linked to the sections it borders, so carrying between them shows as permitted (7 sections were missing from the old single outline). Oakland gets its 27 street notes. Paramus gets its border rule and the Teaneck connection. Safe to run again if you already ran it.'}
+  {file:'update-1',title:'Monsey, Oakland, Paramus, and two unnamed zones',
+   desc:'Monsey becomes its 28 sections, each its own eiruv and each linked to the sections it borders, so carrying between them shows as permitted (7 sections were missing from the old single outline). Oakland gets its 27 street notes. Paramus gets its border rule and the Teaneck connection. The two unnamed zones (Woodair Estates, north Lakewood) are taken off until the mashgiach answers. Safe to run again if you already ran it.'}
 ];
 function applySeed(file){
   if(!window._db){toast('Not connected','err');return;}
@@ -5703,7 +5703,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0138</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0141</span>
   </div>
 </div>
 <style>
