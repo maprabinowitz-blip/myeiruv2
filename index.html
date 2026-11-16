@@ -1159,7 +1159,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1115.0623]');
+console.log('[MyEiruv build v1116.0138]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -1987,14 +1987,20 @@ function planRoute(){
     var routeZones=new Set();
     dense.forEach(function(c){var z=findEruv(c[0],c[1]);if(z)routeZones.add(z.id);});
     // Build allowed zone pairs - direct zones + adjacent pairs with canEnter
-    var allowedPairs=[]; // [{ids: Set}]
+    // Zones linked by "carrying permitted" form a group, and the link carries through:
+    // if A connects to B and B to C, a route may run A-B-C. (This used to allow only
+    // two zones at a time, which broke on a chain like the Monsey sections.)
+    var _grp={};
+    var _find=function(x){while(_grp[x]!==x){_grp[x]=_grp[_grp[x]];x=_grp[x];}return x;};
+    S.eruvin.forEach(function(z){_grp[z.id]=z.id;});
     S.eruvin.forEach(function(z){
-      var single=new Set([z.id]);
-      allowedPairs.push(single);
-      (z.adjacency||[]).filter(function(a){return a.canEnter;}).forEach(function(a){
-        allowedPairs.push(new Set([z.id,a.id]));
+      (z.adjacency||[]).filter(function(a){return a.canEnter&&_grp[a.id]!==undefined;}).forEach(function(a){
+        _grp[_find(z.id)]=_find(a.id);
       });
     });
+    var _sets={};
+    S.eruvin.forEach(function(z){var r=_find(z.id);(_sets[r]=_sets[r]||new Set()).add(z.id);});
+    var allowedPairs=Object.keys(_sets).map(function(r){return _sets[r];});
     // Check: is every point covered by at least one consistent allowed zone set?
     // A point is valid if it's inside a zone that's in the same pair as all other touched zones
     var inEruv=dense.map(function(c){
@@ -4594,7 +4600,7 @@ function _loadKmlIntoEditor(r){
    to run and delete it once it has been applied, so the admin page stays clean. */
 var SEED_UPDATES=[
   {file:'update-1',title:'Monsey, Oakland, Paramus',
-   desc:'Monsey becomes its 28 sections, each its own eiruv (7 of them were missing from the single outline). Oakland gets its 27 street notes. Paramus gets its border rule and the Teaneck connection.'}
+   desc:'Monsey becomes its 28 sections, each its own eiruv and each linked to the sections it borders, so carrying between them shows as permitted (7 sections were missing from the old single outline). Oakland gets its 27 street notes. Paramus gets its border rule and the Teaneck connection. Safe to run again if you already ran it.'}
 ];
 function applySeed(file){
   if(!window._db){toast('Not connected','err');return;}
@@ -4631,6 +4637,8 @@ function applySeed(file){
           if(!have[z.id]){   // first time only: a re-run must not reset status or anything edited since
             f.status='review';f.note='';f.owner='';f.contractorEmail='';f.contractors=[];f.adjacency=[];f.segNotes={};
           }
+          // links to neighbouring zones: fill them in unless an admin has already set some
+          if(z.adjacency&&!((have[z.id]||{}).adjacency||[]).length)f.adjacency=z.adjacency;
           return window._db.setZone(z.id,f);
         }).then(function(ok){
           if(ok===false){failed.push(z.name);say('✗ '+z.name+' — write failed',1);return;}
@@ -5695,7 +5703,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1115.0623</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0138</span>
   </div>
 </div>
 <style>
