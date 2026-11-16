@@ -1159,7 +1159,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1116.0439]');
+console.log('[MyEiruv build v1116.0443]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -3202,7 +3202,7 @@ function renderAdmin(sec){
     html+='<div class="adm-stats" style="margin-top:6px"><div class="sbox"><div class="sbox-n">'+(S.shuls||[]).length+'</div><div class="sbox-l">Shuls</div></div><div class="sbox"><div class="sbox-n">'+users.length+'</div><div class="sbox-l">Users</div></div><div class="sbox"><div class="sbox-n">'+conts.length+'</div><div class="sbox-l">Contractors</div></div></div>';
     if(pend.length){html+='<span class="adm-sec">Pending Applications</span>';pend.forEach(function(u){html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">'+u.name+'</div><div class="acard-mt">'+u.email+'</div></div><span class="badge b-rv">Pending</span></div><div class="act-row"><button class="act-btn ap" onclick="approveC(\''+u.email+'\')">Approve</button><button class="act-btn ar" onclick="rejectC(\''+u.email+'\')">Reject</button></div></div>';});}
     html+='<span class="adm-sec" style="margin-top:10px">Zone check</span>';
-    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Check all zones</div><div class="acard-mt">Looks at every zone on the site for outlines that cross themselves, repeated points, misplaced exclusions, broken links and zones entered twice. Changes nothing.</div></div></div><div class="act-row"><button class="act-btn ap" onclick="checkZones()">Check all zones</button><button class="act-btn ao" id="zoneCheckCopy" style="display:none" onclick="copyZoneCheck()">Copy report</button></div><pre id="zoneCheckOut" style="display:none;margin-top:8px;max-height:260px;overflow:auto;font-size:.68rem;line-height:1.45;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-family:ui-monospace,Menlo,Consolas,monospace"></pre></div>';
+    html+='<div class="acard"><div class="acard-row"><div><div class="acard-nm">Check all zones</div><div class="acard-mt">Looks at every zone on the site for outlines that cross themselves, repeated points, misplaced exclusions, broken links and zones entered twice. Changes nothing.</div></div></div><div class="act-row"><button class="act-btn ap" onclick="checkZones()">Check all zones</button><button class="act-btn ao" id="zoneCheckCopy" style="display:none" onclick="copyZoneCheck()">Copy report</button><button class="act-btn ao" id="zoneCheckData" style="display:none" onclick="copyZoneData()">Copy faulty outlines</button></div><pre id="zoneCheckOut" style="display:none;margin-top:8px;max-height:260px;overflow:auto;font-size:.68rem;line-height:1.45;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:8px 10px;font-family:ui-monospace,Menlo,Consolas,monospace"></pre></div>';
     if(SEED_UPDATES.length){
       html+='<span class="adm-sec" style="margin-top:10px">Updates to apply</span>';
       SEED_UPDATES.forEach(function(u){
@@ -4603,13 +4603,19 @@ function checkZones(){
   var Z=(S.eruvin||[]).filter(function(z){return z&&z.coords&&z.coords.length;});
   var byId={};Z.forEach(function(z){byId[z.id]=z;});
   var open=function(c){var a=c[0],b=c[c.length-1];return (c.length>1&&a[0]===b[0]&&a[1]===b[1])?c.slice(0,-1):c;};
+  // Where an outline crosses itself: "knots" are two short neighbouring edges tangled
+  // over a few metres (a slip of the hand when drawing); anything else is a real fault,
+  // usually pieces of the boundary joined in the wrong order.
   var crossings=function(p){
-    var n=p.length,bad=0;if(n<4||n>3000)return 0;
+    var n=p.length,real=0,knots=0;if(n<4||n>3000)return {real:0,knots:0};
     var o=function(a,b,c){var v=(b[1]-a[1])*(c[0]-b[0])-(b[0]-a[0])*(c[1]-b[1]);return Math.abs(v)<1e-13?0:(v>0?1:2);};
     for(var i=0;i<n;i++){var a=p[i],b=p[(i+1)%n];
       for(var j=i+2;j<n;j++){if(i===0&&j===n-1)continue;var c=p[j],d=p[(j+1)%n];
-        if(o(a,b,c)!==o(a,b,d)&&o(c,d,a)!==o(c,d,b))bad++;}}
-    return bad;
+        if(o(a,b,c)!==o(a,b,d)&&o(c,d,a)!==o(c,d,b)){
+          var sep=Math.min(j-i,n-(j-i));
+          if(sep<=4&&_ptDist(a,b)<60&&_ptDist(c,d)<60)knots++;else real++;
+        }}}
+    return {real:real,knots:knots};
   };
   var box=function(c){var x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;c.forEach(function(q){if(q[0]<x0)x0=q[0];if(q[0]>x1)x1=q[0];if(q[1]<y0)y0=q[1];if(q[1]>y1)y1=q[1];});return [x0,y0,x1,y1];};
   var fracIn=function(a,b){var n=0;a.forEach(function(q){if(pip(q[0],q[1],b))n++;});return a.length?n/a.length:0;};
@@ -4624,12 +4630,15 @@ function checkZones(){
     }
     return n?k/n:0;
   };
-  var bad=[],info=[];
+  var bad=[],info=[],minor=[],badIds=[];
   Z.forEach(function(z){
     var f=[],c=z.coords,t=_trimRepeatedTail(c),ring=open(t||c);
     if(ring.length<3)f.push('only '+ring.length+' points');
     if(t)f.push((c.length-t.length)+' repeated points after the outline closes');
-    var x=crossings(ring);if(x)f.push('outline crosses itself '+x+' time'+(x>1?'s':''));
+    var x=crossings(ring);
+    if(x.real){f.push('outline crosses itself '+x.real+' time'+(x.real>1?'s':'')+(x.knots?' (plus '+x.knots+' tiny knot'+(x.knots>1?'s':'')+')':''));badIds.push(z.id);}
+    else if(x.knots)minor.push('\u2022 '+z.name+': '+x.knots+' tiny knot'+(x.knots>1?'s':'')+' in the outline, a few metres across');
+    if(ring.length<3||t)badIds.push(z.id);
     if(!z.name)f.push('no name');
     if(!z.city)f.push('no city');
     if(!z.status)f.push('no status');
@@ -4656,13 +4665,23 @@ function checkZones(){
     +Z.reduce(function(s,z){return s+(z.exclusions||[]).length;},0)+' exclusions, '
     +Z.reduce(function(s,z){return s+(z.adjacency||[]).filter(function(a){return a.canEnter;}).length;},0)+' carrying links\n\n'
     +(bad.length?bad.length+' PROBLEM'+(bad.length>1?'S':'')+':\n'+bad.join('\n'):'No problems found.')
+    +(minor.length?'\n\nMinor (harmless):\n'+minor.join('\n'):'')
     +(info.length?'\n\nZones inside other zones (normal if intended):\n'+info.join('\n'):'')
     +'\n\nAll zones:\n'+Z.map(function(z){return '  '+z.name+' | '+(z.city||'')+' | '+(z.status||'')+' | '+z.coords.length+' pts';}).sort().join('\n');
   var box2=document.getElementById('zoneCheckOut');
   if(box2){box2.style.display='block';box2.textContent=txt;}
   var cp=document.getElementById('zoneCheckCopy');if(cp)cp.style.display='inline-block';
   window._zoneCheckTxt=txt;
+  window._zoneCheckBad=Z.filter(function(z){return badIds.indexOf(z.id)>=0;}).map(function(z){
+    return {id:z.id,name:z.name,coords:z.coords.map(function(c){return [+c[0].toFixed(6),+c[1].toFixed(6)];})};
+  });
+  var dp=document.getElementById('zoneCheckData');if(dp)dp.style.display=window._zoneCheckBad.length?'inline-block':'none';
   toast(bad.length?bad.length+' problem'+(bad.length>1?'s':'')+' found':'Zone check: no problems','ok');
+}
+function copyZoneData(){
+  var t=JSON.stringify(window._zoneCheckBad||[]);
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){toast('Outlines of '+(window._zoneCheckBad||[]).length+' zones copied','ok');},function(){toast('Could not copy','err');});}
+  else toast('Copying is not available in this browser','err');
 }
 function copyZoneCheck(){
   var t=window._zoneCheckTxt||'';
@@ -4674,8 +4693,8 @@ function copyZoneCheck(){
    zones to patch and zones to retire. Add an entry here when there is an update
    to run and delete it once it has been applied, so the admin page stays clean. */
 var SEED_UPDATES=[
-  {file:'update-2',title:'Crown Heights boundary',
-   desc:'The Crown Heights outline has 5 extra points after it closes, which cut a 0.33 km\u00b2 wedge on its west side out of the eiruv. This removes them. It only changes the zone if those repeated points are still there.'}
+  {file:'update-3',title:'Monsey links, and two unnamed zones',
+   desc:'Links each of the 28 Monsey sections to the sections it borders, so carrying between them shows as permitted (54 links). Takes the two unnamed zones (Woodair Estates, north Lakewood) off until the mashgiach answers. Sections that already have links are left alone.'}
 ];
 /* Some imported outlines carry extra points after the ring has already returned to
    its first point, all of them repeats of earlier points (a second line piece from
@@ -4744,6 +4763,10 @@ function applySeed(file){
             var old=cur.boundaryNotes||'';
             if(old.indexOf(p.appendBoundaryNote)<0)f.boundaryNotes=old?old+' · '+p.appendBoundaryNote:p.appendBoundaryNote;
           }
+          Object.keys(p.ifEmpty||{}).forEach(function(k){
+            var v=cur[k];
+            if(v==null||v===''||(Array.isArray(v)&&!v.length))f[k]=p.ifEmpty[k];
+          });
           if(p.trimRepeatedTail){
             var t=_trimRepeatedTail(cur.coords||[]);
             if(t){f.coords=t.map(function(c){return {g:c[0],a:c[1]};});say(cur.name+': removing '+(cur.coords.length-t.length)+' repeated points');}
@@ -5796,7 +5819,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0439</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0443</span>
   </div>
 </div>
 <style>
