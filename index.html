@@ -1165,7 +1165,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1116.0638]');
+console.log('[MyEiruv build v1116.1948]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -4698,7 +4698,10 @@ function copyZoneCheck(){
 /* One-time data updates. Each entry is a file in /seed/ listing zones to write,
    zones to patch and zones to retire. Add an entry here when there is an update
    to run and delete it once it has been applied, so the admin page stays clean. */
-var SEED_UPDATES=[];
+var SEED_UPDATES=[
+  {file:'update-4',title:'Outline repairs: Five Towns, Highland Park, New Brunswick',
+   desc:'Highland Park: two pieces of the boundary were joined by stray lines that cut 0.77 km\u00b2 out of the eiruv; they are now one outline. Five Towns: the cut-out in the middle becomes a proper exclusion. New Brunswick: a small loop in the line is removed. Each zone is only changed if its outline is still the one that was checked.'}
+];
 /* Some imported outlines carry extra points after the ring has already returned to
    its first point, all of them repeats of earlier points (a second line piece from
    the source file glued on the end). They make the boundary cross itself.
@@ -4765,6 +4768,15 @@ function applySeed(file){
           if(p.appendBoundaryNote){
             var old=cur.boundaryNotes||'';
             if(old.indexOf(p.appendBoundaryNote)<0)f.boundaryNotes=old?old+' · '+p.appendBoundaryNote:p.appendBoundaryNote;
+          }
+          // a repair worked out from a specific outline is only safe on that outline
+          if(p.ifCoordsCount&&(cur.coords||[]).length!==p.ifCoordsCount){
+            tick();say(cur.name+' \u2014 outline has changed since it was checked, left alone');return;
+          }
+          if(p.addExclusions){
+            var ex=(cur.exclusions||[]).map(function(x){return Object.assign({},x,{coords:(x.coords||[]).map(function(c){return c&&c.g!==undefined?c:{g:c[0],a:c[1]};})});});
+            p.addExclusions.forEach(function(n){if(!ex.some(function(x){return x.id===n.id;}))ex.push(n);});
+            f.exclusions=ex;
           }
           Object.keys(p.ifEmpty||{}).forEach(function(k){
             var v=cur[k];
@@ -5822,7 +5834,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.0638</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1116.1948</span>
   </div>
 </div>
 <style>
