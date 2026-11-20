@@ -450,6 +450,9 @@ header{
 #zoneBanner .zb-x{position:absolute;top:3px;right:5px;border:none;background:none;color:var(--muted);
   font-size:1.05rem;line-height:1;cursor:pointer;padding:4px 5px;}
 @media (prefers-reduced-motion:reduce){#zoneBanner{transition:none;}}
+.route-seq{margin-top:8px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:#fff;font-size:.75rem;line-height:1.45}
+.route-seq-h{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+.route-seq ol{margin:0;padding-left:18px}.route-seq li{margin:2px 0}
 .pop-adj{font-size:.7rem;color:var(--blue);margin-top:3px;}
 .mapboxgl-ctrl-group{border-radius:8px !important;box-shadow:var(--sh) !important;}
 
@@ -1165,7 +1168,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1120.0626]');
+console.log('[MyEiruv build v1120.1927]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -1589,6 +1592,52 @@ function showLocationStatus(lng,lat){
   openModal('vMain');showV('vEruvDetail');
 }
 
+/* Carrying between eiruvin. A link is stored on either zone's adjacency list as
+   {id, canEnter:true}; needsCheck:true marks one the mashgiach has not confirmed.
+   Links work both ways and chain: A-B and B-C let you carry A-B-C. */
+function _carryLink(a,b){
+  var la=(a.adjacency||[]).find(function(x){return x.id===b.id&&x.canEnter;});
+  var lb=(b.adjacency||[]).find(function(x){return x.id===a.id&&x.canEnter;});
+  if(!la&&!lb)return null;
+  return {confirmed:!((la&&la.needsCheck)||(lb&&lb.needsCheck))};
+}
+function _carryGroups(){
+  // two groupings: through confirmed links only, and through any link
+  var mk=function(onlyConfirmed){
+    var p={};S.eruvin.forEach(function(z){p[z.id]=z.id;});
+    var f=function(x){while(p[x]!==x){p[x]=p[p[x]];x=p[x];}return x;};
+    S.eruvin.forEach(function(z){
+      (z.adjacency||[]).forEach(function(a){
+        if(!a.canEnter||p[a.id]===undefined)return;
+        if(onlyConfirmed&&a.needsCheck)return;
+        p[f(z.id)]=f(a.id);
+      });
+    });
+    return function(id){return p[id]===undefined?null:f(id);};
+  };
+  return {conf:mk(true),any:mk(false)};
+}
+/* For a route that starts at a point: is another point somewhere you may carry to?
+   'ok' = same eiruv or reached through confirmed links, 'check' = only through a
+   link not yet confirmed, 'other' = inside an eiruv not connected to the start,
+   'out' = in no eiruv. */
+function _carryJudge(lng,lat){
+  var start=findAllEiruvim(lng,lat), g=_carryGroups();
+  var conf={},any={};
+  start.forEach(function(z){conf[g.conf(z.id)]=1;any[g.any(z.id)]=1;});
+  var fn=function(x,y){
+    var zs=findAllEiruvim(x,y);
+    if(!zs.length)return 'out';
+    if(!start.length)return 'other';
+    if(zs.some(function(z){return conf[g.conf(z.id)];}))return 'ok';
+    if(zs.some(function(z){return any[g.any(z.id)];}))return 'check';
+    return 'other';
+  };
+  fn.start=start;fn.groups=g;fn.conf=conf;fn.any=any;
+  return fn;
+}
+var _rjudge=null;
+function _rIn(lng,lat){return _rjudge?_rjudge(lng,lat)!=='out'&&_rjudge(lng,lat)!=='other':!!findEruv(lng,lat);}
 function inExcl(lng,lat,e){return(e.exclusions||[]).some(function(ex){return pip(lng,lat,ex.coords);});}
 function findEruv(lng,lat){for(var i=0;i<S.eruvin.length;i++){var e=S.eruvin[i];if(pip(lng,lat,e.coords)&&!inExcl(lng,lat,e))return e;}return null;}
 
@@ -1888,6 +1937,7 @@ function planRoute(){
     return coords;
   }
   function fetchRoute(sc,ec){
+    _rjudge=_carryJudge(sc.lng,sc.lat);
 
     function scoreCoverage(coords){
       var total=0,inside=0;
@@ -1896,7 +1946,7 @@ function planRoute(){
           var t=j/20;
           var lng=coords[i][0]+(coords[i+1][0]-coords[i][0])*t;
           var lat=coords[i][1]+(coords[i+1][1]-coords[i][1])*t;
-          total++;if(findEruv(lng,lat))inside++;
+          total++;if(_rIn(lng,lat))inside++;
         }
       }
       return total?inside/total:0;
@@ -1958,7 +2008,7 @@ function planRoute(){
   function _findDetourTarget(coords){
     var runStart=-1,bestStart=-1,bestEnd=-1,bestLen=0;
     for(var i=0;i<coords.length;i++){
-      var out=!findEruv(coords[i][0],coords[i][1]);
+      var out=!_rIn(coords[i][0],coords[i][1]);
       if(out){ if(runStart<0)runStart=i; }
       else if(runStart>=0){
         if(i-runStart>bestLen){bestLen=i-runStart;bestStart=runStart;bestEnd=i-1;}
@@ -1981,7 +2031,7 @@ function planRoute(){
     // Step from mid toward the inside anchor until we're actually inside.
     for(var t=0.2;t<=1.0;t+=0.2){
       var p=[mid[0]+(anchorPt[0]-mid[0])*t,mid[1]+(anchorPt[1]-mid[1])*t];
-      if(findEruv(p[0],p[1]))return p;
+      if(_rIn(p[0],p[1]))return p;
     }
     return anchorPt;
   }
@@ -2012,66 +2062,68 @@ function planRoute(){
       }
     }
     dense.push(coords[coords.length-1]);
-    // Find which eiruvim the route touches
-    var routeZones=new Set();
-    dense.forEach(function(c){var z=findEruv(c[0],c[1]);if(z)routeZones.add(z.id);});
-    // Build allowed zone pairs - direct zones + adjacent pairs with canEnter
-    // Zones linked by "carrying permitted" form a group, and the link carries through:
-    // if A connects to B and B to C, a route may run A-B-C. (This used to allow only
-    // two zones at a time, which broke on a chain like the Monsey sections.)
-    var _grp={};
-    var _find=function(x){while(_grp[x]!==x){_grp[x]=_grp[_grp[x]];x=_grp[x];}return x;};
-    S.eruvin.forEach(function(z){_grp[z.id]=z.id;});
-    S.eruvin.forEach(function(z){
-      (z.adjacency||[]).filter(function(a){return a.canEnter&&_grp[a.id]!==undefined;}).forEach(function(a){
-        _grp[_find(z.id)]=_find(a.id);
-      });
-    });
-    var _sets={};
-    S.eruvin.forEach(function(z){var r=_find(z.id);(_sets[r]=_sets[r]||new Set()).add(z.id);});
-    var allowedPairs=Object.keys(_sets).map(function(r){return _sets[r];});
-    // Check: is every point covered by at least one consistent allowed zone set?
-    // A point is valid if it's inside a zone that's in the same pair as all other touched zones
-    var inEruv=dense.map(function(c){
-      var z=findEruv(c[0],c[1]);
-      if(!z)return false;
-      // Check if this zone + all other route zones fit within an allowed pair
-      var thisAndRoute=new Set([z.id]);
-      routeZones.forEach(function(id){thisAndRoute.add(id);});
-      return allowedPairs.some(function(pair){
-        var allIn=true;
-        thisAndRoute.forEach(function(id){if(!pair.has(id))allIn=false;});
-        return allIn;
-      });
-    });
+    // Judge every point against where the walk starts (see _carryJudge)
+    var judge=_rjudge||_carryJudge(sc.lng,sc.lat);
+    var stateAt=dense.map(function(c){return judge(c[0],c[1]);});
+    var inEruv=stateAt.map(function(s){return s==='ok'||s==='check';});
 
+    // Which eiruvin the walk passes through, in order. Stay in the current one while
+    // still inside it; on leaving, take the eiruv here that the start connects to.
+    var gr=judge.groups, seq=[], cur=null;
+    dense.forEach(function(c,i){
+      var zs=findAllEiruvim(c[0],c[1]);
+      if(cur&&zs.indexOf(cur)>=0)return;
+      var pick=zs.find(function(z){return judge.conf[gr.conf(z.id)];})
+             ||zs.find(function(z){return judge.any[gr.any(z.id)];})||zs[0]||null;
+      cur=pick;
+      seq.push({z:pick,i:i});
+    });
+    // drop slivers: stretches of a few points caused by two outlines drawn a little apart
+    seq=seq.filter(function(s,k){var nx=k+1<seq.length?seq[k+1].i:dense.length;return k===0||!s.z||nx-s.i>=4;});
+    seq=seq.filter(function(s,k){return k===0||s.z!==seq[k-1].z;});
+    var routeZones=new Set();seq.forEach(function(s){if(s.z)routeZones.add(s.z.id);});
+    var seqHtml='';
+    if(seq.length&&(seq.length>1||seq[0].z)){
+      var items=seq.map(function(s,k){
+        var nm=s.z?'<strong>'+s.z.name+'</strong>':'<strong style="color:#c0392b">outside any eiruv</strong>';
+        if(k===0)return '<li>'+(s.z?'Start in '+nm:'Start '+nm)+'</li>';
+        var prev=seq[k-1].z, note='';
+        if(!s.z)note='';
+        else if(!prev)note=' <span style="color:#c0392b">(back in from outside)</span>';
+        else{
+          var l=_carryLink(prev,s.z), st=judge(dense[s.i][0],dense[s.i][1]);
+          if(st==='other')note=' <span style="color:#c0392b">— not connected to where you started: carrying not permitted</span>';
+          else if(l&&!l.confirmed)note=' <span style="color:#b7791f">— connection not yet confirmed by the mashgiach</span>';
+          else if(st==='check')note=' <span style="color:#b7791f">— reached through a connection not yet confirmed</span>';
+          else note=' <span style="color:#1a7f4b">— connected</span>';
+        }
+        return '<li>'+(s.z?'Into '+nm+note:'<strong style="color:#c0392b">Leaves the eiruv</strong> — carrying not permitted on this stretch')+'</li>';
+      }).join('');
+      seqHtml='<div class="route-seq"><div class="route-seq-h">Eiruvin on this route</div><ol>'+items+'</ol></div>';
+    }
+    var anyCheck=stateAt.indexOf('check')>=0, anyOther=stateAt.indexOf('other')>=0;
     var allIn=inEruv.every(Boolean);
     var allOut=inEruv.every(function(v){return !v;});
 
     // Draw segments - green inside eiruv, red outside
     var baseId='rt-'+Date.now();
     S.routeLayerId=baseId;
-    if(allIn||allOut){
+    var colAt=function(i){return stateAt[i]==='ok'?'#22a865':stateAt[i]==='check'?'#e0a020':'#d94040';};
+    var oneColour=stateAt.every(function(s){return s===stateAt[0];});
+    if(oneColour){
       map.addSource(baseId,{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:coords}}});
       map.addLayer({id:baseId+'-line',type:'line',source:baseId,layout:{'line-join':'round','line-cap':'round'},
-        paint:{'line-color':allIn?'#22a865':'#d94040','line-width':5,'line-opacity':.9}});
+        paint:{'line-color':colAt(0),'line-width':5,'line-opacity':.9}});
     } else {
       // Split into colored segments
-      var greenSegs=[],redSegs=[],cur=[dense[0]],curIn=inEruv[0];
+      var segs=[],cur=[dense[0]],curC=colAt(0);
       for(var i=1;i<dense.length;i++){
-        if(inEruv[i]===curIn){
-          cur.push(dense[i]);
-        } else {
-          if(cur.length>1){(curIn?greenSegs:redSegs).push(cur);}
-          cur=[dense[i-1],dense[i]];curIn=inEruv[i];
-        }
+        var c=colAt(i);
+        if(c===curC){cur.push(dense[i]);}
+        else{ if(cur.length>1)segs.push({c:curC,p:cur}); cur=[dense[i-1],dense[i]]; curC=c; }
       }
-      if(cur.length>1)(curIn?greenSegs:redSegs).push(cur);
-
-      var fc={type:'FeatureCollection',features:
-        greenSegs.map(function(s){return {type:'Feature',geometry:{type:'LineString',coordinates:s},properties:{c:'#22a865'}};})
-        .concat(redSegs.map(function(s){return {type:'Feature',geometry:{type:'LineString',coordinates:s},properties:{c:'#d94040'}};}))
-      };
+      if(cur.length>1)segs.push({c:curC,p:cur});
+      var fc={type:'FeatureCollection',features:segs.map(function(s){return {type:'Feature',geometry:{type:'LineString',coordinates:s.p},properties:{c:s.c}};})};
       map.addSource(baseId,{type:'geojson',data:fc});
       map.addLayer({id:baseId+'-line',type:'line',source:baseId,layout:{'line-join':'round','line-cap':'round'},
         paint:{'line-color':['get','c'],'line-width':5,'line-opacity':.9}});
@@ -2096,59 +2148,48 @@ function planRoute(){
     routeMarkers.push(new mapboxgl.Marker({element:eEl,anchor:'bottom'}).setLngLat([ec.lng,ec.lat]).addTo(map));
 
     // Result panel
-    var covText=allIn?'✅ Full':allOut?'❌ None':Math.round(inEruv.filter(Boolean).length/inEruv.length*100)+'%';
+    var covText=allIn&&!anyCheck?'✅ Full':allIn?'⚠️ Unconfirmed link':allOut?'❌ None':Math.round(inEruv.filter(Boolean).length/inEruv.length*100)+'%';
     // Check if start/end are inside eiruv
     var startIn=findEruv(sc.lng,sc.lat)!==null;
     var endIn=findEruv(ec.lng,ec.lat)!==null;
     // Detect original zone (start zone)
     var originZone=findEruv(sc.lng,sc.lat);
     // Detect if route uses adjacent zones
-    var usesAdjacent=originZone&&routeZones.size>1;
+    var names=function(st){
+      var out=[];seq.forEach(function(s){if(s.z&&judge(dense[s.i][0],dense[s.i][1])===st&&out.indexOf(s.z.name)<0)out.push(s.z.name);});return out;};
     var alertHtml='';
-    if(allIn){
-      if(usesAdjacent){
-        // Find adjacent zone names used
-        var adjNames=[];
-        routeZones.forEach(function(id){
-          if(id!==originZone.id){var z=S.eruvin.find(function(x){return x.id===id;});if(z)adjNames.push(z.name);}
-        });
-        // Find where user first exits their original zone
-        var exitOrigPt=null;
-        for(var i=1;i<dense.length;i++){
-          var z=findEruv(dense[i][0],dense[i][1]);
-          var wasInOrig=findEruv(dense[i-1][0],dense[i-1][1])&&findEruv(dense[i-1][0],dense[i-1][1]).id===originZone.id;
-          var nowInAdj=z&&z.id!==originZone.id;
-          if(wasInOrig&&nowInAdj){exitOrigPt=dense[i];break;}
-        }
-        alertHtml='<div class="route-alert ra-ok">✅ Carrying permitted — route uses <strong>'+adjNames.join(' & ')+'</strong> (adjacent zone).'+(exitOrigPt?' You exit <strong>'+originZone.name+'</strong> partway through but remain in an adjacent permitted zone.':'')+'</div>';
-      } else {
-        alertHtml='<div class="route-alert ra-ok">✅ Route is fully within the eiruv — carrying is permitted.</div>';
-      }
+    if(!judge.start.length){
+      alertHtml='<div class="route-alert ra-err">❌ The starting point is not inside any eiruv, so nothing may be carried from there.</div>';
     }
-    else if(allOut) alertHtml='<div class="route-alert ra-err">❌ '+(startIn?'Destination':'Starting point')+' is outside the eiruv. This route cannot be done while carrying.</div>';
+    else if(allIn&&!anyCheck){
+      alertHtml='<div class="route-alert ra-ok">✅ '+(routeZones.size>1?'Carrying permitted — the route stays within eiruvin that are connected to each other.':'Route is fully within the eiruv — carrying is permitted.')+'</div>';
+    }
+    else if(allIn&&anyCheck){
+      alertHtml='<div class="route-alert ra-warn">⚠️ The route passes into <strong>'+names('check').join(', ')+'</strong> through a connection the mashgiach has not yet confirmed (amber on the map). Do not rely on it until it is confirmed.</div>';
+    }
+    else if(allOut){
+      alertHtml='<div class="route-alert ra-err">❌ '+(endIn?'This route never stays in an eiruv you may carry in.':'The destination is outside the eiruv. This route cannot be done while carrying.')+'</div>';
+    }
     else {
-      alertHtml='<div class="route-alert ra-warn" id="eruvExitAlert">⚠️ Route exits the eiruv — see red section on map. Carrying not permitted on that portion.</div>';
-      // Reverse geocode first exit point
+      var on=names('other');
+      var why=anyOther?'enters <strong>'+on.join(', ')+'</strong>, '+(on.length>1?'separate eiruvin':'a separate eiruv')+' not connected to where you start':'leaves the eiruv';
+      alertHtml='<div class="route-alert ra-warn" id="eruvExitAlert">⚠️ The route '+why+' — see the red section on the map. Carrying is not permitted on that portion.</div>';
       var firstExitPt=null;
-      for(var i=1;i<dense.length;i++){
-        if(inEruv[i-1]&&!inEruv[i]){firstExitPt=dense[i];break;}
-      }
+      for(var i=1;i<dense.length;i++){ if(inEruv[i-1]&&!inEruv[i]){firstExitPt=dense[i];break;} }
       if(firstExitPt){
         reverseGeocode(firstExitPt[0],firstExitPt[1],function(label){
           var el=document.getElementById('eruvExitAlert');
-          if(el&&label){
-            var street=label.split(',')[0];
-            el.innerHTML='⚠️ Route exits the eiruv near <strong>'+street+'</strong>. Carrying is not permitted on that portion of the route.';
-          }
+          if(el&&label){el.innerHTML=el.innerHTML.replace(' — see the red',' near <strong>'+label.split(',')[0]+'</strong> — see the red');}
         });
       }
     }
+    alertHtml+=seqHtml;
 
     // Steps - only show if fully inside eiruv
     var steps=[];
     if(route.legs)route.legs.forEach(function(leg){if(leg.steps)leg.steps.forEach(function(s){steps.push(s);});});
     var stepsHtml='';
-    if(allIn&&steps.length){
+    if((allIn||anyCheck)&&!anyOther&&steps.length){
       var sid='steps-'+Date.now();
       var rows=steps.filter(function(s){
         return (s.maneuver&&s.maneuver.instruction)||s.instruction;
@@ -2483,9 +2524,10 @@ function showEruvDetail(id){
     +(e.donateUrl?'<a href="'+e.donateUrl+'" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#fff0f3;border:1px solid #ffb3c1;border-radius:20px;color:#c0284a;font-size:.78rem;font-weight:600;text-decoration:none;margin-bottom:12px">❤️ Support This Eiruv</a><br>':'')
     // Adjacent carrying
     +(function(){
-      var adjZones=(e.adjacency||[]).filter(function(a){return a.canEnter;});
-      if(!adjZones.length)return '';
-      var adjNames=adjZones.map(function(a){var z=S.eruvin.find(function(x){return x.id===a.id;});return z?z.name:null;}).filter(Boolean);
+      var adjNames=S.eruvin.filter(function(z){return z.id!==e.id;}).map(function(z){
+        var l=_carryLink(e,z);if(!l)return null;
+        return z.name+(l.confirmed?'':' <span style="color:#b7791f">(not yet confirmed)</span>');
+      }).filter(Boolean);
       if(!adjNames.length)return '';
       return '<div style="margin-bottom:12px;padding:8px 12px;background:#f0fff4;border-radius:8px;border-left:3px solid #22a865;font-size:.78rem;color:#1a5c30"><span style="font-weight:600">↔ Carrying permitted also in:</span> '+adjNames.join(', ')+'</div>';
     })()
@@ -5066,22 +5108,36 @@ function renderExclList(){document.getElementById('exclList').innerHTML=S.curExc
 function removeExcl(i){var ex=S.curExcl[i];S.curExcl.splice(i,1);var f=Draw&&Draw.getAll().features.find(function(x){return x.properties.exclId===ex.id;});if(f)Draw.delete([f.id]);renderExclList();}
 function renderAdjList(){
   var hdr=document.getElementById('adjHeader'),lst=document.getElementById('adjList');
-  var nearby=S.eruvin.filter(function(e){return e.id!==S.editTargetId;});
-  if(!nearby.length){hdr.style.display='none';return;}
+  // Only zones near this one: a full list of every eiruv everywhere is unusable.
+  var me=S.eruvin.find(function(e){return e.id===S.editTargetId;});
+  var mc=(me&&me.coords&&me.coords.length)?me.coords:[];
+  if(!mc.length){try{var fs=Draw.getAll().features.filter(function(f){return f.geometry&&f.geometry.type==='Polygon'&&!(f.properties&&f.properties.exclId);});if(fs.length)mc=fs[0].geometry.coordinates[0];}catch(_){}}
+  var bb=function(c){var b=[1e9,1e9,-1e9,-1e9];(c||[]).forEach(function(q){b[0]=Math.min(b[0],q[0]);b[1]=Math.min(b[1],q[1]);b[2]=Math.max(b[2],q[0]);b[3]=Math.max(b[3],q[1]);});return b;};
+  var mb=bb(mc),pad=0.02;
+  var nearby=S.eruvin.filter(function(e){
+    if(e.id===S.editTargetId)return false;
+    if(S.curAdj.some(function(a){return a.id===e.id&&a.canEnter;}))return true;
+    if(!mc.length)return false;
+    var b=bb(e.coords);
+    return !(b[0]>mb[2]+pad||b[2]<mb[0]-pad||b[1]>mb[3]+pad||b[3]<mb[1]-pad);
+  });
+  if(!nearby.length){hdr.style.display='none';lst.innerHTML='';return;}
   hdr.style.display='block';
-  hdr.innerHTML='Adjacent Zones <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.4)">(allow carrying when walking from your zone into another)</span>';
+  hdr.innerHTML='Adjacent Zones <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.4)">(zones near this one. Allow carrying only where the eiruvin are joined; leave "Confirmed" off until the mashgiach confirms)</span>';
   lst.innerHTML=nearby.map(function(e){
     var ex=S.curAdj.find(function(a){return a.id===e.id;}),on=ex&&ex.canEnter;
     return '<div class="adj-item">'
       +'<div><div class="adj-nm">'+e.name+'</div>'
       +'<div style="font-size:.66rem;color:rgba(255,255,255,.35)">'+e.city+'</div></div>'
       +'<div style="display:flex;align-items:center;gap:6px">'
+      +(on?'<label style="font-size:.65rem;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" '+(ex.needsCheck?'':'checked')+' data-id="'+e.id+'" onchange="toggleAdjConfirmed(this.dataset.id,this.checked)">Confirmed by mashgiach</label>':'')
       +'<span style="font-size:.65rem;color:rgba(255,255,255,.4)">Allow carrying</span>'
       +'<button class="toggle '+(on?'on':'')+'" data-id="'+e.id+'" onclick="toggleAdj(this.dataset.id)" title="Allow carrying between these eiruvim"></button>'
       +'</div></div>';
   }).join('');
 }
-function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a){a={id:id,canEnter:true,note:''};S.curAdj.push(a);}else a.canEnter=!a.canEnter;renderAdjList();var e=S.eruvin.find(function(x){return x.id===id;});toast(a.canEnter?'Carrying allowed into '+(e&&e.name):'Carrying disabled into '+(e&&e.name),a.canEnter?'ok':'warn');}
+function toggleAdjConfirmed(id,ok){var a=S.curAdj.find(function(x){return x.id===id;});if(!a)return;a.needsCheck=!ok;toast(ok?'Marked as confirmed':'Marked as not yet confirmed','ok');}
+function toggleAdj(id){var a=S.curAdj.find(function(x){return x.id===id;});if(!a){a={id:id,canEnter:true,needsCheck:true,note:''};S.curAdj.push(a);}else a.canEnter=!a.canEnter;renderAdjList();var e=S.eruvin.find(function(x){return x.id===id;});toast(a.canEnter?'Carrying allowed into '+(e&&e.name):'Carrying disabled into '+(e&&e.name),a.canEnter?'ok':'warn');}
 
 function renderSegNotes(){
   var list=document.getElementById('segNotesList');
@@ -5855,7 +5911,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1120.0626</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1120.1927</span>
   </div>
 </div>
 <style>
