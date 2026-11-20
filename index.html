@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css">
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="/lib/hebcal-core-5.4.7.min.js" defer></script>
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
 <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
 <style>
@@ -453,6 +454,8 @@ header{
 .route-seq{margin-top:8px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:#fff;font-size:.75rem;line-height:1.45}
 .route-seq-h{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
 .route-seq ol{margin:0;padding-left:18px}.route-seq li{margin:2px 0}
+.list-empty{padding:18px 4px;font-size:.8rem;color:var(--muted);text-align:center}
+.list-empty a{color:var(--blue)}
 .pop-adj{font-size:.7rem;color:var(--blue);margin-top:3px;}
 .mapboxgl-ctrl-group{border-radius:8px !important;box-shadow:var(--sh) !important;}
 
@@ -1168,7 +1171,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1120.1927]');
+console.log('[MyEiruv build v1120.1930]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -2243,21 +2246,28 @@ function sTab(btn,id){clearNoteMarkers();document.querySelectorAll('.s-tab').for
 function fStatus(btn,f){document.querySelectorAll('.filter-row .chip').forEach(function(c){c.classList.remove('on');});btn.classList.add('on');renderStatus(f);}
 // ── Parsha / Hebrew timestamp ─────────────────────────────────────────────────
 // Returns "Shabbos Parshas X" or weekday name for a given Date
-var PARSHIOS=[
-  'Bereishis','Noach','Lech Lecha','Vayeira','Chayei Sarah','Toldos','Vayeitzei','Vayishlach',
-  'Vayeishev','Mikeitz','Vayigash','Vayechi','Shemos','Va\'eira','Bo','Beshalach','Yisro',
-  'Mishpatim','Terumah','Tetzaveh','Ki Sisa','Vayakheil-Pekudei','Vayikra','Tzav','Shemini',
-  'Tazria-Metzora','Acharei Mos-Kedoshim','Emor','Behar-Bechukosai','Bamidbar','Nasso',
-  'Behaaloscha','Shelach','Korach','Chukas','Balak','Pinchas','Matos-Masei','Devarim',
-  'Va\'eschanan','Eikev','Re\'eh','Shoftim','Ki Seitzei','Ki Savo','Nitzavim-Vayeilech','Ha\'azinu'
-];
+// Parsha of the week from @hebcal/core (self-hosted in /lib). The old version counted
+// weeks in a fixed 47-week cycle from a wrong start date, so it named the wrong parsha.
+var PARSHIOS54=['Bereishis','Noach','Lech Lecha','Vayeira','Chayei Sarah','Toldos','Vayeitzei','Vayishlach',
+  'Vayeishev','Mikeitz','Vayigash','Vayechi','Shemos',"Va'eira",'Bo','Beshalach','Yisro','Mishpatim','Terumah',
+  'Tetzaveh','Ki Sisa','Vayakheil','Pekudei','Vayikra','Tzav','Shemini','Tazria','Metzora','Acharei Mos','Kedoshim',
+  'Emor','Behar','Bechukosai','Bamidbar','Nasso',"Behaaloscha",'Shelach','Korach','Chukas','Balak','Pinchas','Matos',
+  'Masei','Devarim',"Va'eschanan",'Eikev',"Re'eh",'Shoftim','Ki Seitzei','Ki Savo','Nitzavim','Vayeilech',"Ha'azinu",'Vezos Habracha'];
 function getParsha(date){
-  // Base: Parshas Bereishis 5786 = Shabbos Oct 25 2025 (US)
-  var BASE=new Date('2025-10-25');
-  var msPerWeek=7*24*60*60*1000;
-  var week=Math.round((date-BASE)/msPerWeek);
-  var idx=((week%PARSHIOS.length)+PARSHIOS.length)%PARSHIOS.length;
-  return PARSHIOS[idx];
+  try{
+    if(window.hebcal&&hebcal.HDate&&hebcal.Sedra){
+      var hd=new hebcal.HDate(date), r=new hebcal.Sedra(hd.getFullYear(),false).lookup(hd);
+      if(r&&!r.chag&&r.num!=null){
+        var n=Array.isArray(r.num)?r.num:[r.num];
+        return n.map(function(i){return PARSHIOS54[i-1];}).join('-');
+      }
+      return null;   // a Yom Tov or Chol Hamoed Shabbos has no weekly parsha
+    }
+  }catch(_){}
+  return null;
+}
+function _hebDate(date){
+  try{return new Intl.DateTimeFormat('en-u-ca-hebrew',{day:'numeric',month:'long',year:'numeric'}).format(date);}catch(_){return '';}
 }
 function getEruvTimestamp(){
   var now=new Date();
@@ -2265,12 +2275,14 @@ function getEruvTimestamp(){
   var dayName=days[now.getDay()];
   var time=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   if(now.getDay()===6){// Shabbos
-    return 'Shabbos Parshas '+getParsha(now)+', '+time;
+    var p=getParsha(now);
+    return (p?'Shabbos Parshas '+p:'Shabbos, '+_hebDate(now))+', '+time;
   }
   // Show upcoming Shabbos parsha on Fri/Thu
   if(now.getDay()===5||now.getDay()===4){
     var nextShabbos=new Date(now);nextShabbos.setDate(now.getDate()+(6-now.getDay()));
-    return dayName+' '+time+' · Parshas '+getParsha(nextShabbos);
+    var np=getParsha(nextShabbos);
+    return dayName+' '+time+(np?' · Parshas '+np:'');
   }
   return dayName+' '+time;
 }
@@ -2301,8 +2313,20 @@ function renderStatus(f){
   var SL={up:'Up ✓',review:'Under Review',down:'Down'},BC={up:'b-up',review:'b-rv',down:'b-dn'},MSG={up:'Eiruv is kosher for this Shabbos.',review:'Rabbinical review in progress.',down:'Repairs underway.'};
   document.getElementById('statusList').innerHTML=list.map(function(e){return '<div class="upd" onclick="flyTo(['+e.center+'],\''+e.name+'\')">'+'<div class="upd-hd"><span class="upd-nm">'+e.name+'</span><span class="badge '+BC[e.status]+'">'+SL[e.status]+'</span></div>'+'<div class="upd-tm">'+e.city+(e.lastChecked?' · '+e.lastChecked:'')+(e.checkedBy?' · '+e.checkedBy:'')+'</div>'+'<div class="upd-msg">'+(e.note||MSG[e.status])+'</div></div>';}).join('')||'<div style="text-align:center;color:var(--muted);padding:18px;font-size:.8rem">No results.</div>';
 }
+setTimeout(function(){
+  if(window._zonesLoaded||(S&&S.eruvin&&S.eruvin.length))return;
+  window._zonesFailed=true;
+  try{renderEruvList();}catch(_){}
+  try{if(typeof renderStatus==='function')renderStatus('all');}catch(_){}
+},15000);
 function renderEruvList(){
   var BC={up:'b-up',review:'b-rv',down:'b-dn'},BL={up:'Up',review:'Under Review',down:'Down'};
+  if(!S.eruvin.length){
+    document.getElementById('eruvList').innerHTML=window._zonesFailed
+      ?'<div class="list-empty">Could not load the eiruvin. Check your connection, then <a href="" onclick="location.reload();return false">reload the page</a>.</div>'
+      :'<div class="list-empty">Loading eiruvin…</div>';
+    return;
+  }
   document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){
     var sc={up:'#22a865',review:'#e08020',down:'#d94040'}[e.status]||'#ccc';
     return '<div id="wrap-'+e.id+'">'
@@ -5874,6 +5898,7 @@ window._db = {
 
     console.log(`[MyEiruv] zones:${S.eruvin.length} shuls:${S.shuls.length} users:${window._fsUsers.length}`);
 
+    window._zonesLoaded = true;
     if (window._mapLoaded) { _renderAllMapData(); }
     else                   { window._zonesReady = true; }
     setTimeout(function(){ if(window._mapLoaded)openDeepLink(); }, 300);
@@ -5905,18 +5930,38 @@ window._db.bootAll();
 checkResetToken();
 </script>
 <!-- Footer disclaimer -->
-<div id="site-footer" style="position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(15,31,56,.92);backdrop-filter:blur(8px);padding:5px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;pointer-events:none;border-top:1px solid rgba(255,255,255,.08);">
-  <div style="font-size:.6rem;color:rgba(255,255,255,.5);line-height:1.4;flex:1;">
-    🚧 <strong style="color:#e8c07a">Setup in progress —</strong> <span style="color:rgba(255,255,255,.75)">boundaries are still being imported and verified. Do not rely on this site yet.</span><br>
-    ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
-  </div>
-  <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1120.1927</span>
-  </div>
+<div id="site-footer" class="site-foot" role="contentinfo">
+  <button class="sf-main" type="button" onclick="this.parentElement.classList.toggle('open')" aria-label="Show the full disclaimer">
+    <span class="sf-warn">⚠️ <strong>Setup in progress</strong> — boundaries are still being verified. Do not rely on this site yet.</span>
+    <span class="sf-more">For information only. Always confirm with your rav or eiruv authority before carrying on Shabbos; MyEiruv takes no halachic responsibility.</span>
+  </button>
+  <nav class="sf-side">
+    <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1120.1930</span></span>
+  </nav>
 </div>
+<script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>
 <style>
-  /* Make room for footer */
-  .app { padding-bottom: 28px; }
+  .site-foot{position:fixed;bottom:0;left:0;right:0;z-index:500;background:rgba(15,31,56,.94);backdrop-filter:blur(8px);
+    border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:14px;padding:5px 16px;font-size:.62rem;color:rgba(255,255,255,.6);line-height:1.4}
+  .site-foot .sf-main{flex:1;min-width:0;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:0;cursor:default}
+  .site-foot .sf-warn strong{color:#e8c07a}
+  .site-foot .sf-more{display:block;color:rgba(255,255,255,.5)}
+  .site-foot .sf-side{display:flex;align-items:center;gap:12px;white-space:nowrap;flex-shrink:0}
+  .site-foot a{color:rgba(255,255,255,.65);text-decoration:none}
+  .site-foot a:hover{color:#fff;text-decoration:underline}
+  .site-foot #buildVer{opacity:.5}
+  .app{padding-bottom:30px}
+  @media (max-width:760px){
+    .site-foot{flex-wrap:wrap;gap:2px 12px;padding:4px 12px}
+    .site-foot .sf-main{cursor:pointer}
+    .site-foot .sf-warn{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .site-foot .sf-more{display:none}
+    .site-foot.open .sf-warn{white-space:normal}
+    .site-foot.open .sf-more{display:block}
+    .site-foot .sf-side{width:100%;justify-content:flex-start;gap:12px;font-size:.58rem}
+    .app{padding-bottom:40px}
+  }
 </style>
 <script>
 if('serviceWorker' in navigator){
