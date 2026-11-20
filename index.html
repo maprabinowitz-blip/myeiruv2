@@ -1165,7 +1165,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1117.0459]');
+console.log('[MyEiruv build v1120.0626]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -1175,6 +1175,7 @@ map.on('load',()=>{
   if(map.getLayer&&map.getLayer('background'))try{map.setPaintProperty('background','background-color','#f3efe6');}catch(e){}
   if(map.getLayer&&map.getLayer('water'))try{map.setPaintProperty('water','fill-color','#c4d8e8');}catch(e){}
   window._mapLoaded=true;
+  setTimeout(function(){ if(window._zonesReady)openDeepLink(); }, 600);
   // Load seed shuls immediately
   (SEED_SHULS||[]).forEach(addShulToMap);
   // Load ALL shuls from OpenStreetMap for visible map area
@@ -1325,6 +1326,28 @@ function showEruvPopup(e,ev){
 }
 /* Map click -> full zone detail in the sidebar. Reuses the existing accordion
    so there is one detail view, not two that can drift apart. */
+/* Link to one eiruv: myeiruv.org/?zone=<id or name>. Once the zones and the map
+   are ready, the map fits that eiruv, its banner opens and the sidebar shows its
+   details. Runs once per page load. */
+var _deepLinkDone=false;
+function openDeepLink(){
+  if(_deepLinkDone)return;
+  var q='';
+  try{q=(new URLSearchParams(location.search).get('zone')||'').trim();}catch(_){}
+  if(!q){_deepLinkDone=true;return;}
+  var want=q.toLowerCase();
+  var e=S.eruvin.find(function(x){return x.id===q;})
+     ||S.eruvin.find(function(x){return (x.name||'').trim().toLowerCase()===want;});
+  if(!e)return;              // zones may not be loaded yet; tried again after they are
+  _deepLinkDone=true;
+  try{
+    var b=new mapboxgl.LngLatBounds();
+    (e.coords||[]).forEach(function(c){b.extend(c);});
+    if(!b.isEmpty())map.fitBounds(b,{padding:50,duration:0,maxZoom:15});
+  }catch(_){}
+  try{openZoneDetail(e.id);}catch(_){}
+  setTimeout(function(){try{showEruvPopup(e,null);}catch(_){}},400);
+}
 function openZoneDetail(id){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
@@ -5797,6 +5820,7 @@ window._db = {
 
     if (window._mapLoaded) { _renderAllMapData(); }
     else                   { window._zonesReady = true; }
+    setTimeout(function(){ if(window._mapLoaded)openDeepLink(); }, 300);
     // Refresh contractor dashboard and admin panel if open after zones load
     if(document.getElementById('ctDash')&&document.getElementById('ctDash').classList.contains('on'))renderCtDash();
     if(document.getElementById('adminDrawer')&&document.getElementById('adminDrawer').classList.contains('on'))renderAdmin('overview');
@@ -5831,7 +5855,7 @@ checkResetToken();
     ⚠️ <strong style="color:rgba(255,255,255,.7)">For informational purposes only.</strong> Always verify eiruv status with your local rabbi or eiruv authority before carrying on Shabbos. MyEiruv assumes no halachic responsibility.
   </div>
   <div style="font-size:.58rem;color:rgba(255,255,255,.35);white-space:nowrap;flex-shrink:0;">
-    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1117.0459</span>
+    © 2025 MyEiruv · <span id="buildVer" style="opacity:.55">v1120.0626</span>
   </div>
 </div>
 <style>
