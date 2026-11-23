@@ -451,6 +451,8 @@ header{
 #zoneBanner .zb-x{position:absolute;top:3px;right:5px;border:none;background:none;color:var(--muted);
   font-size:1.05rem;line-height:1;cursor:pointer;padding:4px 5px;}
 @media (prefers-reduced-motion:reduce){#zoneBanner{transition:none;}}
+.rs-dn{font-size:.62rem;font-weight:700;color:#fff;background:#d94040;border-radius:4px;padding:0 4px}
+.rs-rv{font-size:.62rem;font-weight:600;color:#9a5b00;background:#fff3dc;border-radius:4px;padding:0 4px}
 .route-seq{margin-top:8px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:#fff;font-size:.75rem;line-height:1.45}
 .route-seq-h{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
 .route-seq ol{margin:0;padding-left:18px}.route-seq li{margin:2px 0}
@@ -1171,7 +1173,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1120.1930]');
+console.log('[MyEiruv build v1123.1922]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -1605,14 +1607,17 @@ function _carryLink(a,b){
   return {confirmed:!((la&&la.needsCheck)||(lb&&lb.needsCheck))};
 }
 function _carryGroups(){
-  // two groupings: through confirmed links only, and through any link
-  var mk=function(onlyConfirmed){
-    var p={};S.eruvin.forEach(function(z){p[z.id]=z.id;});
+  // "conf": up eiruvin joined by confirmed links. "any": every eiruv that is not
+  // down, through any link. A down eiruv joins nothing, so it breaks a chain.
+  var mk=function(strict){
+    var p={},ok=function(z){return z&&(strict?z.status==='up':z.status!=='down');};
+    S.eruvin.forEach(function(z){if(ok(z))p[z.id]=z.id;});
     var f=function(x){while(p[x]!==x){p[x]=p[p[x]];x=p[x];}return x;};
     S.eruvin.forEach(function(z){
+      if(!ok(z))return;
       (z.adjacency||[]).forEach(function(a){
         if(!a.canEnter||p[a.id]===undefined)return;
-        if(onlyConfirmed&&a.needsCheck)return;
+        if(strict&&a.needsCheck)return;
         p[f(z.id)]=f(a.id);
       });
     });
@@ -1620,27 +1625,29 @@ function _carryGroups(){
   };
   return {conf:mk(true),any:mk(false)};
 }
-/* For a route that starts at a point: is another point somewhere you may carry to?
-   'ok' = same eiruv or reached through confirmed links, 'check' = only through a
-   link not yet confirmed, 'other' = inside an eiruv not connected to the start,
-   'out' = in no eiruv. */
+/* 'ok' up eiruv, joined to the start by confirmed links between up eiruvin
+   'check' reachable only through an eiruv under review or an unconfirmed link
+   'down' the eiruv here is down   'other' not connected to the start   'out' no eiruv */
 function _carryJudge(lng,lat){
-  var start=findAllEiruvim(lng,lat), g=_carryGroups();
+  var all0=findAllEiruvim(lng,lat), g=_carryGroups();
+  var start=all0.filter(function(z){return z.status!=='down';});
   var conf={},any={};
-  start.forEach(function(z){conf[g.conf(z.id)]=1;any[g.any(z.id)]=1;});
+  start.forEach(function(z){var c=g.conf(z.id);if(c)conf[c]=1;var a=g.any(z.id);if(a)any[a]=1;});
   var fn=function(x,y){
-    var zs=findAllEiruvim(x,y);
-    if(!zs.length)return 'out';
+    var all=findAllEiruvim(x,y);
+    if(!all.length)return 'out';
+    var zs=all.filter(function(z){return z.status!=='down';});
+    if(!zs.length)return 'down';
     if(!start.length)return 'other';
-    if(zs.some(function(z){return conf[g.conf(z.id)];}))return 'ok';
-    if(zs.some(function(z){return any[g.any(z.id)];}))return 'check';
+    if(zs.some(function(z){var c=g.conf(z.id);return c&&conf[c];}))return 'ok';
+    if(zs.some(function(z){var a=g.any(z.id);return a&&any[a];}))return 'check';
     return 'other';
   };
-  fn.start=start;fn.groups=g;fn.conf=conf;fn.any=any;
+  fn.start=start;fn.startAll=all0;fn.groups=g;fn.conf=conf;fn.any=any;
   return fn;
 }
 var _rjudge=null;
-function _rIn(lng,lat){return _rjudge?_rjudge(lng,lat)!=='out'&&_rjudge(lng,lat)!=='other':!!findEruv(lng,lat);}
+function _rIn(lng,lat){if(!_rjudge)return !!findEruv(lng,lat);var s=_rjudge(lng,lat);return s==='ok'||s==='check';}
 function inExcl(lng,lat,e){return(e.exclusions||[]).some(function(ex){return pip(lng,lat,ex.coords);});}
 function findEruv(lng,lat){for(var i=0;i<S.eruvin.length;i++){var e=S.eruvin[i];if(pip(lng,lat,e.coords)&&!inExcl(lng,lat,e))return e;}return null;}
 
@@ -2076,8 +2083,9 @@ function planRoute(){
     dense.forEach(function(c,i){
       var zs=findAllEiruvim(c[0],c[1]);
       if(cur&&zs.indexOf(cur)>=0)return;
-      var pick=zs.find(function(z){return judge.conf[gr.conf(z.id)];})
-             ||zs.find(function(z){return judge.any[gr.any(z.id)];})||zs[0]||null;
+      var pick=zs.find(function(z){var c=gr.conf(z.id);return c&&judge.conf[c];})
+             ||zs.find(function(z){var a=gr.any(z.id);return a&&judge.any[a];})
+             ||zs.find(function(z){return z.status!=='down';})||zs[0]||null;
       cur=pick;
       seq.push({z:pick,i:i});
     });
@@ -2088,23 +2096,25 @@ function planRoute(){
     var seqHtml='';
     if(seq.length&&(seq.length>1||seq[0].z)){
       var items=seq.map(function(s,k){
-        var nm=s.z?'<strong>'+s.z.name+'</strong>':'<strong style="color:#c0392b">outside any eiruv</strong>';
+        var stTag=!s.z?'':s.z.status==='down'?' <span class="rs-dn">DOWN</span>':s.z.status==='review'?' <span class="rs-rv">under review</span>':'';
+        var nm=s.z?'<strong>'+s.z.name+'</strong>'+stTag:'<strong style="color:#c0392b">outside any eiruv</strong>';
         if(k===0)return '<li>'+(s.z?'Start in '+nm:'Start '+nm)+'</li>';
         var prev=seq[k-1].z, note='';
         if(!s.z)note='';
         else if(!prev)note=' <span style="color:#c0392b">(back in from outside)</span>';
         else{
           var l=_carryLink(prev,s.z), st=judge(dense[s.i][0],dense[s.i][1]);
-          if(st==='other')note=' <span style="color:#c0392b">— not connected to where you started: carrying not permitted</span>';
+          if(st==='down')note=' <span style="color:#c0392b">— this eiruv is down: carrying not permitted</span>';
+          else if(st==='other')note=' <span style="color:#c0392b">— not connected to where you started: carrying not permitted</span>';
           else if(l&&!l.confirmed)note=' <span style="color:#b7791f">— connection not yet confirmed by the mashgiach</span>';
-          else if(st==='check')note=' <span style="color:#b7791f">— reached through a connection not yet confirmed</span>';
+          else if(st==='check')note=' <span style="color:#b7791f">— '+(s.z.status==='review'?'not confirmed up':'reached through a connection not yet confirmed')+'</span>';
           else note=' <span style="color:#1a7f4b">— connected</span>';
         }
         return '<li>'+(s.z?'Into '+nm+note:'<strong style="color:#c0392b">Leaves the eiruv</strong> — carrying not permitted on this stretch')+'</li>';
       }).join('');
       seqHtml='<div class="route-seq"><div class="route-seq-h">Eiruvin on this route</div><ol>'+items+'</ol></div>';
     }
-    var anyCheck=stateAt.indexOf('check')>=0, anyOther=stateAt.indexOf('other')>=0;
+    var anyCheck=stateAt.indexOf('check')>=0, anyOther=stateAt.indexOf('other')>=0, anyDown=stateAt.indexOf('down')>=0;
     var allIn=inEruv.every(Boolean);
     var allOut=inEruv.every(function(v){return !v;});
 
@@ -2151,7 +2161,7 @@ function planRoute(){
     routeMarkers.push(new mapboxgl.Marker({element:eEl,anchor:'bottom'}).setLngLat([ec.lng,ec.lat]).addTo(map));
 
     // Result panel
-    var covText=allIn&&!anyCheck?'✅ Full':allIn?'⚠️ Unconfirmed link':allOut?'❌ None':Math.round(inEruv.filter(Boolean).length/inEruv.length*100)+'%';
+    var covText=allIn&&!anyCheck?'✅ Full':allIn?'⚠️ Not confirmed':allOut?'❌ None':Math.round(inEruv.filter(Boolean).length/inEruv.length*100)+'%';
     // Check if start/end are inside eiruv
     var startIn=findEruv(sc.lng,sc.lat)!==null;
     var endIn=findEruv(ec.lng,ec.lat)!==null;
@@ -2161,21 +2171,31 @@ function planRoute(){
     var names=function(st){
       var out=[];seq.forEach(function(s){if(s.z&&judge(dense[s.i][0],dense[s.i][1])===st&&out.indexOf(s.z.name)<0)out.push(s.z.name);});return out;};
     var alertHtml='';
+    var rely=routeZones.size>1?' You may carry from one eiruv into the next only if you rely on each of them.':'';
+    var reviewNames=[],unconf=[];
+    seq.forEach(function(s,k){
+      if(s.z&&s.z.status==='review'&&reviewNames.indexOf(s.z.name)<0)reviewNames.push(s.z.name);
+      if(k&&s.z&&seq[k-1].z){var l=_carryLink(seq[k-1].z,s.z);if(l&&!l.confirmed)unconf.push(seq[k-1].z.name+' ↔ '+s.z.name);}
+    });
     if(!judge.start.length){
-      alertHtml='<div class="route-alert ra-err">❌ The starting point is not inside any eiruv, so nothing may be carried from there.</div>';
+      alertHtml='<div class="route-alert ra-err">❌ '+(judge.startAll.length?'The eiruv where you start ('+judge.startAll[0].name+') is down, so nothing may be carried from there.':'The starting point is not inside any eiruv, so nothing may be carried from there.')+'</div>';
     }
     else if(allIn&&!anyCheck){
-      alertHtml='<div class="route-alert ra-ok">✅ '+(routeZones.size>1?'Carrying permitted — the route stays within eiruvin that are connected to each other.':'Route is fully within the eiruv — carrying is permitted.')+'</div>';
+      alertHtml='<div class="route-alert ra-ok">✅ '+(routeZones.size>1?'The route stays within eiruvin that are up and connected to each other.':'Route is fully within the eiruv, which is up.')+rely+'</div>';
     }
     else if(allIn&&anyCheck){
-      alertHtml='<div class="route-alert ra-warn">⚠️ The route passes into <strong>'+names('check').join(', ')+'</strong> through a connection the mashgiach has not yet confirmed (amber on the map). Do not rely on it until it is confirmed.</div>';
+      var why2=[];
+      if(reviewNames.length)why2.push('<strong>'+reviewNames.join(', ')+'</strong> '+(reviewNames.length>1?'are':'is')+' under review, not confirmed up');
+      if(unconf.length)why2.push('the connection '+unconf.join(', ')+' has not been confirmed by the mashgiach');
+      alertHtml='<div class="route-alert ra-warn">⚠️ Not confirmed: '+(why2.join('; ')||'part of the route depends on an eiruv or connection that is not confirmed')+' (amber on the map). Do not rely on it until confirmed.'+rely+'</div>';
     }
     else if(allOut){
       alertHtml='<div class="route-alert ra-err">❌ '+(endIn?'This route never stays in an eiruv you may carry in.':'The destination is outside the eiruv. This route cannot be done while carrying.')+'</div>';
     }
     else {
       var on=names('other');
-      var why=anyOther?'enters <strong>'+on.join(', ')+'</strong>, '+(on.length>1?'separate eiruvin':'a separate eiruv')+' not connected to where you start':'leaves the eiruv';
+      var dn=names('down');
+      var why=anyDown?'enters <strong>'+dn.join(', ')+'</strong>, which '+(dn.length>1?'are':'is')+' down':anyOther?'enters <strong>'+on.join(', ')+'</strong>, '+(on.length>1?'separate eiruvin':'a separate eiruv')+' not connected to where you start':'leaves the eiruv';
       alertHtml='<div class="route-alert ra-warn" id="eruvExitAlert">⚠️ The route '+why+' — see the red section on the map. Carrying is not permitted on that portion.</div>';
       var firstExitPt=null;
       for(var i=1;i<dense.length;i++){ if(inEruv[i-1]&&!inEruv[i]){firstExitPt=dense[i];break;} }
@@ -2192,7 +2212,7 @@ function planRoute(){
     var steps=[];
     if(route.legs)route.legs.forEach(function(leg){if(leg.steps)leg.steps.forEach(function(s){steps.push(s);});});
     var stepsHtml='';
-    if((allIn||anyCheck)&&!anyOther&&steps.length){
+    if(allIn&&steps.length){
       var sid='steps-'+Date.now();
       var rows=steps.filter(function(s){
         return (s.maneuver&&s.maneuver.instruction)||s.instruction;
@@ -2996,7 +3016,7 @@ function _dispatchAlerts(eruv,status,note,alerts){
       }).then(function(){sent++;}).catch(function(e){console.error('Email err:',e);});
     }
     if(a.viaSms&&a.userPhone){
-      var msg=(status==='up'?'✅':'status'==='review'?'⚠️':'❌')+' '+eruv.name+' is '+(status==='up'?'UP & Kosher':status==='review'?'under review':'DOWN')+(note?' — '+note:'')+'. — myeiruv.org';
+      var msg=(status==='up'?'✅':status==='review'?'⚠️':'❌')+' '+eruv.name+' is '+(status==='up'?'UP & Kosher':status==='review'?'under review':'DOWN')+(note?' — '+note:'')+'. — myeiruv.org';
       fetch('https://api.myeiruv.org',{
         method:'POST',headers:{'Content-Type':'application/json','X-Action':'twilio-sms'},
         body:JSON.stringify({to:a.userPhone,message:msg})
@@ -5937,7 +5957,7 @@ checkResetToken();
   </button>
   <nav class="sf-side">
     <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
-    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1120.1930</span></span>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1123.1922</span></span>
   </nav>
 </div>
 <script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>
