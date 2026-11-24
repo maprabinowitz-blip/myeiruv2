@@ -1,5 +1,5 @@
 {
- "label": "Monsey: fixes from the 5786 print map",
+ "label": "Monsey: fixes from the 5786 map and the Eiruv of Monsey’s reply",
  "zones": [],
  "patches": [
   {
@@ -1195,50 +1195,184 @@
    }
   },
   {
-   "id": "monsey-suffern-hospital-eruv-section-1",
-   "appendBoundaryNote": "Rambam eiruv section (marked ר on the 5786 (2026) Eiruv of Monsey map). Inside: Good Samaritan Hospital, its parking lot, and the Bikur Cholim house on Hillcrest Rd. Route 59 is inside from Monsey to Woodland Dr; west of Woodland Dr it is outside. You may carry into Montebello at the Hemion Rd crossing."
-  },
-  {
-   "id": "monsey-suffern-eruv-section-2",
-   "appendBoundaryNote": "Woodland Dr: from Rt 59 to Sunset Dr the road and the east-side houses are inside, the west side is outside; south of Sunset Dr the road is outside but the east-side houses are inside. Hillside Ave: Cypress Rd to Foxwood Ave fully inside; Foxwood Ave to Woodland Dr the road and north side are inside, the south side is outside; west of Woodland Dr outside. Inside: Bais Medrash Bais Yehuda Semihai, Hemion Rd. Outside: James St, Oakdale Manor, Interstate St, Valley View Ter, Beechwood Rd, Meadowbrook Ln, Rt 59 west of Woodland Dr, the Thruway."
-  },
-  {
    "id": "monsey-airmont-beatrix-eruv-section-3",
-   "appendBoundaryNote": "Has a karfif inside the section for several months of the year (marked ק on the 5786 (2026) Eiruv of Monsey map). Ask your rav. Near the NJ border only some houses are inside; the Eiruv of Monsey advises carrying only where you know for sure. Airmont Ave is inside up to Secor Farms and Airmont Park (Mahwah); beyond is outside. Hillside Ave from Plymouth Dr to W Saddle River Rd: road inside, grass on the south side outside. Cragmere Rd from Campbell Ave to Yorkshire Dr: road and east-side houses inside, west side outside; south of Yorkshire Dr the road is outside but east-side houses are inside. Outside: Plymouth Dr, Castle Hill Ct, W Saddle River Rd south of Hillside Ave, E Saddle River Rd south of Fox Hill Rd."
-  },
-  {
-   "id": "monsey-chestnut-dexter-park-eruv-section-8",
-   "appendBoundaryNote": "Not shown on the 5786 (2026) Eiruv of Monsey map. That map leaves out neighbouring eiruvin run by others (it names the Rockland Eruv as one), so this area may be under a different eiruv. Confirm before relying on it. Per their boundary list: Crooked Hill Rd inside only up to S Highland Ave. N Highland Ave: where the wires are on the east side the road is inside, where on the west side it is outside; houses and grass on its east side are outside; Duryea Ln to Grotke Rd outside. Outside: Duryea Ln (Duryea Pl to Highland Ave), Bradl Ln, Duryea Pl, Gatto Ln, Convent Rd, Scotland Hill Rd from the Thruway to Old Nyack Tpk, the Garden State Pkwy. Scotland Hill Rd from Convent Rd to the Thruway is inside. Williams Rd from Red Schoolhouse Rd to the Pkwy overpass: road inside, houses and grass on both sides outside; past the overpass to S Pascack Rd inside.",
    "fields": {
-    "status": "review"
-   }
-  },
-  {
-   "id": "monsey-rambams-eruv-section",
-   "appendBoundaryNote": "Rambam eiruv section (marked ר on the 5786 (2026) Eiruv of Monsey map)."
-  },
-  {
-   "id": "monsey-spring-valley-eruv-section-14",
-   "appendBoundaryNote": "Rambam eiruv section (marked ר on the 5786 (2026) Eiruv of Monsey map). Extends south of Rt 59 to the Thruway, per that map."
-  },
-  {
-   "id": "monsey-nanuet-eruv-section-16",
-   "appendBoundaryNote": "Rambam eiruv section (marked ר on the 5786 (2026) Eiruv of Monsey map)."
-  },
-  {
-   "id": "monsey-new-square-eruv",
-   "appendBoundaryNote": "Not part of the Eiruv of Monsey (not on their 5786 (2026) Eiruv of Monsey map, which covers only eiruvin under their beis din). Status unknown.",
-   "fields": {
-    "status": "review"
+    "boundaryNotes": "Karfif question in summer: a large cornfield along the NJ border (also used as a corn maze). Rabbanim differ on whether it is a karfif. The Eiruv of Monsey marks it for awareness, but this section remains under their certification. Ask your rav. Near the NJ border only some houses are inside; the Eiruv of Monsey advises carrying only where you know for sure. Airmont Ave is inside up to Secor Farms and Airmont Park (Mahwah); beyond is outside. Hillside Ave from Plymouth Dr to W Saddle River Rd: road inside, grass on the south side outside. Cragmere Rd from Campbell Ave to Yorkshire Dr: road and east-side houses inside, west side outside; south of Yorkshire Dr the road is outside but east-side houses are inside. Outside: Plymouth Dr, Castle Hill Ct, W Saddle River Rd south of Hillside Ave, E Saddle River Rd south of Fox Hill Rd. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
    }
   },
   {
    "id": "monsey-airmont-eruv-section-4",
-   "appendBoundaryNote": "Near the NJ border only some houses are inside; the Eiruv of Monsey advises carrying only where you know for sure. Airmont Ave is inside up to Secor Farms and Airmont Park (Mahwah); beyond is outside. Hillside Ave from Plymouth Dr to W Saddle River Rd: road inside, grass on the south side outside. Cragmere Rd from Campbell Ave to Yorkshire Dr: road and east-side houses inside, west side outside; south of Yorkshire Dr the road is outside but east-side houses are inside. Outside: Plymouth Dr, Castle Hill Ct, W Saddle River Rd south of Hillside Ave, E Saddle River Rd south of Fox Hill Rd."
+   "fields": {
+    "boundaryNotes": "Near the NJ border only some houses are inside; the Eiruv of Monsey advises carrying only where you know for sure. Airmont Ave is inside up to Secor Farms and Airmont Park (Mahwah); beyond is outside. Hillside Ave from Plymouth Dr to W Saddle River Rd: road inside, grass on the south side outside. Cragmere Rd from Campbell Ave to Yorkshire Dr: road and east-side houses inside, west side outside; south of Yorkshire Dr the road is outside but east-side houses are inside. Outside: Plymouth Dr, Castle Hill Ct, W Saddle River Rd south of Hillside Ave, E Saddle River Rd south of Fox Hill Rd. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-chestnut-dexter-park-eruv-section-8",
+   "fields": {
+    "status": "review",
+    "boundaryNotes": "Not under the Eiruv of Monsey’s supervision (confirmed by them, Nov 2026). For its status, ask whoever runs this eruv."
+   }
+  },
+  {
+   "id": "monsey-chestnut-ridge-eruv",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-chestnut-ridge-eruv-section-5",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-chestnut-ridge-eruv-section-7",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-haverstraw-eruv-section-25",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-haverstraw-eruv-section-26",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-hillcrest-eruv-section-20",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-1",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-2",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-3",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-4",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-nanuet-eruv-section-16",
+   "fields": {
+    "boundaryNotes": "Rambam eiruv section: more than half the perimeter is actual mechitzos. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-new-city-eruv",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   },
+   "removeLinks": [
+    "monsey-new-square-eruv"
+   ]
+  },
+  {
+   "id": "monsey-new-hampstead-eruv",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   },
+   "removeLinks": [
+    "monsey-new-square-eruv"
+   ]
+  },
+  {
+   "id": "monsey-new-square-eruv",
+   "removeLinks": [
+    "monsey-new-city-eruv",
+    "monsey-new-hampstead-eruv"
+   ],
+   "fields": {
+    "status": "review",
+    "boundaryNotes": "A separate eruv with its own beis din, not under the Eiruv of Monsey. Per the local Rabbanim, New Square and New City are separate; do not carry between them."
+   }
+  },
+  {
+   "id": "monsey-pearl-river-eruv-section-9",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-pomona-eruv-section-23",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-pomona-eruv-section-24",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-rambams-eruv-section",
+   "fields": {
+    "boundaryNotes": "Monsey Rambam Eruv 1. Rambam eiruv section: more than half the perimeter is actual mechitzos. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-scotland-hill-eruv-section-6",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
   },
   {
    "id": "monsey-section-11",
-   "appendBoundaryNote": "Rambam eiruv section (marked ר on the 5786 (2026) Eiruv of Monsey map)."
+   "fields": {
+    "boundaryNotes": "Monsey Rambam Eruv 2. Rambam eiruv section: more than half the perimeter is actual mechitzos. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-spring-valley-2-eruv-section-15",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-spring-valley-eruv-section-14",
+   "fields": {
+    "boundaryNotes": "Rambam eiruv section: more than half the perimeter is actual mechitzos. Extends south of Rt 59 to the Thruway. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-suffern-eruv-section-2",
+   "fields": {
+    "boundaryNotes": "Woodland Dr: from Rt 59 to Sunset Dr the road and the east-side houses are inside, the west side is outside; south of Sunset Dr the road is outside but the east-side houses are inside. Hillside Ave: Cypress Rd to Foxwood Ave fully inside; Foxwood Ave to Woodland Dr the road and north side are inside, the south side is outside; west of Woodland Dr outside. Inside: Bais Medrash Bais Yehuda Semihai, Hemion Rd. Outside: James St, Oakdale Manor, Interstate St, Valley View Ter, Beechwood Rd, Meadowbrook Ln, Rt 59 west of Woodland Dr, the Thruway. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-suffern-hospital-eruv-section-1",
+   "fields": {
+    "boundaryNotes": "Rambam eiruv section: more than half the perimeter is actual mechitzos. Inside: Good Samaritan Hospital, its parking lot, and the Bikur Cholim house on Hillcrest Rd. Route 59 is inside from Monsey to Woodland Dr; west of Woodland Dr it is outside. You may carry into Montebello at the Hemion Rd crossing. Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
+  },
+  {
+   "id": "monsey-wesley-hills-eruv",
+   "fields": {
+    "boundaryNotes": "Official map (updated often) and weekly status: eiruvofmonsey.org/status."
+   }
   }
  ],
  "retire": []

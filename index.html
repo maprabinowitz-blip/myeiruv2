@@ -1176,7 +1176,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1124.1911]');
+console.log('[MyEiruv build v1124.2136]');
 var SEED_SHULS = [];
 // Lets Hebrew eruv names on the map read right-to-left (loaded only when needed).
 try{if(mapboxgl.getRTLTextPluginStatus&&mapboxgl.getRTLTextPluginStatus()==='unavailable')
@@ -4986,7 +4986,7 @@ var SEED_UPDATES=[
   {file:'monsey-up',title:'Monsey: mark Up and credit the map',
    desc:'Sets 26 Monsey sections to Up and records eiruvofmonsey.org as the source, shown on each eiruv\u2019s details. Does not send alerts to subscribers. Leaves out New Square and Dexter Park, which are not on the Eiruv of Monsey\u2019s 5786 map.'},
   {file:'monsey-2026',title:'Monsey: fixes from the 5786 print map',
-   desc:'Run after the one above. Spring Valley now reaches south of Rt 59 to the Thruway; Pomona edge along Willow Grove Rd and Call Hollow Rd fixed. Adds boundary notes from eiruvofmonsey.org, marks the Rambam sections and the Airmont karfif, and sets New Square and Dexter Park to Under Review.'}
+   desc:'Run after the one above (safe to run again). Spring Valley now reaches south of Rt 59 to the Thruway; Pomona edge along Willow Grove Rd and Call Hollow Rd fixed. Sets Monsey boundary notes per the Eiruv of Monsey\u2019s reply: Rambam sections, the summer karfif in Airmont, Dexter Park and New Square not under their supervision. Removes the carrying links between New Square and New City / New Hempstead.'}
 ];
 /* Some imported outlines carry extra points after the ring has already returned to
    its first point, all of them repeats of earlier points (a second line piece from
@@ -5063,6 +5063,11 @@ function applySeed(file){
             var ex=(cur.exclusions||[]).map(function(x){return Object.assign({},x,{coords:(x.coords||[]).map(function(c){return c&&c.g!==undefined?c:{g:c[0],a:c[1]};})});});
             p.addExclusions.forEach(function(n){if(!ex.some(function(x){return x.id===n.id;}))ex.push(n);});
             f.exclusions=ex;
+          }
+          if(p.removeLinks){
+            var adj=cur.adjacency||[];
+            var kept=adj.filter(function(a){return p.removeLinks.indexOf(a.id)<0;});
+            if(kept.length!==adj.length){f.adjacency=kept;say(cur.name+': removing '+(adj.length-kept.length)+' carrying link(s)');}
           }
           Object.keys(p.ifEmpty||{}).forEach(function(k){
             var v=cur[k];
@@ -6137,7 +6142,7 @@ checkResetToken();
   </button>
   <nav class="sf-side">
     <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
-    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.1911</span></span>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.2136</span></span>
   </nav>
 </div>
 <script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>
