@@ -1176,8 +1176,11 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1124.0449]');
+console.log('[MyEiruv build v1124.0458]');
 var SEED_SHULS = [];
+// Lets Hebrew eruv names on the map read right-to-left (loaded only when needed).
+try{if(mapboxgl.getRTLTextPluginStatus&&mapboxgl.getRTLTextPluginStatus()==='unavailable')
+  mapboxgl.setRTLTextPlugin('https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.3.0/mapbox-gl-rtl-text.js',null,true);}catch(_){}
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
 map.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-right');
@@ -1439,6 +1442,56 @@ function _zoneInCity(z,cf){
   z.coords.forEach(function(p){if(p[0]<w)w=p[0];if(p[0]>e)e=p[0];if(p[1]<s)s=p[1];if(p[1]>n)n=p[1];});
   var cx=(w+e)/2,cy=(s+n)/2,b=cf.bbox;
   return cx>=b[0]&&cx<=b[2]&&cy>=b[1]&&cy<=b[3];
+}
+/* Name labels on the map for the zones of the city being viewed. Each label sits at the
+   point deepest inside its zone (not just the middle, which can fall outside an odd shape). */
+function _labelPoint(z){
+  var c=z.coords,w=180,s=90,e=-180,n=-90;
+  c.forEach(function(p){if(p[0]<w)w=p[0];if(p[0]>e)e=p[0];if(p[1]<s)s=p[1];if(p[1]>n)n=p[1];});
+  var k=Math.cos((s+n)/2*Math.PI/180),best=null,bd=-1,N=24;
+  var rings=[c].concat((z.exclusions||[]).map(function(x){return x.coords||[];}).filter(function(r){return r.length>2;}));
+  var segDist=function(x,y){
+    var m=Infinity;
+    rings.forEach(function(r){
+      for(var i=0,j=r.length-1;i<r.length;j=i++){
+        var ax=r[j][0]*k,ay=r[j][1],bx=r[i][0]*k,by=r[i][1],px=x*k,py=y;
+        var dx=bx-ax,dy=by-ay,L=dx*dx+dy*dy,t=L?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/L)):0;
+        var qx=ax+t*dx-px,qy=ay+t*dy-py,d=qx*qx+qy*qy;if(d<m)m=d;
+      }
+    });
+    return m;
+  };
+  for(var a=1;a<N;a++)for(var b=1;b<N;b++){
+    var x=w+(e-w)*a/N,y=s+(n-s)*b/N;
+    if(!pip(x,y,c)||inExcl(x,y,z))continue;
+    var d=segDist(x,y);if(d>bd){bd=d;best=[x,y];}
+  }
+  return best||[(w+e)/2,(s+n)/2];
+}
+function _updateZoneLabels(){
+  if(!window._mapLoaded||typeof map.getSource!=='function')return;
+  var cf=S.cityFilter;
+  var feats=cf?S.eruvin.filter(function(z){return !z._deleted&&z.coords&&z.coords.length>2&&_zoneInCity(z,cf);})
+    .map(function(z){
+      if(!z._lblPt||z._lblKey!==z.coords.length+':'+z.coords[0])z._lblPt=_labelPoint(z),z._lblKey=z.coords.length+':'+z.coords[0];
+      return {type:'Feature',properties:{name:z.name||''},geometry:{type:'Point',coordinates:z._lblPt}};
+    }):[];
+  var data={type:'FeatureCollection',features:feats};
+  try{
+    if(map.getSource('zone-labels'))map.getSource('zone-labels').setData(data);
+    else{
+      map.addSource('zone-labels',{type:'geojson',data:data});
+      map.addLayer({id:'zone-labels',type:'symbol',source:'zone-labels',layout:{
+        'text-field':['get','name'],
+        'text-font':['DIN Pro Medium','Arial Unicode MS Regular'],
+        'text-size':['interpolate',['linear'],['zoom'],10,9.5,13,11,16,13],
+        'text-max-width':7,'text-line-height':1.1,'text-padding':1,
+        'text-variable-anchor':['center','top','bottom','left','right'],'text-radial-offset':0.4,
+        'text-justify':'auto'
+      },paint:{'text-color':'#14213d','text-halo-color':'rgba(255,255,255,0.95)','text-halo-width':1.6}});
+    }
+    if(map.moveLayer)map.moveLayer('zone-labels');
+  }catch(_){}
 }
 function openCityLink(slug){
   var q=String(slug).replace(/-/g,' ');
@@ -2444,6 +2497,7 @@ function renderEruvList(){
     return;
   }
   var cf=S.cityFilter, list=cf?S.eruvin.filter(function(z){return _zoneInCity(z,cf);}):S.eruvin;
+  _updateZoneLabels();
   var lbl=document.getElementById('eruvListLbl');
   if(lbl)lbl.innerHTML=cf?'Eiruvin in '+cf.name+' ('+list.length+') <button class="city-clear" onclick="clearCityFilter()">Show all \u00d7</button>':'All Eiruvin';
   if(cf&&!list.length){
@@ -6062,7 +6116,7 @@ checkResetToken();
   </button>
   <nav class="sf-side">
     <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
-    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.0449</span></span>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.0458</span></span>
   </nav>
 </div>
 <script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>
