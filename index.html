@@ -453,6 +453,9 @@ header{
 @media (prefers-reduced-motion:reduce){#zoneBanner{transition:none;}}
 .rs-dn{font-size:.62rem;font-weight:700;color:#fff;background:#d94040;border-radius:4px;padding:0 4px}
 .rs-rv{font-size:.62rem;font-weight:600;color:#9a5b00;background:#fff3dc;border-radius:4px;padding:0 4px}
+.city-clear{margin-left:6px;font:inherit;font-size:.68rem;font-weight:600;color:var(--blue);background:none;border:1px solid var(--border);border-radius:10px;padding:1px 8px;cursor:pointer;text-transform:none;letter-spacing:0}
+.zone-share{display:block;width:100%;margin-top:8px;padding:8px 12px;font:inherit;font-size:.78rem;font-weight:600;color:var(--navy);background:#fff;border:1px solid var(--border);border-radius:8px;cursor:pointer}
+.zone-share:hover{background:var(--bg)}
 .route-seq{margin-top:8px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;background:#fff;font-size:.75rem;line-height:1.45}
 .route-seq-h{font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
 .route-seq ol{margin:0;padding-left:18px}.route-seq li{margin:2px 0}
@@ -659,7 +662,7 @@ input.fi:focus{border-color:var(--navy,#1a3055);box-shadow:0 0 0 3px rgba(26,48,
           <button class="res-btn" id="seeFullBtn" onclick="seeFullZone()" style="display:none">&#128205; See Full Zone</button>
           <button class="res-btn blue-btn" id="planRouteBtn" onclick="startRoute()" style="display:none">&#128694; Plan Route from Here</button>
         </div>
-        <span class="sec-lbl">All Eiruvin</span>
+        <span class="sec-lbl" id="eruvListLbl">All Eiruvin</span>
         <div class="eruv-list" id="eruvList"></div>
       </div>
     </div>
@@ -1173,7 +1176,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1123.1922]');
+console.log('[MyEiruv build v1124.0449]');
 var SEED_SHULS = [];
 const map=new mapboxgl.Map({container:'map',style:'mapbox://styles/mapbox/light-v11',center:[-74.0,40.65],zoom:10,attributionControl:false});
 map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'bottom-right');
@@ -1337,16 +1340,55 @@ function showEruvPopup(e,ev){
 /* Link to one eiruv: myeiruv.org/?zone=<id or name>. Once the zones and the map
    are ready, the map fits that eiruv, its banner opens and the sidebar shows its
    details. Runs once per page load. */
+/* ── Clean links: /eruv/<slug> and /city/<slug> ─────────────────────────── */
+function _slug(s){
+  return String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/&/g,' and ').replace(/['\u2019]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+// One stable, unique slug per zone: the name; on a clash add the city, then part of the id.
+function _zoneSlugs(){
+  var live=S.eruvin.filter(function(z){return !z._deleted;}).slice()
+    .sort(function(a,b){return String(a.id)<String(b.id)?-1:1;});
+  var byId={},bySlug={};
+  live.forEach(function(z){
+    var base=_slug(z.name)||('zone-'+_slug(z.id));
+    var c=base;
+    if(bySlug[c]&&z.city)c=base+'-'+_slug(String(z.city).split(',')[0]);
+    if(bySlug[c])c=base+'-'+_slug(z.id).slice(0,6);
+    var n=2;while(bySlug[c])c=base+'-'+(n++);
+    byId[z.id]=c;bySlug[c]=z;
+  });
+  return {byId:byId,bySlug:bySlug};
+}
+function zoneUrl(z){return location.origin+'/eruv/'+(_zoneSlugs().byId[z.id]||_slug(z.id));}
+var _baseTitle=document.title;
+function _setPath(path,title){
+  try{
+    if(location.pathname!==path||location.search)history.replaceState(null,'',path+location.hash);
+    document.title=title?title+' \u2014 MyEiruv':_baseTitle;
+  }catch(_){}
+}
+function _homePath(){return S.cityFilter?'/city/'+S.cityFilter.slug:'/';}
+function _homeTitle(){return S.cityFilter?'Eruvin in '+S.cityFilter.name:null;}
 var _deepLinkDone=false;
 function openDeepLink(){
   if(_deepLinkDone)return;
+  var parts=location.pathname.split('/').filter(Boolean).map(function(x){try{return decodeURIComponent(x);}catch(_){return x;}});
   var q='';
   try{q=(new URLSearchParams(location.search).get('zone')||'').trim();}catch(_){}
+  if(parts[0]==='city'&&parts[1]){_deepLinkDone=true;openCityLink(parts[1]);return;}
+  if(parts[0]==='eruv'&&parts[1])q=parts[1];
   if(!q){_deepLinkDone=true;return;}
-  var want=q.toLowerCase();
-  var e=S.eruvin.find(function(x){return x.id===q;})
+  if(!S.eruvin.length)return;          // zones not loaded yet; tried again after they are
+  var want=q.toLowerCase(), sl=_zoneSlugs();
+  var e=sl.bySlug[_slug(q)]
+     ||S.eruvin.find(function(x){return x.id===q;})
      ||S.eruvin.find(function(x){return (x.name||'').trim().toLowerCase()===want;});
-  if(!e)return;              // zones may not be loaded yet; tried again after they are
+  if(!e){
+    if(!window._zonesReady)return;
+    _deepLinkDone=true;_setPath('/',null);
+    toast('That eiruv link was not found. It may have been renamed.','err');return;
+  }
   _deepLinkDone=true;
   try{
     var b=new mapboxgl.LngLatBounds();
@@ -1355,6 +1397,59 @@ function openDeepLink(){
   }catch(_){}
   try{openZoneDetail(e.id);}catch(_){}
   setTimeout(function(){try{showEruvPopup(e,null);}catch(_){}},400);
+}
+function shareZone(id){
+  var z=S.eruvin.find(function(x){return x.id===id;});if(!z)return;
+  var url=zoneUrl(z);
+  if(navigator.share){navigator.share({title:z.name+' \u2014 MyEiruv',url:url}).catch(function(){});return;}
+  (navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject())
+    .then(function(){toast('Link copied','ok');})
+    .catch(function(){prompt('Copy this link:',url);});
+}
+
+/* ── City view: search a city → whole city on the map, its eruvin in the list ── */
+function _isArea(f){
+  return (f.place_type||[]).some(function(t){return ['place','locality','district','region','neighborhood'].indexOf(t)>=0;});
+}
+function _citySlug(f){
+  var st='';
+  (f.context||[]).forEach(function(c){if(String(c.id).indexOf('region')===0&&c.short_code)st=String(c.short_code).split('-').pop();});
+  return _slug(f.text+(st?' '+st:''));
+}
+function showCity(f){
+  var c=f.center||f.geometry.coordinates;
+  var bb=f.bbox||[c[0]-0.04,c[1]-0.03,c[0]+0.04,c[1]+0.03];
+  S.cityFilter={name:f.text,slug:_citySlug(f),bbox:bb};
+  if(addrMarker){addrMarker.remove();addrMarker=null;}
+  var card=document.getElementById('resultCard');if(card)card.className='result-card';
+  try{map.fitBounds([[bb[0],bb[1]],[bb[2],bb[3]]],{padding:40,duration:900,maxZoom:14});}catch(_){}
+  var tab=document.querySelector('.s-tab');
+  if(tab&&!tab.classList.contains('on'))sTab(tab,'check');
+  renderEruvList();
+  _setPath(_homePath(),_homeTitle());
+  setTimeout(function(){var l=document.getElementById('eruvListLbl');if(l)l.scrollIntoView({behavior:'smooth',block:'start'});},100);
+}
+function clearCityFilter(){
+  S.cityFilter=null;renderEruvList();_setPath('/',null);
+}
+function _zoneInCity(z,cf){
+  if(z.city&&_slug(String(z.city).split(',')[0])===_slug(cf.name))return true;
+  if(!z.coords||!z.coords.length)return false;
+  var w=180,s=90,e=-180,n=-90;
+  z.coords.forEach(function(p){if(p[0]<w)w=p[0];if(p[0]>e)e=p[0];if(p[1]<s)s=p[1];if(p[1]>n)n=p[1];});
+  var cx=(w+e)/2,cy=(s+n)/2,b=cf.bbox;
+  return cx>=b[0]&&cx<=b[2]&&cy>=b[1]&&cy<=b[3];
+}
+function openCityLink(slug){
+  var q=String(slug).replace(/-/g,' ');
+  fetch('https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(q)
+    +'.json?types=place,locality,district,region&limit=1&proximity='+PROX+'&access_token='+TOKEN)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var f=d.features&&d.features[0];
+      if(!f){_setPath('/',null);toast('City not found','err');return;}
+      var go=function(){if(window._mapLoaded)showCity(f);else setTimeout(go,200);};go();
+    }).catch(function(){});
 }
 function openZoneDetail(id){
   var e=S.eruvin.find(function(x){return x.id===id;});
@@ -1438,7 +1533,8 @@ function checkTypedAddress(){
       if(d.features&&d.features.length){
         var f=d.features[0];
         document.getElementById('addrInput').value=f.place_name;
-        checkPoint(f.geometry.coordinates[0],f.geometry.coordinates[1],f.place_name);
+        if(_isArea(f))showCity(f);
+        else checkPoint(f.geometry.coordinates[0],f.geometry.coordinates[1],f.place_name);
       }else{
         toast('Address not found — try adding city/state','err');
       }
@@ -1545,7 +1641,7 @@ function selectAC(id,i){
   var f=S.acData[id]&&S.acData[id][i];if(!f)return;
   hideAC(id);
   var lng=f.geometry.coordinates[0],lat=f.geometry.coordinates[1];
-  if(id==='check'){document.getElementById('addrInput').value=f.place_name;checkPoint(lng,lat,f.place_name);}
+  if(id==='check'){document.getElementById('addrInput').value=f.place_name;if(_isArea(f))showCity(f);else checkPoint(lng,lat,f.place_name);}
   else if(id==='rStart'){document.getElementById('rStart').value=f.place_name;S.routeStart={lng:lng,lat:lat,label:f.place_name};}
   else if(id==='rEnd'){document.getElementById('rEnd').value=f.place_name;S.routeEnd={lng:lng,lat:lat,label:f.place_name};}
   else if(id==='drawSearch'&&drawMap){drawMap.flyTo({center:[lng,lat],zoom:14,duration:800});document.getElementById('drawSearch').value='';hideAC('drawSearch');}
@@ -2347,13 +2443,20 @@ function renderEruvList(){
       :'<div class="list-empty">Loading eiruvin…</div>';
     return;
   }
-  document.getElementById('eruvList').innerHTML=S.eruvin.map(function(e){
+  var cf=S.cityFilter, list=cf?S.eruvin.filter(function(z){return _zoneInCity(z,cf);}):S.eruvin;
+  var lbl=document.getElementById('eruvListLbl');
+  if(lbl)lbl.innerHTML=cf?'Eiruvin in '+cf.name+' ('+list.length+') <button class="city-clear" onclick="clearCityFilter()">Show all \u00d7</button>':'All Eiruvin';
+  if(cf&&!list.length){
+    document.getElementById('eruvList').innerHTML='<div class="list-empty">No eiruvin on MyEiruv in '+cf.name+' yet.</div>';
+    return;
+  }
+  document.getElementById('eruvList').innerHTML=list.map(function(e){
     var sc={up:'#22a865',review:'#e08020',down:'#d94040'}[e.status]||'#ccc';
     return '<div id="wrap-'+e.id+'">'
       +'<div class="eruv-row" style="position:relative;padding-left:12px;cursor:pointer" onclick="toggleEruvDetail(this.parentElement.id.replace(\x27wrap-\x27,\x27\x27))">'
       +'<div style="position:absolute;left:0;top:4px;bottom:4px;width:3px;background:'+sc+';border-radius:2px"></div>'
       +'<div><div class="er-nm">'+e.name+'</div>'
-      +'<div class="er-mt">'+e.city+(e.lastChecked?' · <span style="font-size:.62rem">'+e.lastChecked+'</span>':'')+'</div></div>'
+      +'<div class="er-mt">'+(e.city||'')+(e.lastChecked?(e.city?' · ':'')+'<span style="font-size:.62rem">'+e.lastChecked+'</span>':'')+'</div></div>'
       +'<span class="badge '+BC[e.status]+'">'+BL[e.status]+'</span>'
       +'</div>'
       +'<div id="detail-'+e.id+'" style="display:none;background:#f8f9fb;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:12px 14px;font-size:.82rem;"></div>'
@@ -2376,13 +2479,14 @@ function toggleEruvDetail(id){
     }catch(_){}
   });
   clearNoteMarkers();
-  if(isOpen)return;
+  if(isOpen){_setPath(_homePath(),_homeTitle());return;}
   showEruvDetail(id);
 }
 
 function showEruvDetail(id){
   var e=S.eruvin.find(function(x){return x.id===id;});
   if(!e)return;
+  _setPath('/eruv/'+(_zoneSlugs().byId[e.id]||_slug(e.id)),e.name);
 
   // Clear previous note markers
   (S.noteMarkers||[]).forEach(function(m){m.remove();});S.noteMarkers=[];
@@ -2577,6 +2681,7 @@ function showEruvDetail(id){
     })()
     // Contractor
     +ctHtml
+    +'<button class="zone-share" onclick="shareZone(\''+e.id+'\')">\ud83d\udd17 Share link to this eiruv</button>'
     +'</div>'
   // Show in accordion panel below the row
   var d=document.getElementById('detail-'+id);
@@ -5957,7 +6062,7 @@ checkResetToken();
   </button>
   <nav class="sf-side">
     <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
-    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1123.1922</span></span>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.0449</span></span>
   </nav>
 </div>
 <script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>

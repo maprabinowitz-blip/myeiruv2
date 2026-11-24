@@ -1,5 +1,5 @@
 // MyEiruv Service Worker
-const CACHE = 'myeiruv-v3';
+const CACHE = 'myeiruv-v4';
 const OFFLINE_URLS = ['/'];
 
 self.addEventListener('install', function(e){
@@ -34,6 +34,7 @@ self.addEventListener('fetch', function(e){
       return res;
     }).catch(function(){
       return caches.match(e.request).then(function(cached){
+        if(!cached && e.request.mode==='navigate') return caches.match('/');
         return cached || new Response('Offline — please reconnect to use MyEiruv', {status:503});
       });
     })

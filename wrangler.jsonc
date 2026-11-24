@@ -2,6 +2,9 @@
   "name": "myeiruv2",
   "compatibility_date": "2026-07-23",
   "assets": {
-    "directory": "."
+    "directory": ".",
+    // Paths with no matching file (like /eruv/five-towns or /city/lakewood-nj)
+    // are served index.html, which opens the right eiruv or city.
+    "not_found_handling": "single-page-application"
   }
 }
