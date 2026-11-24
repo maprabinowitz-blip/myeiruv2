@@ -1176,7 +1176,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1124.0549]');
+console.log('[MyEiruv build v1124.1911]');
 var SEED_SHULS = [];
 // Lets Hebrew eruv names on the map read right-to-left (loaded only when needed).
 try{if(mapboxgl.getRTLTextPluginStatus&&mapboxgl.getRTLTextPluginStatus()==='unavailable')
@@ -4984,7 +4984,9 @@ function copyZoneCheck(){
    to run and delete it once it has been applied, so the admin page stays clean. */
 var SEED_UPDATES=[
   {file:'monsey-up',title:'Monsey: mark Up and credit the map',
-   desc:'Sets all 28 Monsey sections to Up and records eiruvofmonsey.org as the source, shown on each eiruv\u2019s details. Does not send alerts to subscribers.'}
+   desc:'Sets 26 Monsey sections to Up and records eiruvofmonsey.org as the source, shown on each eiruv\u2019s details. Does not send alerts to subscribers. Leaves out New Square and Dexter Park, which are not on the Eiruv of Monsey\u2019s 5786 map.'},
+  {file:'monsey-2026',title:'Monsey: fixes from the 5786 print map',
+   desc:'Run after the one above. Spring Valley now reaches south of Rt 59 to the Thruway; Pomona edge along Willow Grove Rd and Call Hollow Rd fixed. Adds boundary notes from eiruvofmonsey.org, marks the Rambam sections and the Airmont karfif, and sets New Square and Dexter Park to Under Review.'}
 ];
 /* Some imported outlines carry extra points after the ring has already returned to
    its first point, all of them repeats of earlier points (a second line piece from
@@ -6135,7 +6137,7 @@ checkResetToken();
   </button>
   <nav class="sf-side">
     <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
-    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.0549</span></span>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.1911</span></span>
   </nav>
 </div>
 <script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>

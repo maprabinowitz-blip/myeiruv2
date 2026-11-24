@@ -17,13 +17,6 @@
    }
   },
   {
-   "id": "monsey-chestnut-dexter-park-eruv-section-8",
-   "fields": {
-    "status": "up",
-    "source": "eiruvofmonsey.org"
-   }
-  },
-  {
    "id": "monsey-chestnut-ridge-eruv",
    "fields": {
     "status": "up",
@@ -109,13 +102,6 @@
   },
   {
    "id": "monsey-new-hampstead-eruv",
-   "fields": {
-    "status": "up",
-    "source": "eiruvofmonsey.org"
-   }
-  },
-  {
-   "id": "monsey-new-square-eruv",
    "fields": {
     "status": "up",
     "source": "eiruvofmonsey.org"
