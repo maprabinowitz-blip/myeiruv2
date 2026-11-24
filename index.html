@@ -1176,7 +1176,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1124.0458]');
+console.log('[MyEiruv build v1124.0511]');
 var SEED_SHULS = [];
 // Lets Hebrew eruv names on the map read right-to-left (loaded only when needed).
 try{if(mapboxgl.getRTLTextPluginStatus&&mapboxgl.getRTLTextPluginStatus()==='unavailable')
@@ -1374,8 +1374,19 @@ function _setPath(path,title){
 function _homePath(){return S.cityFilter?'/city/'+S.cityFilter.slug:'/';}
 function _homeTitle(){return S.cityFilter?'Eruvin in '+S.cityFilter.name:null;}
 var _deepLinkDone=false;
+// A refresh starts fresh on the main page; only opening a link (typed, shared,
+// bookmarked) goes to that eiruv or city.
+var _isReload=(function(){
+  try{var n=performance.getEntriesByType('navigation')[0];if(n)return n.type==='reload';}catch(_){}
+  try{return performance.navigation&&performance.navigation.type===1;}catch(_){return false;}
+})();
 function openDeepLink(){
   if(_deepLinkDone)return;
+  if(_isReload){
+    _deepLinkDone=true;
+    if(location.pathname!=='/'||/[?&]zone=/.test(location.search))_setPath('/',null);
+    return;
+  }
   var parts=location.pathname.split('/').filter(Boolean).map(function(x){try{return decodeURIComponent(x);}catch(_){return x;}});
   var q='';
   try{q=(new URLSearchParams(location.search).get('zone')||'').trim();}catch(_){}
@@ -6116,7 +6127,7 @@ checkResetToken();
   </button>
   <nav class="sf-side">
     <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
-    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.0458</span></span>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1124.0511</span></span>
   </nav>
 </div>
 <script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>
