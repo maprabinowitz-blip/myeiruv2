@@ -1,0 +1,203 @@
+{
+ "label": "Monsey: mark up, credit eiruvofmonsey.org",
+ "zones": [],
+ "patches": [
+  {
+   "id": "monsey-airmont-beatrix-eruv-section-3",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-airmont-eruv-section-4",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-chestnut-dexter-park-eruv-section-8",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-chestnut-ridge-eruv",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-chestnut-ridge-eruv-section-5",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-chestnut-ridge-eruv-section-7",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-haverstraw-eruv-section-25",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-haverstraw-eruv-section-26",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-hillcrest-eruv-section-20",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-1",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-2",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-3",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-montebello-eruv-4",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-nanuet-eruv-section-16",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-new-city-eruv",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-new-hampstead-eruv",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-new-square-eruv",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-pearl-river-eruv-section-9",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-pomona-eruv-section-23",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-pomona-eruv-section-24",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-rambams-eruv-section",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-scotland-hill-eruv-section-6",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-section-11",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-spring-valley-2-eruv-section-15",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-spring-valley-eruv-section-14",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-suffern-eruv-section-2",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-suffern-hospital-eruv-section-1",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  },
+  {
+   "id": "monsey-wesley-hills-eruv",
+   "fields": {
+    "status": "up",
+    "source": "eiruvofmonsey.org"
+   }
+  }
+ ],
+ "retire": []
+}
