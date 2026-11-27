@@ -1176,7 +1176,7 @@ function loadCustomZones(){
 }
 
 // MAP
-console.log('[MyEiruv build v1126.0624]');
+console.log('[MyEiruv build v1127.0319]');
 var SEED_SHULS = [];
 // Lets Hebrew eruv names on the map read right-to-left (loaded only when needed).
 try{if(mapboxgl.getRTLTextPluginStatus&&mapboxgl.getRTLTextPluginStatus()==='unavailable')
@@ -4985,6 +4985,8 @@ function copyZoneCheck(){
 var SEED_UPDATES=[
   {file:'south-florida',title:'South Florida: add 8 eruvin',
    desc:'Aventura, Aventura South, Hallandale, Highland Lakes, Skylake, North Miami Beach, Sunny Isles Beach, Miami Beach/Bal Harbour. Added as Under Review. Eruvin that touch are linked as not yet confirmed. Boundaries dated 2018\u20132023 on the source map.'},
+  {file:'south-florida-2',title:'South Florida: Eruv Alerts updates',
+   desc:'Run after the one above. Sets Hallandale to Down (not kosher until further notice). Adds notes: Aventura\u2019s newer areas (east of Waterways Village, Marina Walkway, Hidden Bay and Aventura Marina), who to ask about Skylake and Enchanted Lakes, and that NMB is now much larger than its 2018 outline.'},
   {file:'monsey-up',title:'Monsey: mark Up and credit the map',
    desc:'Sets 26 Monsey sections to Up and records eiruvofmonsey.org as the source, shown on each eiruv\u2019s details. Does not send alerts to subscribers. Leaves out New Square and Dexter Park, which are not on the Eiruv of Monsey\u2019s 5786 map.'},
   {file:'monsey-2026',title:'Monsey: fixes from the 5786 print map',
@@ -6144,7 +6146,7 @@ checkResetToken();
   </button>
   <nav class="sf-side">
     <a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a>
-    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1126.0624</span></span>
+    <span>© <span id="footYear">2026</span> MyEiruv · <span id="buildVer">v1127.0319</span></span>
   </nav>
 </div>
 <script>try{document.getElementById('footYear').textContent=new Date().getFullYear();}catch(_){}</script>

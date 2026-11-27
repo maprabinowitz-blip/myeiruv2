@@ -1,0 +1,30 @@
+{
+ "label": "South Florida: Eruv Alerts updates",
+ "zones": [],
+ "retire": [],
+ "patches": [
+  {
+   "id": "sfl-aventura-eruv",
+   "appendBoundaryNote": "Newer than this outline (per eruvalerts.com, Nov 2026): the neighborhood just east of Waterways Village is now inside; the whole Marina Walkway is inside; Hidden Bay and Aventura Marina are inside, but not the open space at the east end of Hidden Bay Marina."
+  },
+  {
+   "id": "sfl-hallandale-eruv",
+   "fields": {
+    "status": "down"
+   },
+   "appendBoundaryNote": "Not kosher until further notice (per eruvalerts.com, Nov 2026)."
+  },
+  {
+   "id": "sfl-highland-lakes-eruv",
+   "appendBoundaryNote": "For the Enchanted Lakes and Skylake eruv, check with Rafi Rosenberg, (786) 514-3464 (per eruvalerts.com, Nov 2026)."
+  },
+  {
+   "id": "sfl-skylake-eruv",
+   "appendBoundaryNote": "For the Skylake eruv, check with Rafi Rosenberg, (786) 514-3464 (per eruvalerts.com, Nov 2026). The North Miami Beach Eruv’s 5787 map shows the Skylake area inside the NMB eruv."
+  },
+  {
+   "id": "sfl-north-miami-beach-eruv",
+   "appendBoundaryNote": "This outline is from 2018. The NMB Eruv’s 5787 (2026–27) map is much larger: about NE 163rd–167th St north to NE 199th St, and I-95 east to about NE 21st Ave, including Skylake. Under the Vaad Harabanim of North Miami Beach; nmberuv.org."
+  }
+ ]
+}
